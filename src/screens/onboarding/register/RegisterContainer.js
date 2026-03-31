@@ -4,12 +4,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
+  Image,
 } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import Icon from 'react-native-vector-icons/Feather';
 import { Text, StepProgressBar, ScrollView } from '~components/Common';
 import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
+import { Images } from '~assets';
 
 /**
  * RegisterContainer — shared wrapper for all company registration screens.
@@ -46,9 +48,11 @@ const RegisterContainer = ({
 
         {/* Top logo row */}
         <View style={styles.topRow}>
-          <View style={[styles.logoBox, { backgroundColor: colors.secondary }]}>
-            <Text style={[styles.logoText, { color: '#10375C' }]}>T</Text>
-          </View>
+          <Image
+            source={Images.logoTraids}
+            style={styles.logoBox}
+            resizeMode="contain"
+          />
           <Text variant="screenTitle" style={{ color: colors.textPrimary }}>
             Traids.
           </Text>
@@ -101,13 +105,6 @@ const styles = StyleSheet.create({
   logoBox: {
     width: RFValue(28),
     height: RFValue(28),
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoText: {
-    fontFamily: FontFamily.bold,
-    fontSize: RFValue(14),
   },
   backRow: {
     flexDirection: 'row',

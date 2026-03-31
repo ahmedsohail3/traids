@@ -1,332 +1,199 @@
+import React from "react";
 import { View, StyleSheet, Image, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/Ionicons";
-import { Pencil } from "lucide-react-native";
 import { RFValue } from "react-native-responsive-fontsize";
 import { Text } from "~components/Common";
 import { FontFamily } from "~theme/fonts";
 import { useNavigation } from "@react-navigation/native";
-import { useSelector } from "react-redux";
-import { useTheme } from "~context/ThemeContext";
-import { getInitials } from "~utils/display";
+import { Images } from "~assets";
 
 const Header = ({
-  variant = "title",
-
-  // Common
-  rightIcon,
-  onRightPress,
-  onBack,
-
-  // Home variant
-  userName,
-  greeting,
-  avatar,
-
-  // Title variant
   title,
   subtitle,
-
-  // Profile variant
-  showProfile = false,
-  rightAction,
-
-  // Badge
-  notificationBadge = false,
-
-  // Components
-  showTabs,
+  showPostButton = false,
+  onPostPress,
 }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { colors, isDark } = useTheme();
-  const { user } = useSelector(state => state.auth);
-  const { profile } = useSelector(state => state.profile);
 
   return (
     <View
       style={[
-        styles.container,
-        {
-          paddingTop: insets.top + RFValue(12),
-          backgroundColor: colors.headerBackground,
-          borderColor: colors.headerBackground,
-          borderBottomColor: colors.headerBorder,
-        },
+        styles.dashCard,
+        { paddingTop: insets.top + RFValue(12) },
       ]}>
-      {/* 🏠 Home Header */}
-      {variant === "home" && (
-        <View style={styles.row}>
-          <View style={styles.row}>
-            {avatar?.uri ? (
-              <Image source={avatar} style={styles.avatar} />
-            ) : (
-              <View
-                style={[
-                  styles.avatar,
-                  styles.avatarFallback,
-                  { backgroundColor: colors.primaryLight },
-                ]}>
-                <Text
-                  style={[
-                    styles.avatarInitials,
-                    { color: colors.primary },
-                  ]}>
-                  {getInitials(userName)}
-                </Text>
-              </View>
-            )}
-            <View style={{ marginLeft: 12 }}>
-              <Text variant="small" color="muted">
-                {greeting}
-              </Text>
-              <Text
-                variant="medium"
-                style={[styles.boldText, { color: colors.textPrimary, fontSize: RFValue(12) }]}>
-                {userName}
-              </Text>
-            </View>
-          </View>
 
-          {rightIcon && (
-            <TouchableOpacity onPress={onRightPress}>
-              <Icon name={rightIcon} size={25} color={colors.icon} />
-              {notificationBadge && (
-                <View
-                  style={[
-                    styles.notifBadge,
-                    {
-                      backgroundColor: colors.notificationBadge,
-                      borderColor: colors.headerBackground,
-                    },
-                  ]}
-                />
-              )}
-            </TouchableOpacity>
-          )}
+      {/* Top row: logo + right icons */}
+      <View style={styles.row}>
+        {/* Logo */}
+        <View style={styles.logoRow}>
+          <Image
+            source={Images.logoTraids}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.brand}>
+            Traids<Text style={styles.brandDot}>.</Text>
+          </Text>
         </View>
-      )}
 
-      {/* 📄 Title Header */}
-      {variant === "title" && (
-        <View style={styles.row}>
-          <View>
-            <Text
-              variant="sectionTitle"
-              style={[styles.title, { color: colors.textPrimary }]}>
-              {title}
-            </Text>
-            {subtitle && (
-              <Text
-                variant="bodySmall"
-                color="muted"
-                style={{ fontSize: RFValue(10) }}>
-                {subtitle}
-              </Text>
-            )}
-          </View>
+        {/* Right: bell + profile icon */}
+        <View style={styles.iconsRow}>
+          {/* Notification bell */}
+          <TouchableOpacity
+            style={styles.iconCircle}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate?.('Notifications')}>
+            <Icon name="notifications-outline" size={RFValue(17)} color="#FFFFFF" />
+            {/* Red badge */}
+            <View style={styles.notifBadge} />
+          </TouchableOpacity>
 
-          {rightIcon && (
-            <TouchableOpacity
-              onPress={onRightPress}
-              style={[
-                styles.iconButton,
-                { backgroundColor: isDark ? colors.surface : "#F2F6FF" },
-              ]}>
-              <Icon name={rightIcon} size={20} color={colors.primary} />
-            </TouchableOpacity>
-          )}
-
-          {rightAction && rightAction}
+          {/* Profile / avatar icon */}
+          <TouchableOpacity
+            style={styles.profileIconWrap}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate?.('Profile')}>
+            <Icon name="diamond-outline" size={RFValue(17)} color="#000000" />
+            {/* Online dot */}
+            <View style={styles.onlineDot} />
+          </TouchableOpacity>
         </View>
-      )}
+      </View>
 
-      {variant === "screen" && (
-        <View style={styles.row}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            {onBack && (
-              <TouchableOpacity onPress={onBack}>
-                <Icon name={"arrow-back"} size={25} color={colors.icon} />
-              </TouchableOpacity>
-            )}
-            <Text
-              variant="sectionTitle"
-              style={{
-                fontSize: RFValue(16),
-                fontFamily: FontFamily.bold,
-                color: colors.textPrimary,
-              }}>
-              {title}
-            </Text>
-          </View>
-
-          {rightIcon && (
-            <TouchableOpacity
-              onPress={onRightPress}
-              style={[
-                styles.iconButton,
-                { backgroundColor: isDark ? colors.surface : "#F2F6FF" },
-              ]}>
-              <Icon name={rightIcon} size={20} color={colors.primary} />
-            </TouchableOpacity>
-          )}
-          {rightAction && rightAction}
+      {/* Title + subtitle + optional FAB */}
+      <View style={[styles.row, styles.titleRow]}>
+        <View style={styles.titleBlock}>
+          {title ? <Text style={styles.title}>{title}</Text> : null}
+          {subtitle ? (
+            <Text style={styles.subtitleText}>{subtitle}</Text>
+          ) : null}
         </View>
-      )}
 
-      {showProfile && (
-        <View
-          style={[
-            styles.profileCard,
-            {
-              backgroundColor: colors.profileCardBackground,
-              borderColor: colors.profileCardBorder,
-            },
-          ]}>
-          <View style={styles.profileRow}>
-            {profile?.profilePicture ? (
-              <Image
-                source={{ uri: profile.profilePicture }}
-                style={[
-                  styles.profileAvatar,
-                  { backgroundColor: colors.avatarBackground },
-                ]}
-              />
-            ) : (
-              <View
-                style={[
-                  styles.profileAvatar,
-                  styles.avatarFallback,
-                  { backgroundColor: colors.primaryLight },
-                ]}>
-                <Text
-                  style={[
-                    styles.avatarInitials,
-                    { color: colors.primary },
-                  ]}>
-                  {getInitials(profile?.username || user?.username)}
-                </Text>
-              </View>
-            )}
-            <View style={{ justifyContent: "center" }}>
-              <Text
-                variant="body"
-                style={{
-                  fontFamily: FontFamily.bold,
-                  fontSize: RFValue(11),
-                  lineHeight: 20,
-                  color: colors.textPrimary,
-                }}>
-                {profile?.username || user?.username || "User"}
-              </Text>
-              <Text
-                variant="bodySmall"
-                color="muted"
-                style={{
-                  fontSize: RFValue(8),
-                  lineHeight: 20,
-                }}>
-                {profile?.email || user?.email || "email@example.com"}
-              </Text>
-            </View>
-          </View>
-          {/* <TouchableOpacity
-            style={[
-              styles.editButton,
-              {
-                backgroundColor: colors.surface,
-                shadowColor: colors.shadowColor,
-              },
-            ]}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate("EditProfile")}>
-            <Pencil size={20} color={colors.iconMuted} />
-          </TouchableOpacity> */}
-        </View>
-      )}
-
-      {showTabs && showTabs}
+        {/* Company-only: orange + button */}
+        {showPostButton ? (
+          <TouchableOpacity
+            style={styles.fab}
+            activeOpacity={0.85}
+            onPress={onPostPress}>
+            <Icon name="add" size={RFValue(22)} color="#FFFFFF" />
+          </TouchableOpacity>
+        ) : null}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  dashCard: {
+    backgroundColor: '#10375C',
     paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderWidth: 0.5,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  boldText: {
-    fontWeight: "800",
+  logo: {
+    width: RFValue(30),
+    height: RFValue(30),
+    borderRadius: 8,
   },
-  title: {
-    fontSize: RFValue(16),
+  brand: {
     fontFamily: FontFamily.bold,
+    fontSize: RFValue(18),
+    color: '#FFFFFF',
   },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
+  brandDot: {
+    color: '#F2A154', // orange
+    fontSize: RFValue(20),
+    fontFamily: FontFamily.bold
+  },
+  iconsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  iconCircle: {
+    width: RFValue(34),
+    height: RFValue(34),
+    borderRadius: RFValue(17),
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileIconWrap: {
+    width: RFValue(34),
+    height: RFValue(34),
+    borderRadius: RFValue(17),
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF'
   },
   notifBadge: {
-    position: "absolute",
-    top: 2,
-    right: 4,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#EF4444',
     borderWidth: 1,
+    borderColor: '#FFFFFF',
   },
-  profileCard: {
-    flexDirection: "row",
-    paddingVertical: 20,
-    paddingHorizontal: 10,
-    marginVertical: 10,
-    borderRadius: 10,
-    alignItems: "flex-start",
-    justifyContent: "space-between",
+  onlineDot: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#22C55E',
     borderWidth: 1,
+    borderColor: '#FFFFFF',
   },
-  profileRow: {
-    gap: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+  titleRow: {
+    marginTop: 20,
+    alignItems: 'flex-end',
   },
-  profileAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  titleBlock: {
+    flex: 1,gap: 8
   },
-  avatarFallback: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarInitials: {
-    fontSize: RFValue(16),
+  title: {
     fontFamily: FontFamily.bold,
+    fontSize: RFValue(18),
+    color: '#FFFFFF',
   },
-  editButton: {
-    padding: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 20,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 4,
+  subtitleText: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10),
+    color: '#FFFFFF',
+  },
+  fab: {
+    width: RFValue(35),
+    height: RFValue(35),
+    borderRadius: RFValue(6),
+    backgroundColor: '#F2A154',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+    shadowColor: '#F2A154',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 6,
   },
 });
 

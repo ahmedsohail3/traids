@@ -12,7 +12,7 @@ export default ({children, style, safeArea = true, statusBarColor, statusBarStyl
 
   return (
     <View style={[styles.containerStyle, {backgroundColor: colors.background}, style]}>
-      <StatusBar backgroundColor={bgColor} barStyle={barStyle} animated />
+      <StatusBar backgroundColor={'bgColor'} barStyle={barStyle} animated />
       {safeArea ? (
         <SafeAreaView
           edges={["left", "right", "top"]}

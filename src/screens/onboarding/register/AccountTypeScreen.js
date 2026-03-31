@@ -1,16 +1,19 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Building2, HardHat, ArrowRight } from 'lucide-react-native';
 import { Text, ScrollView } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
+import { Images } from '~assets';
 
 // ─── Logo ────────────────────────────────────────────────────────────────────
-const Logo = ({ colors }) => (
-  <View style={[styles.logoBox, { backgroundColor: colors.secondary }]}>
-    <Text style={styles.logoText}>T</Text>
-  </View>
+const Logo = () => (
+  <Image
+    source={Images.logoTraids}
+    style={styles.logoBox}
+    resizeMode="contain"
+  />
 );
 
 // ─── Account Type Card ────────────────────────────────────────────────────────
@@ -65,7 +68,7 @@ const RegisterAccountTypeScreen = ({ navigation }) => {
       keyboardShouldPersistTaps="handled">
       {/* Logo header */}
       <View style={styles.header}>
-        <Logo colors={colors} />
+        <Logo />
         <Text variant="screenTitle">Traids.</Text>
       </View>
 
@@ -131,14 +134,6 @@ const styles = StyleSheet.create({
   logoBox: {
     width: RFValue(32),
     height: RFValue(32),
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoText: {
-    color: '#10375C',
-    fontFamily: FontFamily.bold,
-    fontSize: RFValue(16),
   },
   cardsContainer: {
     gap: 20,

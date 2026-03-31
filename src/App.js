@@ -5,8 +5,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { ThemeProvider } from '~context/ThemeContext';
-import AuthNavigator from '~routes/AuthNavigator';
 import { store, persistor } from '~redux/store';
+import RootNavigator from '~routes/RootNavigator';
 
 const App = () => (
   <GestureHandlerRootView style={{ flex: 1 }}>
@@ -15,7 +15,7 @@ const App = () => (
         <ThemeProvider>
           <SafeAreaProvider>
             <NavigationContainer>
-              <AuthNavigator />
+              <RootNavigator />
             </NavigationContainer>
           </SafeAreaProvider>
         </ThemeProvider>

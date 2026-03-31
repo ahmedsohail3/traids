@@ -1,16 +1,19 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Text, Button, TextInput } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
+import { Images } from '~assets';
 import AuthContainer from './AuthContainer';
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
-const Logo = ({ colors }) => (
-  <View style={[styles.logoBox, { backgroundColor: colors.secondary }]}>
-    <Text style={styles.logoText}>T</Text>
-  </View>
+const Logo = () => (
+  <Image
+    source={Images.logoTraids}
+    style={styles.logoBox}
+    resizeMode="contain"
+  />
 );
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -44,7 +47,7 @@ const LoginScreen = ({ navigation }) => {
     <AuthContainer>
       {/* Logo */}
       <View style={styles.logoRow}>
-        <Logo colors={colors} />
+        <Logo />
         <Text style={[styles.brand, { color: colors.textPrimary }]}>Traids.</Text>
       </View>
 
@@ -113,14 +116,6 @@ const styles = StyleSheet.create({
   logoBox: {
     width: RFValue(28),
     height: RFValue(28),
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoText: {
-    color: '#10375C',
-    fontFamily: FontFamily.bold,
-    fontSize: RFValue(14),
   },
   brand: {
     fontFamily: FontFamily.bold,

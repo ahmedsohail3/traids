@@ -1,47 +1,60 @@
-// CustomTabBar component for bottom navigation
+/**
+ * CustomTabBar
+ *
+ * Floating white card tab bar with an orange top-indicator on the active tab.
+ *
+ * Icon map keys must match the route names defined in the tab navigator.
+ *
+ * Company tabs:      Dashboard | Subcontractors | Jobs  | Chats | More
+ * Subcontractor tabs: Dashboard | JobBoard       | Chats | Bookings | More
+ */
+import React from "react";
 import { View, TouchableOpacity, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { RFValue } from "react-native-responsive-fontsize";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "./Common";
-import { useTheme } from "~context/ThemeContext";
+import { FontFamily } from "~theme/fonts";
 
-const Tab = ({ state, descriptors, navigation }) => {
-  const { colors, isDark } = useTheme();
+// ─── Per-route config ─────────────────────────────────────────────────────────
+const ROUTE_CONFIG = {
+  // Company
+  Dashboard:      { label: "Dashboard",      icon: "grid-outline",          iconFocused: "grid" },
+  Subcontractors: { label: "Subcontractors", icon: "people-outline",         iconFocused: "people" },
+  Jobs:           { label: "Jobs",           icon: "briefcase-outline",      iconFocused: "briefcase" },
+  Chats:          { label: "Chats",          icon: "chatbubble-ellipses-outline", iconFocused: "chatbubble-ellipses" },
+  More:           { label: "More",           icon: "menu-outline",           iconFocused: "menu" },
 
-  const TAB_LABELS = {
-    Home: "Home",
-    Circle: "Circle",
-    Lists: "Lists",
-    Search: "Search",
-    Settings: "Settings",
-  };
+  // Subcontractor (may share some names)
+  JobBoard:  { label: "Job Board", icon: "briefcase-outline",   iconFocused: "briefcase" },
+  Bookings:  { label: "Bookings",  icon: "calendar-outline",    iconFocused: "calendar" },
+};
+
+const ACTIVE_COLOR   = '#10375C'; // dark navy
+const INACTIVE_COLOR = '#94A3B8'; // muted slate
+const INDICATOR_CLR  = '#F97316'; // orange
+
+const CustomTabBar = ({ state, descriptors, navigation }) => {
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={{ backgroundColor: colors.background }}>
-      <View
-        style={[
-          styles.tabBar,
-          {
-            backgroundColor: colors.tabBar,
-            shadowColor: colors.shadowColor,
-            shadowOpacity: isDark ? 0.3 : 0.08,
-            borderTopWidth: isDark ? 1 : 0,
-            borderTopColor: colors.border,
-          },
-        ]}>
+    <View style={[styles.wrapper, { paddingBottom: insets.bottom || 12 }]}>
+      <View style={styles.card}>
         {state.routes.map((route, index) => {
           const isFocused = state.index === index;
-
-          const icons = {
-            Home: isFocused ? "home" : "home-outline",
-            Circle: isFocused ? "people" : "people-outline",
-            Lists: isFocused ? "list" : "list-outline",
-            Search: isFocused ? "search" : "search-outline",
-            Settings: isFocused ? "settings" : "settings-outline",
+          const config = ROUTE_CONFIG[route.name] ?? {
+            label: route.name,
+            icon: "ellipse-outline",
+            iconFocused: "ellipse",
           };
 
           const onPress = () => {
-            if (!isFocused) {
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!isFocused && !event.defaultPrevented) {
               navigation.navigate(route.name);
             }
           };
@@ -52,18 +65,31 @@ const Tab = ({ state, descriptors, navigation }) => {
               onPress={onPress}
               activeOpacity={0.7}
               style={styles.tabItem}>
-              <Icon
-                name={icons[route.name]}
-                size={RFValue(22)}
-                color={isFocused ? colors.tabActive : colors.tabInactive}
+              {/* Orange indicator at the very top of the active tab */}
+              <View
+                style={[
+                  styles.indicator,
+                  isFocused ? styles.indicatorActive : styles.indicatorHidden,
+                ]}
               />
+
+              <Icon
+                name={isFocused ? config.iconFocused : config.icon}
+                size={RFValue(22)}
+                color={isFocused ? ACTIVE_COLOR : INACTIVE_COLOR}
+                style={styles.icon}
+                strokeWidth={3}
+              />
+
               <Text
-                variant="small"
+                numberOfLines={1}
+                adjustsFontSizeToFit
                 style={[
                   styles.label,
-                  { color: isFocused ? colors.tabActive : colors.tabInactive },
+                  { color: isFocused ? ACTIVE_COLOR : INACTIVE_COLOR },
+                  isFocused && styles.labelActive,
                 ]}>
-              {TAB_LABELS[route.name] || route.name}
+                {config.label}
               </Text>
             </TouchableOpacity>
           );
@@ -74,28 +100,56 @@ const Tab = ({ state, descriptors, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  tabBar: {
-    flexDirection: "row",
-    height: RFValue(78),
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingBottom: RFValue(10),
-    shadowOffset: { width: 0, height: -4 },
-    shadowRadius: 12,
-    elevation: 12,
+  wrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 16,
+    paddingTop: 4,
   },
-
+  card: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    // Subtle shadow for the floating effect
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 10,
+    overflow: "hidden",
+  },
   tabItem: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
+    paddingBottom: RFValue(12),
   },
-
+  indicator: {
+    width: '60%',
+    height: 3,
+    borderBottomLeftRadius: 2,
+    borderBottomRightRadius: 2,
+    marginBottom: RFValue(8),
+  },
+  indicatorActive: {
+    backgroundColor: INDICATOR_CLR,
+  },
+  indicatorHidden: {
+    backgroundColor: 'transparent',
+  },
+  icon: {
+    marginBottom: 4,
+  },
   label: {
-    marginTop: 4,
-    fontSize: RFValue(10),
-    fontWeight: "500",
+    fontSize: RFValue(8),
+    fontFamily: FontFamily.medium,
+  },
+  labelActive: {
+    fontFamily: FontFamily.medium,
   },
 });
 
-export default Tab;
+export default CustomTabBar;
