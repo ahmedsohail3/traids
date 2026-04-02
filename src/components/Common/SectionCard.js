@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
     marginBottom: RFValue(12),
   },
   title: {
-    fontSize: RFValue(13),
+    fontSize: RFValue(14),
     fontFamily: FontFamily.bold,
   },
   rightBtn: {

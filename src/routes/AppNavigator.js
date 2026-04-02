@@ -21,7 +21,7 @@ const Tab = createBottomTabNavigator();
 
 const AppNavigator = () => {
   // TODO: replace 'company' with real selector once auth is wired
-  const userType = useSelector(state => state.auth?.user?.type ?? 'subcontractor');
+  const userType = useSelector(state => state.auth?.user?.type ?? 'company');
   const isCompany = userType === 'company';
 
   return (

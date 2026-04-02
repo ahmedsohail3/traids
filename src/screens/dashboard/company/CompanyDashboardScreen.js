@@ -31,6 +31,8 @@ import EmptyState from '~components/Common/EmptyState';
 import TrendChart from '~components/Common/TrendChart';
 import BudgetBar from '~components/Common/BudgetBar';
 import JobCard from '~components/Common/JobCard';
+import UnpaidInvoiceBanner from '~components/Dashboard/UnpaidInvoiceBanner';
+import PostingBlockedModal from '~components/Dashboard/PostingBlockedModal';
 import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 import { Images } from '~assets';
@@ -72,6 +74,8 @@ const CompanyDashboardScreen = ({ navigation }) => {
 
   // TODO: replace with real selector: const hasData = useSelector(s => s.jobs.hasData);
   const [hasData, setHasData] = useState(false); // Toggle for dev preview
+  const [hasUnpaidInvoice, setHasUnpaidInvoice] = useState(true);
+  const [showBlockedModal, setShowBlockedModal] = useState(false);
 
   const stats = hasData ? FILLED_STATS : EMPTY_STATS;
 
@@ -81,12 +85,20 @@ const CompanyDashboardScreen = ({ navigation }) => {
         title="Dashboard"
         subtitle="Welcome back, here's what's happening today."
         showPostButton
-        onPostPress={() => navigation.navigate?.('PostJob')}
+        onPostPress={() => {
+          if (hasUnpaidInvoice) {
+            setShowBlockedModal(true);
+          } else {
+            navigation.navigate?.('PostJob');
+          }
+        }}
       />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}>
+        
+        {hasUnpaidInvoice && <UnpaidInvoiceBanner />}
 
         {/* ── Stats grid ── */}
         <View style={styles.statsGrid}>
@@ -185,7 +197,24 @@ const CompanyDashboardScreen = ({ navigation }) => {
             {hasData ? 'Switch to Empty State' : 'Switch to Data State'}
           </Text>
         </TouchableOpacity>
+        
+        <TouchableOpacity
+          onPress={() => setHasUnpaidInvoice(p => !p)}
+          style={[styles.devToggle, { backgroundColor: '#EF4444', marginTop: 12 }]}>
+          <Text style={styles.devToggleText}>
+            {hasUnpaidInvoice ? 'Remove Unpaid Invoice' : 'Trigger Unpaid Invoice'}
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      <PostingBlockedModal
+        visible={showBlockedModal}
+        onDismiss={() => setShowBlockedModal(false)}
+        onViewInvoices={() => {
+          setShowBlockedModal(false);
+          // navigation.navigate('Invoices');
+        }}
+      />
     </View>
   );
 };
@@ -195,7 +224,7 @@ const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
   statsGrid: { gap: 12 },
   statsRow: { flexDirection: 'row' },

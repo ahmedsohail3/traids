@@ -12,6 +12,7 @@ const Header = ({
   title,
   subtitle,
   showPostButton = false,
+  showBackButton = false,
   onPostPress,
 }) => {
   const insets = useSafeAreaInsets();
@@ -63,23 +64,33 @@ const Header = ({
       </View>
 
       {/* Title + subtitle + optional FAB */}
-      <View style={[styles.row, styles.titleRow]}>
-        <View style={styles.titleBlock}>
-          {title ? <Text style={styles.title}>{title}</Text> : null}
-          {subtitle ? (
-            <Text style={styles.subtitleText}>{subtitle}</Text>
+      <View style={styles.titleRowExt}>
+        {showBackButton && (
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}
+            activeOpacity={0.7}>
+            <Icon name="arrow-back" size={RFValue(18)} color="#fff" />
+          </TouchableOpacity>
+        )}
+        <View style={[styles.row, styles.titleRow, { flex: 1, marginTop: 0 }]}>
+          <View style={styles.titleBlock}>
+            {title ? <Text style={styles.title}>{title}</Text> : null}
+            {subtitle ? (
+              <Text style={styles.subtitleText}>{subtitle}</Text>
+            ) : null}
+          </View>
+
+          {/* Company-only: orange + button */}
+          {showPostButton ? (
+            <TouchableOpacity
+              style={styles.fab}
+              activeOpacity={0.85}
+              onPress={onPostPress}>
+              <Icon name="add" size={RFValue(22)} color="#FFFFFF" />
+            </TouchableOpacity>
           ) : null}
         </View>
-
-        {/* Company-only: orange + button */}
-        {showPostButton ? (
-          <TouchableOpacity
-            style={styles.fab}
-            activeOpacity={0.85}
-            onPress={onPostPress}>
-            <Icon name="add" size={RFValue(22)} color="#FFFFFF" />
-          </TouchableOpacity>
-        ) : null}
       </View>
     </View>
   );
@@ -164,12 +175,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FFFFFF',
   },
-  titleRow: {
+  titleRowExt: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 20,
+    gap: 12,
+  },
+  backBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleRow: {
     alignItems: 'flex-end',
   },
   titleBlock: {
-    flex: 1,gap: 8
+    flex: 1,
+    gap: 4,
   },
   title: {
     fontFamily: FontFamily.bold,

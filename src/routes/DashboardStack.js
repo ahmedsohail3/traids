@@ -1,14 +1,8 @@
-/**
- * DashboardStack
- *
- * Stack navigator for the Dashboard tab.
- * Currently contains the dashboard screen only;
- * future screens (PostJob, JobDetail, AllJobs…) should be added here.
- */
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import CompanyDashboardScreen from '~screens/dashboard/company/CompanyDashboardScreen';
 import SubcontractorDashboardScreen from '~screens/dashboard/subcontractor/SubcontractorDashboardScreen';
+import PostJobScreen from '~screens/dashboard/company/PostJobScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -26,8 +20,10 @@ const DashboardStack = ({ userType = 'company' }) => (
           : CompanyDashboardScreen
       }
     />
-    {/* Add more dashboard-related screens here, e.g. PostJob, AllJobs */}
+    <Stack.Screen name="PostJob" component={PostJobScreen} />
+    {/* Add more dashboard-related screens here, e.g. AllJobs, JobDetail */}
   </Stack.Navigator>
 );
 
 export default DashboardStack;
+
