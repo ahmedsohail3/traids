@@ -46,9 +46,12 @@ const Button = ({
         };
       case "secondary":
         return {
-          backgroundColor: effectiveIsDark ? activeColors.surface : "#FFFFFF",
-          borderWidth: 1,
-          borderColor: activeColors.primary,
+          backgroundColor: activeColors.secondary,
+          borderRadius: 8,
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: RFValue(35),
+          minHeight: RFValue(30),
         };
       case "outline":
         return {
@@ -70,7 +73,7 @@ const Button = ({
 
   // Get text color based on variant
   const getTextColor = () => {
-    if (variant === "primary") {
+    if (variant === "primary" || variant === "secondary") {
       return "#FFFFFF";
     }
     return forceLight ? "#1B1A1F" : undefined;
@@ -78,7 +81,7 @@ const Button = ({
 
   // Get icon color based on variant
   const getIconColor = () => {
-    if (variant === "primary") {
+    if (variant === "primary" || variant === "secondary") {
       return "#FFFFFF";
     }
     return activeColors.textPrimary;
@@ -86,7 +89,7 @@ const Button = ({
 
   // Get loader color
   const getLoaderColor = () => {
-    if (variant === "primary") {
+    if (variant === "primary" || variant === "secondary") {
       return "#FFFFFF";
     }
     return activeColors.textPrimary;

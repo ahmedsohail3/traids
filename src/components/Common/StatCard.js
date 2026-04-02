@@ -26,15 +26,17 @@ const StatCard = ({ label, value, subLabel, icon: IconComp, iconColor, positive 
         <Text style={[styles.label, { color: colors.textSecondary }]} >{label}</Text>
         {IconComp && <View style={styles.iconContainer}><IconComp size={RFValue(18)} color={color} strokeWidth={1.8} /></View>}
       </View>
-      <Text style={[styles.value, { color: colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>{String(value).padStart(2, '0')}</Text>
+      <Text style={[styles.value, { color: colors.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
       {subLabel ? (
         <Text
           style={[
             styles.sub,
             {
-              color: positive
+              color: positive === true
                 ? '#22C55E'
-                : colors.textSecondary,
+                : positive === false
+                  ? '#EF4444'
+                  : colors.textSecondary,
             },
           ]} numberOfLines={1} adjustsFontSizeToFit>
           {subLabel}

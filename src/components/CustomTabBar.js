@@ -34,7 +34,7 @@ const ACTIVE_COLOR   = '#10375C'; // dark navy
 const INACTIVE_COLOR = '#94A3B8'; // muted slate
 const INDICATOR_CLR  = '#F97316'; // orange
 
-const CustomTabBar = ({ state, descriptors, navigation }) => {
+const CustomTabBar = ({ state, descriptors, navigation, ...props }) => {
   const insets = useSafeAreaInsets();
 
   return (
@@ -49,6 +49,13 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
           };
 
           const onPress = () => {
+            if (route.name === 'More') {
+              if (props.onMenuPress) {
+                props.onMenuPress();
+              }
+              return; // DO NOT navigate natively yet
+            }
+
             const event = navigation.emit({
               type: "tabPress",
               target: route.key,

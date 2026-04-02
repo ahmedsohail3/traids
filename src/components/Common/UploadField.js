@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { Upload } from 'lucide-react-native';
+import { Upload, X } from 'lucide-react-native';
 import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 
@@ -15,7 +15,7 @@ import { FontFamily } from '~theme/fonts';
  *   file      – currently selected file object { name, uri } – optional
  *   style     – optional outer style
  */
-const UploadField = ({ label, hint = 'PDF, JPG or PNG (max. 5MB)', onPress, file, style }) => {
+const UploadField = ({ label, instructions = 'Click to upload or drag and drop',  hint = 'PDF, JPG or PNG (max. 5MB)', onPress, onRemove, file, style }) => {
   const { colors } = useTheme();
 
   return (
@@ -39,7 +39,7 @@ const UploadField = ({ label, hint = 'PDF, JPG or PNG (max. 5MB)', onPress, file
           styles.box,
           {
             borderColor: colors.border,
-            backgroundColor: colors.backgroundSecondary || '#F9FAFB',
+            backgroundColor: '#FFFFFF',
           },
         ]}>
         <Upload
@@ -49,17 +49,27 @@ const UploadField = ({ label, hint = 'PDF, JPG or PNG (max. 5MB)', onPress, file
           style={styles.icon}
         />
         <Text style={[styles.ctaText, { color: colors.textSecondary }]}>
-          Click to upload or drag and drop
+          {instructions}
         </Text>
         <Text style={[styles.hintText, { color: colors.textMuted }]}>{hint}</Text>
       </TouchableOpacity>
 
       {file ? (
-        <Text
-          numberOfLines={1}
-          style={[styles.fileName, { color: colors.primary }]}>
-          {file.name}
-        </Text>
+        <View style={styles.fileRow}>
+          <View style={styles.fileInfo}>
+            <Text style={[styles.fileName, { color: colors.textPrimary || '#10375C' }]}>
+               {typeof file === 'object' ? file.name : file}
+            </Text>
+            {typeof file === 'object' && file.size && (
+              <Text style={[styles.fileSize, { color: colors.textMuted || '#64748B' }]}>
+                {file.size}
+              </Text>
+            )}
+          </View>
+          <TouchableOpacity style={styles.removeBtn} onPress={onRemove}>
+            <X size={RFValue(14)} color={colors.textMuted || '#94A3B8'} />
+          </TouchableOpacity>
+        </View>
       ) : null}
     </View>
   );
@@ -75,13 +85,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   box: {
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     borderRadius: 10,
     paddingVertical: RFValue(20),
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 10,
   },
   icon: {
     marginBottom: 10,
@@ -97,10 +108,29 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     textAlign: 'center',
   },
+  fileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    padding: 12,
+  },
+  fileInfo: {
+    flex: 1,
+  },
   fileName: {
-    marginTop: 8,
-    fontSize: RFValue(11),
-    fontFamily: FontFamily.medium,
+    fontFamily: FontFamily.semiBold,
+    fontSize: RFValue(10.5),
+    marginBottom: 2,
+  },
+  fileSize: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(9),
+  },
+  removeBtn: {
+    padding: 4,
   },
 });
 
