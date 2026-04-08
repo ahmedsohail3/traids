@@ -13,7 +13,7 @@ const sharedColors = {
   secondary: '#F2A154',
 
   // Status colors
-  success: "#22C55E",
+  success: "#3BB273",
   successLight: "#DCFCE7",
   successDark: "#16A34A",
 

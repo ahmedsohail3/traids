@@ -37,7 +37,7 @@ const InvoiceDetailScreen = ({ route, navigation }) => {
             </View>
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, {backgroundColor: colors.secondary}]} />
 
           {/* Billing meta */}
           <View style={styles.billingRow}>
@@ -69,20 +69,20 @@ const InvoiceDetailScreen = ({ route, navigation }) => {
           {/* Contractors */}
           {CONTRACTORS.map((c, idx) => (
             <View key={idx}>
-              <View style={styles.contractorBlock}>
+              <View style={[styles.contractorBlock, {borderColor: colors.border}]}>
                 <Text style={styles.contractorName}>{c.name}</Text>
                 <Text style={styles.contractorMeta}>{c.account}</Text>
                 <Text style={styles.contractorMeta}>{c.iban}</Text>
+                <View style={styles.divider}/>
                 <View style={styles.contractorAmtRow}>
                   <Text style={styles.contractorHours}>Hours: {c.hours}</Text>
                   <Text style={styles.contractorAmt}>{c.amount}</Text>
                 </View>
               </View>
-              {idx !== CONTRACTORS.length - 1 && <View style={styles.divider} />}
+              {/* {idx !== CONTRACTORS.length - 1 && <View style={styles.divider} />} */}
             </View>
           ))}
 
-          <View style={styles.divider} />
 
           {/* Platform Fee */}
           <View style={styles.feeRow}>
@@ -91,12 +91,11 @@ const InvoiceDetailScreen = ({ route, navigation }) => {
           </View>
 
           {/* Total */}
-          <View style={[styles.totalRow, { backgroundColor: '#F8FAFC' }]}>
+          <View style={[styles.totalRow, { backgroundColor: '#ECF6FF' }]}>
             <Text style={styles.totalLabel}>Total:</Text>
             <Text style={styles.totalValue}>£784.00</Text>
           </View>
 
-          <View style={styles.divider} />
 
           {/* Payment card */}
           <View style={styles.payCardBlock}>
@@ -160,24 +159,26 @@ const styles = StyleSheet.create({
   metaVal: { fontFamily: FontFamily.semiBold, fontSize: RFValue(9.5), color: '#10375C' },
   statusPill: { backgroundColor: '#F97316', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   statusText: { fontFamily: FontFamily.bold, fontSize: RFValue(8), color: '#FFFFFF' },
-  contractorBlock: { paddingVertical: 4 },
+  contractorBlock: { paddingVertical: 10, borderWidth: 1, padding: 10, borderRadius: 10, marginBottom: 10 },
   contractorName: { fontFamily: FontFamily.bold, fontSize: RFValue(12), color: '#10375C', marginBottom: 2 },
   contractorMeta: { fontFamily: FontFamily.regular, fontSize: RFValue(9.5), color: '#94A3B8' },
   contractorAmtRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  contractorHours: { fontFamily: FontFamily.medium, fontSize: RFValue(11), color: '#64748B' },
-  contractorAmt: { fontFamily: FontFamily.bold, fontSize: RFValue(12), color: '#10375C' },
-  feeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
-  feeName: { fontFamily: FontFamily.medium, fontSize: RFValue(11), color: '#64748B' },
-  feeAmount: { fontFamily: FontFamily.bold, fontSize: RFValue(12), color: '#EF4444' },
+  contractorHours: { fontFamily: FontFamily.semiBold, fontSize: RFValue(11),  },
+  contractorAmt: { fontFamily: FontFamily.semiBold, fontSize: RFValue(12), color: '#10375C' },
+  feeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 12 },
+  feeName: { fontFamily: FontFamily.semiBold, fontSize: RFValue(11), },
+  feeAmount: { fontFamily: FontFamily.semiBold, fontSize: RFValue(12), color: '#EF4444' },
   totalRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     padding: 14, borderRadius: 8, marginVertical: 6,
+    marginBottom: 20
   },
-  totalLabel: { fontFamily: FontFamily.bold, fontSize: RFValue(13), color: '#10375C' },
-  totalValue: { fontFamily: FontFamily.bold, fontSize: RFValue(14), color: '#10375C' },
+  totalLabel: { fontFamily: FontFamily.semiBold, fontSize: RFValue(13), color: '#10375C' },
+  totalValue: { fontFamily: FontFamily.semiBold, fontSize: RFValue(14), color: '#10375C' },
   payCardBlock: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, padding: 12,
+    borderWidth: 2.5, borderColor: '#E2E8F0', borderRadius: 10, padding: 12,
+    backgroundColor: '#F1F8F8'
   },
   payCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   cardIcon: {
@@ -186,7 +187,7 @@ const styles = StyleSheet.create({
   },
   cardNumber: { fontFamily: FontFamily.medium, fontSize: RFValue(11), color: '#10375C' },
   cardExpiry: { fontFamily: FontFamily.regular, fontSize: RFValue(9.5), color: '#94A3B8' },
-  visaLabel: { fontFamily: FontFamily.bold, fontSize: RFValue(14), color: '#10375C', fontStyle: 'italic' },
+  visaLabel: { fontFamily: FontFamily.bold, fontSize: RFValue(14), color: '#10375C', backgroundColor: '#E2E8F0', padding: 10, borderRadius: 8 },
   payBtn: { marginTop: 16 },
 });
 

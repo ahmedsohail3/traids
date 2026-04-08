@@ -18,6 +18,7 @@ const PlaceholderScreen = label => {
 
 import ReportsScreen from '~screens/menu/reports/ReportsScreen';
 import SettingsScreen from '~screens/menu/settings/SettingsScreen';
+import TimesheetStack from './TimesheetStack';
 import ComplianceStack from './ComplianceStack';
 import FinancialStack from './FinancialStack';
 
@@ -26,7 +27,7 @@ const MoreStack = () => (
     {/* This MoreRoot acts as an anchor for the stack since the Drawer intercepts the tab press anyway */}
     <Stack.Screen name="MoreRoot" component={PlaceholderScreen('More Root')} />
     
-    <Stack.Screen name="Timesheets" component={PlaceholderScreen('Timesheets')} />
+    <Stack.Screen name="Timesheets" component={TimesheetStack} />
     <Stack.Screen name="Compliance" component={ComplianceStack} />
     <Stack.Screen name="Financial" component={FinancialStack} />
     <Stack.Screen name="Reports" component={ReportsScreen} />

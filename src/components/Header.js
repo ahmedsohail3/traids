@@ -75,9 +75,9 @@ const Header = ({
         )}
         <View style={[styles.row, styles.titleRow, { flex: 1, marginTop: 0 }]}>
           <View style={styles.titleBlock}>
-            {title ? <Text style={styles.title}>{title}</Text> : null}
+            {title ? <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>{title}</Text> : null}
             {subtitle ? (
-              <Text style={styles.subtitleText}>{subtitle}</Text>
+              <Text style={styles.subtitleText} numberOfLines={1} adjustsFontSizeToFit>{subtitle}</Text>
             ) : null}
           </View>
 
