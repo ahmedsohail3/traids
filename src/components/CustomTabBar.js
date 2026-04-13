@@ -82,7 +82,7 @@ const CustomTabBar = ({ state, descriptors, navigation, ...props }) => {
 
               <Icon
                 name={isFocused ? config.iconFocused : config.icon}
-                size={RFValue(22)}
+                size={RFValue(16)}
                 color={isFocused ? ACTIVE_COLOR : INACTIVE_COLOR}
                 style={styles.icon}
                 strokeWidth={3}

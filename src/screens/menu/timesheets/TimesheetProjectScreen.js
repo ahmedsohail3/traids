@@ -101,7 +101,7 @@ const TimesheetProjectScreen = ({ route }) => {
           {/* Worker List */}
           <View style={styles.listArea}>
             {displayData.map((item, idx) => (
-              <View key={item.id} style={[styles.workerCard, idx !== displayData.length - 1 && styles.borderBottom]}>
+              <View key={item.id} style={styles.workerCard}>
                 <View style={styles.workerTop}>
                   <View style={styles.workerLeft}>
                     <Image source={{ uri: `https://i.pravatar.cc/150?u=${item.id + 10}` }} style={styles.avatar} />
@@ -174,6 +174,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     paddingTop: 16,
+    paddingBottom: 16,
   },
   filtersTopRow: {
     flexDirection: 'row',
@@ -259,14 +260,15 @@ const styles = StyleSheet.create({
   },
   listArea: {
     paddingHorizontal: 16,
+    marginTop: 16,
+    gap: 16
   },
   workerCard: {
-    paddingVertical: 16,
-  },
-  borderBottom: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E4E4E4',
+    borderRadius: 8,
+  }, 
   workerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',

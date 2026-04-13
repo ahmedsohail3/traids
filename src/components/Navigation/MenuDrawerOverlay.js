@@ -39,7 +39,7 @@ const MenuDrawerOverlay = ({ visible, onClose }) => {
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   
-  const userType = useSelector(state => state.auth?.user?.type ?? 'company');
+  const userType = useSelector(state => state.auth?.user?.type ?? 'subcontractor');
   const ACTIVE_MENU = userType === 'subcontractor' ? SUBCONTRACTOR_MENU_ITEMS : COMPANY_MENU_ITEMS;
 
   // Local state to keep the Modal mounted during exit animations
