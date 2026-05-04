@@ -11,20 +11,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // import searchReducer from "../reducers/searchReducer";
 // import sessionReducer from "../reducers/sessionReducer";
 import themeReducer from "../reducers/themeReducer";
+import authReducer from "../reducers/authSlice";
 // import settingsReducer from "../reducers/settingsReducer";
 
 // ─── Combined slice reducer ────────────────────────────────────────────────────
 const combinedReducer = combineReducers({
-//   auth: authReducer,
-//   circles: circleReducer,
-//   lists: listReducer,
-//   location: locationReducer,
-//   notifications: notificationReducer,
-//   profile: profileReducer,
-//   search: searchReducer,
-//   session: sessionReducer,
+  auth: authReducer,
   theme: themeReducer,
-//   settings: settingsReducer,
 });
 
 // ─── Root reducer — full state reset on logout ─────────────────────────────────

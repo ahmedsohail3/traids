@@ -1,31 +1,35 @@
 /**
  * RootNavigator
  *
- * The top-level navigator. Decides whether to show:
- *   • AuthNavigator  — for unauthenticated users
- *   • AppNavigator   — for authenticated users
+ * The top-level navigator. Routes to:
+ *   • AuthNavigator      — for unauthenticated users
+ *   • CompanyNavigator   — for authenticated company users
+ *   • SubNavigator       — for authenticated subcontractor users
  *
- * Auth state is read from the Redux store (state.auth.isAuthenticated).
- * The switch happens automatically when the auth state changes.
+ * Role is read from `state.auth.user.type`.
+ * To switch roles during development, use the DevRoleSwitcher component.
  */
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
 import AuthNavigator from './AuthNavigator';
-import AppNavigator from './AppNavigator';
+import CompanyNavigator from './CompanyNavigator';
+import SubNavigator from './SubNavigator';
 
 const Stack = createNativeStackNavigator();
 
 const RootNavigator = () => {
-  // TODO: wire to your real auth selector
   const isAuthenticated = useSelector(state => state.auth?.isAuthenticated ?? true);
+  const userType = useSelector(state => state.auth?.user?.type ?? 'company');
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
-      {isAuthenticated ? (
-        <Stack.Screen name="App" component={AppNavigator} />
-      ) : (
+      {!isAuthenticated ? (
         <Stack.Screen name="Auth" component={AuthNavigator} />
+      ) : userType === 'subcontractor' ? (
+        <Stack.Screen name="SubApp" component={SubNavigator} />
+      ) : (
+        <Stack.Screen name="CompanyApp" component={CompanyNavigator} />
       )}
     </Stack.Navigator>
   );

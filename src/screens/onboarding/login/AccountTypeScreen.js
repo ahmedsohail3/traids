@@ -111,8 +111,7 @@ const AccountTypeScreen = ({ navigation }) => {
           description="I am a skilled tradesperson or freelancer looking for high-quality projects and secure payments."
           mainColor={colors.secondary}
           iconBgColor="#FEF5ED" // Very light orange
-          // Using company flow for both as requested for now
-          onPress={() => navigation.navigate('Login', { accountType: 'company' })}
+          onPress={() => navigation.navigate('Login', { accountType: 'subcontractor' })}
           colors={colors}
         />
       </View>

@@ -9,23 +9,26 @@
  *   location     string
  *   assignee     string    e.g. "Unassigned"
  *   startDate    string    e.g. "Starts Nov 1"
- *   status       'Pending' | 'Active' | 'Accepted' | 'In Progress'
+ *   status       'Pending' | 'Active' | 'Accepted' | 'In Progress' | 'Completed'
  *   onEdit       function
  *   onDelete     function
+ *   onShare      function
+ *   onStart      function
  */
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { MapPin, User, Calendar, Pencil, Trash2 } from 'lucide-react-native';
+import { MapPin, User, Calendar, Pencil, Trash2, Share2 } from 'lucide-react-native';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
 
 const STATUS_COLORS = {
-  Pending:     { bg: '#F0A05B', text: '#FFFFFF' },
-  Active:      { bg: '#077a09ff', text: '#FFFFFF' },
-  Accepted:    { bg: '#6E62E5', text: '#FFFFFF' },
-  'In Progress': { bg: '#1E3A8A', text: '#FFFFFF' },
+  Pending:       { bg: '#F0A05B', text: '#FFFFFF' },
+  Active:        { bg: '#077a09ff', text: '#FFFFFF' },
+  Accepted:      { bg: '#E2E8F0', text: '#64748B' }, // Light gray / slate
+  'In progress': { bg: '#1E3A8A', text: '#FFFFFF' },
+  Completed:     { bg: '#3BB273', text: '#FFFFFF' },
 };
 
 const JobCard = ({
@@ -36,14 +39,22 @@ const JobCard = ({
   assignee,
   startDate,
   status = 'Pending',
+  onPress,
   onEdit,
   onDelete,
+  onShare,
+  onStart // optional action replacing start date styling
 }) => {
   const { colors } = useTheme();
-  const statusStyle = STATUS_COLORS[status] ?? STATUS_COLORS.Pending;
+  // We use lowercase match just in case "In Progress" vs "In progress"
+  const getStatusColor = () => {
+    if (status.toLowerCase().includes('progress')) return STATUS_COLORS['In progress'];
+    return STATUS_COLORS[status] ?? STATUS_COLORS.Pending;
+  };
+  const statusStyle = getStatusColor();
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface }]}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={[styles.card, { backgroundColor: colors.surface }]}>
       {/* Top row: job id + status badge */}
       <View style={styles.topRow}>
         <Text style={[styles.jobId, { color: colors.textPrimary }]}>{jobId}</Text>
@@ -72,18 +83,30 @@ const JobCard = ({
       <View style={styles.bottomRow}>
         <View style={styles.actions}>
           <TouchableOpacity onPress={onEdit} activeOpacity={0.7} style={styles.actionBtn}>
-            <Pencil size={RFValue(14)} color={colors.textSecondary} strokeWidth={2} />
+            <Pencil size={RFValue(13)} color="#64748B" strokeWidth={2.5} />
           </TouchableOpacity>
           <TouchableOpacity onPress={onDelete} activeOpacity={0.7} style={styles.actionBtn}>
-            <Trash2 size={RFValue(14)} color="#EF4444" strokeWidth={2} />
+            <Trash2 size={RFValue(13)} color="#EF4444" strokeWidth={2.5} />
           </TouchableOpacity>
+          {onShare && (
+            <TouchableOpacity onPress={onShare} activeOpacity={0.7} style={styles.actionBtn}>
+              <Share2 size={RFValue(13)} color="#64748B" strokeWidth={2.5} />
+            </TouchableOpacity>
+          )}
         </View>
-        <View style={[styles.metaItem, { borderWidth: 0.95, borderColor: '#E2E8F0', padding: 5 }]}>
-          <Calendar size={RFValue(11)} color={colors.textSecondary} strokeWidth={2} />
-          <Text style={[styles.meta, { color: colors.textSecondary }]}>{startDate}</Text>
-        </View>
+
+        {onStart ? (
+           <TouchableOpacity onPress={onStart} style={styles.startBtn} activeOpacity={0.7}>
+             <Text style={styles.startBtnText}>Starts Project</Text>
+           </TouchableOpacity>
+        ) : (
+          <View style={[styles.metaItem, { borderWidth: 0.95, borderColor: '#E2E8F0', padding: 5, borderRadius: 6 }]}>
+            <Calendar size={RFValue(11)} color={colors.textSecondary} strokeWidth={2} />
+            <Text style={[styles.meta, { color: colors.textSecondary }]}>{startDate}</Text>
+          </View>
+        )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -92,6 +115,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: RFValue(14),
     marginBottom: RFValue(12),
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -153,14 +178,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#F8FAFC',
+    paddingTop: 10,
   },
   actions: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   actionBtn: {
-    padding: 4,
+    padding: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
+  startBtn: {
+    borderWidth: 1,
+    borderColor: '#10375C',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  startBtnText: {
+    color: '#10375C',
+    fontFamily: FontFamily.semiBold,
+    fontSize: RFValue(9),
+  }
 });
 
 export default JobCard;

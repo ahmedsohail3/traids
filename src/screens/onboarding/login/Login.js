@@ -5,6 +5,8 @@ import { Text, Button, TextInput } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
 import { Images } from '~assets';
+import { useDispatch } from 'react-redux';
+import { setCredentials } from '~redux/reducers/authSlice';
 import AuthContainer from './AuthContainer';
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
@@ -17,8 +19,11 @@ const Logo = () => (
 );
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
-const LoginScreen = ({ navigation }) => {
+const LoginScreen = ({ route, navigation }) => {
   const { colors } = useTheme();
+  const dispatch = useDispatch();
+  const accountType = route?.params?.accountType || 'company';
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -36,12 +41,13 @@ const LoginScreen = ({ navigation }) => {
   const handleLogin = useCallback(async () => {
     if (!validate()) return;
     setLoading(true);
-    // TODO: wire up auth action
+    // Simulate API call
     setTimeout(() => {
       setLoading(false);
-      navigation.navigate('Main');
+      // Log the user in, setting their role
+      dispatch(setCredentials({ type: accountType }));
     }, 1500);
-  }, [validate, navigation]);
+  }, [validate, dispatch, accountType]);
 
   return (
     <AuthContainer>

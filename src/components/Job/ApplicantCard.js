@@ -1,0 +1,184 @@
+/**
+ * ApplicantCard — displays a quote/bid from a subcontractor.
+ * Used in CompanyJobDetailScreen.
+ *
+ * Props:
+ *   name        string
+ *   trade       string
+ *   rate        string   e.g. "£12/hr"
+ *   message     string
+ *   avatarUri   string
+ *   isVerified  boolean
+ *   status      'pending' | 'accepted'
+ *   onCancel    function
+ *   onAccept    function
+ *   onMessage   function
+ */
+import React from 'react';
+import { View, StyleSheet, Image } from 'react-native';
+import { RFValue } from 'react-native-responsive-fontsize';
+import { Text, Button } from '~components/Common';
+import { FontFamily } from '~theme/fonts';
+import { useTheme } from '~context/ThemeContext';
+import { CheckCircle2 } from 'lucide-react-native';
+
+const ApplicantCard = ({
+  name,
+  trade,
+  rate,
+  message,
+  avatarUri,
+  isVerified,
+  status = 'pending',
+  onCancel,
+  onAccept,
+  onMessage,
+}) => {
+  const { colors } = useTheme();
+
+  return (
+    <View style={[styles.card, { backgroundColor: colors.surface }]}>
+      {/* Top Banner Row */}
+      <View style={styles.topRow}>
+        <View style={styles.profileSection}>
+          <View style={styles.avatarWrap}>
+            <Image
+              source={avatarUri ? { uri: avatarUri } : { uri: 'https://i.pravatar.cc/150' }}
+              style={styles.avatar}
+            />
+            {isVerified && (
+              <View style={styles.verifiedBadge}>
+                <CheckCircle2 size={RFValue(10)} color="#10375C" fill="#FFFFFF" />
+              </View>
+            )}
+          </View>
+          <View>
+            <Text style={[styles.name, { color: colors.textPrimary }]}>{name}</Text>
+            <Text style={[styles.trade, { color: colors.textSecondary }]}>{trade}</Text>
+          </View>
+        </View>
+
+        <View style={styles.quoteSection}>
+          <Text style={[styles.quoteLabel, { color: colors.textSecondary }]}>Qoute/Bid</Text>
+          <Text style={[styles.quoteValue, { color: colors.textPrimary }]}>{rate}</Text>
+        </View>
+      </View>
+
+      {/* Message Section */}
+      <View style={styles.messageSection}>
+        <Text style={[styles.messageTitle, { color: colors.textPrimary }]}>Message</Text>
+        <Text style={[styles.messageBody, { color: '#64748B' }]}>{message}</Text>
+      </View>
+
+      {/* Bottom Actions */}
+      <View style={styles.actionsRow}>
+        {status === 'pending' ? (
+          <>
+            <Button
+              title="Cancel"
+              variant="outline"
+              onPress={onCancel}
+              style={{ flex: 1 }}
+            />
+            <View style={{ width: 12 }} />
+            <Button
+              title="Accept"
+              variant="primary"
+              onPress={onAccept}
+              style={{ flex: 1, backgroundColor: '#F2A154' }}
+            />
+          </>
+        ) : (
+          <Button
+            title="Message"
+            variant="outline"
+            onPress={onMessage}
+            style={{ flex: 1 }}
+          />
+        )}
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  card: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  profileSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatarWrap: {
+    position: 'relative',
+  },
+  avatar: {
+    width: RFValue(36),
+    height: RFValue(36),
+    borderRadius: RFValue(18),
+    backgroundColor: '#F1F5F9',
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 1,
+  },
+  name: {
+    fontFamily: FontFamily.bold,
+    fontSize: RFValue(13),
+    marginBottom: 2,
+  },
+  trade: {
+    fontFamily: FontFamily.medium,
+    fontSize: RFValue(11),
+  },
+  quoteSection: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  quoteLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: RFValue(9),
+    marginBottom: 2,
+  },
+  quoteValue: {
+    fontFamily: FontFamily.bold,
+    fontSize: RFValue(13),
+  },
+  messageSection: {
+    padding: 16,
+    paddingBottom: 0,
+  },
+  messageTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: RFValue(11),
+    marginBottom: 6,
+  },
+  messageBody: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10),
+    lineHeight: RFValue(16),
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    padding: 16,
+  },
+});
+
+export default ApplicantCard;

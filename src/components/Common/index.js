@@ -15,6 +15,7 @@ import EmptyState from "./EmptyState";
 import BudgetBar from "./BudgetBar";
 import JobCard from "./JobCard";
 import TrendChart from "./TrendChart";
+import Checkbox from "./Checkbox";
 
 export {
   AppText as Text,
@@ -34,5 +35,6 @@ export {
   BudgetBar,
   JobCard,
   TrendChart,
+  Checkbox,
 };
 

@@ -21,15 +21,18 @@ import CustomTabBar from '~components/CustomTabBar';
 import DashboardStack from './DashboardStack';
 import MoreStack from './MoreStack';
 import ChatStack from './ChatStack';
+import JobsStack from './JobsStack';
 import MenuDrawerOverlay from '~components/Navigation/MenuDrawerOverlay';
 import SubChatScreen from '~screens/chats/subcontractor/SubChatScreen';
+import CompanyChatScreen from '~screens/chats/company/CompanyChatScreen';
+import CompanyJobDetailScreen from '~screens/menu/jobs/company/CompanyJobDetailScreen';
 
 const Tab = createBottomTabNavigator();
 const AppStack = createNativeStackNavigator();
 
 // ─── Tab navigator (extracted so AppStack can reference it) ──────────────────
 const TabNavigator = () => {
-  const userType = useSelector(state => state.auth?.user?.type ?? 'subcontractor');
+  const userType = useSelector(state => state.auth?.user?.type ?? 'company');
   const isCompany = userType === 'company';
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -52,7 +55,7 @@ const TabNavigator = () => {
         {/* ── Jobs / Job Board ── */}
         <Tab.Screen
           name={isCompany ? 'Jobs' : 'JobBoard'}
-          component={PlaceholderScreen(isCompany ? 'Jobs' : 'Job Board')}
+          component={JobsStack}
         />
 
         {/* ── Chats ── */}
@@ -81,6 +84,16 @@ const AppNavigator = () => (
     <AppStack.Screen
       name="SubChat"
       component={SubChatScreen}
+      options={{ animation: 'slide_from_right' }}
+    />
+    <AppStack.Screen
+      name="CompanyChat"
+      component={CompanyChatScreen}
+      options={{ animation: 'slide_from_right' }}
+    />
+    <AppStack.Screen
+      name="CompanyJobDetail"
+      component={CompanyJobDetailScreen}
       options={{ animation: 'slide_from_right' }}
     />
   </AppStack.Navigator>
