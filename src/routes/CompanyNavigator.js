@@ -19,7 +19,7 @@ import MenuDrawerOverlay from '~components/Navigation/MenuDrawerOverlay';
 // Tab screens
 import CompanyDashboardScreen from '~screens/dashboard/company/CompanyDashboardScreen';
 import PostJobScreen from '~screens/dashboard/company/PostJobScreen';
-import CompanyJobsScreen from '~screens/menu/jobs/company/CompanyJobsScreen';
+import CompanyJobsScreen from '~screens/jobs/company/CompanyJobsScreen';
 import CompanyChatListScreen from '~screens/chats/company/CompanyChatListScreen';
 import MoreStack from './MoreStack';
 import SubcontractorListScreen from '~screens/subcontractors/company/SubcontractorListScreen';
@@ -27,7 +27,7 @@ import SubcontractorProfileScreen from '~screens/subcontractors/company/Subcontr
 
 // Full-screen screens (hide tab bar)
 import CompanyChatScreen from '~screens/chats/company/CompanyChatScreen';
-import CompanyJobDetailScreen from '~screens/menu/jobs/company/CompanyJobDetailScreen';
+import CompanyJobDetailScreen from '~screens/jobs/company/CompanyJobDetailScreen';
 
 // ─── Stack navigators for each tab ───────────────────────────────────────────
 

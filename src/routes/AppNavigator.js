@@ -25,7 +25,7 @@ import JobsStack from './JobsStack';
 import MenuDrawerOverlay from '~components/Navigation/MenuDrawerOverlay';
 import SubChatScreen from '~screens/chats/subcontractor/SubChatScreen';
 import CompanyChatScreen from '~screens/chats/company/CompanyChatScreen';
-import CompanyJobDetailScreen from '~screens/menu/jobs/company/CompanyJobDetailScreen';
+import CompanyJobDetailScreen from '~screens/jobs/company/CompanyJobDetailScreen';
 
 const Tab = createBottomTabNavigator();
 const AppStack = createNativeStackNavigator();

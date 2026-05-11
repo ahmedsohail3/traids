@@ -19,10 +19,14 @@ import MenuDrawerOverlay from '~components/Navigation/MenuDrawerOverlay';
 // Tab screens
 import SubcontractorDashboardScreen from '~screens/dashboard/subcontractor/SubcontractorDashboardScreen';
 import SubChatListScreen from '~screens/chats/subcontractor/SubChatListScreen';
+import SubJobBoardScreen from '~screens/jobs/subcontractor/SubJobBoardScreen';
+import SubBookingsScreen from '~screens/bookings/subcontractor/SubBookingsScreen';
 import MoreStack from './MoreStack';
 
 // Full-screen screens (hide tab bar)
 import SubChatScreen from '~screens/chats/subcontractor/SubChatScreen';
+import SubJobDetailScreen from '~screens/jobs/subcontractor/SubJobDetailScreen';
+import SubBookingDetailScreen from '~screens/bookings/subcontractor/SubBookingDetailScreen';
 
 // ─── Stack navigators for each tab ───────────────────────────────────────────
 
@@ -40,18 +44,19 @@ const SubChatStack = () => (
   </ChatStack.Navigator>
 );
 
-const PlaceholderScreen = (label) => {
-  const Comp = () => {
-    const { View: V, Text: T } = require('react-native');
-    return (
-      <V style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <T style={{ fontSize: 18, color: '#10375C', fontWeight: '600' }}>{label} — Coming Soon</T>
-      </V>
-    );
-  };
-  Comp.displayName = `${label}Placeholder`;
-  return Comp;
-};
+const JobBoardStack = createNativeStackNavigator();
+const SubJobBoardStack = () => (
+  <JobBoardStack.Navigator screenOptions={{ headerShown: false }}>
+    <JobBoardStack.Screen name="SubJobBoardHome" component={SubJobBoardScreen} />
+  </JobBoardStack.Navigator>
+);
+
+const BookingsStack = createNativeStackNavigator();
+const SubBookingsStack = () => (
+  <BookingsStack.Navigator screenOptions={{ headerShown: false }}>
+    <BookingsStack.Screen name="SubBookingsHome" component={SubBookingsScreen} />
+  </BookingsStack.Navigator>
+);
 
 // ─── Tab Navigator ────────────────────────────────────────────────────────────
 const Tab = createBottomTabNavigator();
@@ -63,9 +68,9 @@ const SubTabs = () => {
         tabBar={props => <CustomTabBar {...props} onMenuPress={() => setIsMenuOpen(true)} />}
         screenOptions={{ headerShown: false }}>
         <Tab.Screen name="Dashboard" component={SubDashboardStack} />
-        <Tab.Screen name="JobBoard" component={PlaceholderScreen('Job Board')} />
+        <Tab.Screen name="JobBoard" component={SubJobBoardStack} />
         <Tab.Screen name="Chats" component={SubChatStack} />
-        <Tab.Screen name="Bookings" component={PlaceholderScreen('Bookings')} />
+        <Tab.Screen name="Bookings" component={SubBookingsStack} />
         <Tab.Screen name="More" component={MoreStack} />
       </Tab.Navigator>
       <MenuDrawerOverlay visible={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
@@ -79,6 +84,8 @@ const SubNavigator = () => (
   <RootStack.Navigator screenOptions={{ headerShown: false }}>
     <RootStack.Screen name="SubTabs" component={SubTabs} />
     <RootStack.Screen name="SubChat" component={SubChatScreen} options={{ animation: 'slide_from_right' }} />
+    <RootStack.Screen name="SubJobDetail" component={SubJobDetailScreen} options={{ animation: 'slide_from_right' }} />
+    <RootStack.Screen name="SubBookingDetail" component={SubBookingDetailScreen} options={{ animation: 'slide_from_right' }} />
   </RootStack.Navigator>
 );
 
