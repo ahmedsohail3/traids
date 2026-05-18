@@ -1,37 +1,37 @@
 import React from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { RFValue } from 'react-native-responsive-fontsize';
 import Svg, { Circle, G } from 'react-native-svg';
 
-const DATA = [
+const FALLBACK_DATA = [
   { label: 'Electrical', value: 35000, color: '#10375C', display: '£35.0k' },
   { label: 'Plumbing',   value: 22000, color: '#F2A154', display: '£22.0k' },
   { label: 'HVAC',       value: 18000, color: '#0EA5E9', display: '£18.0k' },
   { label: 'Carpentry',  value: 12500, color: '#64748B', display: '£12.5k' },
   { label: 'Masonry',    value: 8500,  color: '#CBD5E1', display: '£8.5k' },
 ];
-
-const TOTAL = 96000;
+const FALLBACK_TOTAL = 96000;
 
 // Render basic donut by accumulating strokeDashoffsets
-const Donut = () => {
+const Donut = ({ items, total }) => {
   const size = 120;
   const strokeWidth = 18;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  
+  const centerLabel = total >= 1000 ? `${(total / 1000).toFixed(0)}k` : String(total);
+
   let currentOffset = 0;
 
   return (
     <View style={styles.donutContainer}>
       <Svg width={size} height={size}>
-        <G rotation="-90" origin={`${size / 2}, ${size / 2}`}>
-          {DATA.map((item, idx) => {
-            const strokeDasharray = `${(item.value / TOTAL) * circumference} ${circumference}`;
+        <G>
+          {items.map((item, idx) => {
+            const strokeDasharray = `${(item.value / total) * circumference} ${circumference}`;
             const offset = currentOffset;
-            currentOffset += (item.value / TOTAL) * circumference;
+            currentOffset += (item.value / total) * circumference;
 
             return (
               <Circle
@@ -42,7 +42,7 @@ const Donut = () => {
                 stroke={item.color}
                 strokeWidth={strokeWidth}
                 strokeDasharray={strokeDasharray}
-                strokeDashoffset={-offset}
+                strokeDashoffset={circumference / 4 - offset}
                 fill="transparent"
               />
             );
@@ -51,14 +51,17 @@ const Donut = () => {
       </Svg>
       {/* Center Text */}
       <View style={styles.donutCenter}>
-        <Text style={styles.donutCenterValue}>96k</Text>
+        <Text style={styles.donutCenterValue}>{centerLabel}</Text>
         <Text style={styles.donutCenterLabel}>Total</Text>
       </View>
     </View>
   );
 };
 
-const CostDistributionChart = () => {
+const CostDistributionChart = ({ data }) => {
+  const items = (data?.items && data.items.length > 0) ? data.items : FALLBACK_DATA;
+  const total = data?.total ?? FALLBACK_TOTAL;
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
@@ -66,10 +69,10 @@ const CostDistributionChart = () => {
         <Text style={styles.subtitle}>spend breakdown by trade category</Text>
       </View>
 
-      <Donut />
+      <Donut items={items} total={total} />
 
       <View style={styles.list}>
-        {DATA.map((item, idx) => (
+        {items.map((item, idx) => (
           <View key={idx} style={styles.listItem}>
             <View style={styles.itemLeft}>
               <View style={[styles.dot, { backgroundColor: item.color }]} />

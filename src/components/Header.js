@@ -7,6 +7,7 @@ import { Text } from "~components/Common";
 import { FontFamily } from "~theme/fonts";
 import { useNavigation } from "@react-navigation/native";
 import { Images } from "~assets";
+import useProfile from "~hooks/useProfile";
 
 const Header = ({
   title,
@@ -17,6 +18,9 @@ const Header = ({
 }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+
+
+  const { profile } = useProfile();
 
   return (
     <View
@@ -56,7 +60,10 @@ const Header = ({
             style={styles.profileIconWrap}
             activeOpacity={0.7}
             onPress={() => navigation.navigate?.('Profile')}>
-            <Icon name="diamond-outline" size={RFValue(17)} color="#000000" />
+            {profile?.profileImage ? (
+              <Image source={{ uri: profile.profileImage }} style={styles.avatarImg} />
+              ) : <Icon name="diamond-outline" size={RFValue(17)} color="#000000" />
+            }
             {/* Online dot */}
             <View style={styles.onlineDot} />
           </TouchableOpacity>
@@ -151,7 +158,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF'
+    backgroundColor: '#FFFFFF',
+  },
+  avatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 999,
   },
   notifBadge: {
     position: 'absolute',

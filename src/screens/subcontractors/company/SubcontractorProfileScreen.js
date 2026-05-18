@@ -4,33 +4,20 @@
  * Full-screen subcontractor profile for Company role.
  * Shows bio, compliance center, work history, and a "Book Now" / offer flow.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, StyleSheet, ScrollView, TouchableOpacity, Image, Linking,
+  View, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator,
 } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import {
-  Star, MapPin, Download, CheckCircle2, XCircle,
-  MessageSquare, Briefcase,
+  Star, Download, CheckCircle2, XCircle,
 } from 'lucide-react-native';
 import { Text, Button } from '~components/Common';
 import Header from '~components/Header';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
 import SendOfferModal from '~components/Subcontractors/SendOfferModal';
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-const COMPLIANCE = [
-  { label: 'Public Liability Insurance', date: 'Nov 15, 2024', status: 'verified' },
-  { label: 'Site Tickets', status: 'pending' },
-  { label: 'Trade Certifications', date: 'Apr 15, 2024', status: 'expired' },
-];
-
-const WORK_HISTORY = [
-  { title: 'Commercial Wiring - Downtown', date: 'Verified Job: May 10, 2023', rating: 5.0, review: 'Exceptional work on the Downtown office renovation. Fully professional and great attention to detail.', reviewer: 'John Smith' },
-  { title: 'Emergency Pipe Repair', date: 'Verified Job: May 10, 2023', rating: 5.0, review: '"Solved a complex plumbing issue we had been struggling with for weeks. Highly recommended!"', reviewer: 'Alice Johnson' },
-  { title: 'Residential Complex Phase 2', date: 'Verified Job: May 10, 2023', rating: 5.0, review: '"Good quality work, finished slightly behind schedule but communicated throughout the process."', reviewer: 'ConstructCorp JnB' },
-];
+import useCompanySubcontractors from '~hooks/useCompanySubcontractors';
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
 const StatusIcon = ({ status }) => {
@@ -60,18 +47,29 @@ const ReviewerAvatar = ({ name }) => {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 const SubcontractorProfileScreen = ({ route, navigation }) => {
   const { colors } = useTheme();
-  const sub = route?.params?.sub ?? {
-    name: 'Michael Chen', trade: 'Electrician', rating: 4.9, reviews: 154,
-    distance: '2.5 mi', hourlyRate: '£12/hr',
-    about: 'Highly skilled Electrician with over 8 years of experience in both residential and commercial projects. Specialising in energy efficient installations and rapid troubleshooting. Strictly adhering to safety regulations. I take pride in clear communication and ensuring the job site is always left clean and tidy.',
-    avatarUri: 'https://i.pravatar.cc/150?u=michael',
-  };
+  const routeSub = route?.params?.sub ?? {};
+  console.log('routeSub', routeSub);
+  const subcontractorId = routeSub._id ?? routeSub.id;
 
+  const { profile, profileLoading: loading, getProfile } = useCompanySubcontractors();
+  console.log('profile', profile);
   const [offerVisible, setOfferVisible] = useState(false);
+
+  useEffect(() => {
+    if (subcontractorId) getProfile(subcontractorId);
+  }, [subcontractorId]);
+
+  // Fall back to route params while the API loads so the screen isn't blank
+  const sub = profile ?? routeSub;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <Header title="Find Subcontractors" subtitle="Discover and hire top-rated professionals for your project." showBackButton />
+      {loading && (
+        <View style={styles.loader}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* Profile Header Card */}
@@ -126,7 +124,7 @@ const SubcontractorProfileScreen = ({ route, navigation }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Compliance Center</Text>
           <Text style={styles.sectionSub}>Click to view / Certifications</Text>
-          {COMPLIANCE.map((item, i) => (
+          {(sub.compliance ?? []).map((item, i) => (
             <View key={i} style={styles.complianceRow}>
               <StatusIcon status={item.status} />
               <View style={{ flex: 1, marginHorizontal: 10 }}>
@@ -147,7 +145,7 @@ const SubcontractorProfileScreen = ({ route, navigation }) => {
             <Text style={styles.sectionTitle}>Work History</Text>
             <TouchableOpacity><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
           </View>
-          {WORK_HISTORY.map((item, i) => (
+          {(sub.workHistory ?? []).map((item, i) => (
             <View key={i} style={styles.historyCard}>
               <View style={styles.historyHeader}>
                 <View style={{ flex: 1 }}>
@@ -179,6 +177,10 @@ const SubcontractorProfileScreen = ({ route, navigation }) => {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  loader: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center', justifyContent: 'center', zIndex: 10,
+  },
   content: { padding: 16, paddingBottom: 40 },
   profileCard: {
     flexDirection: 'row',
@@ -205,7 +207,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 2,
   },
-  tradePillText: { fontFamily: FontFamily.semiBold, fontSize: RFValue(9), color: '#10375C' },
+  tradePillText: { fontFamily: FontFamily.semiBold, fontSize: RFValue(9), color: '#10375C', textTransform: 'capitalize' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
   rating: { fontFamily: FontFamily.semiBold, fontSize: RFValue(11), color: '#10375C' },
   reviews: { fontFamily: FontFamily.regular, fontSize: RFValue(10), color: '#94A3B8' },

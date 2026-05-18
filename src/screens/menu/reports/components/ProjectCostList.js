@@ -4,7 +4,7 @@ import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { RFValue } from 'react-native-responsive-fontsize';
 
-const DATA = [
+const FALLBACK_DATA = [
   { id: 1, name: 'Downtown Office Renovation', manager: 'Michael Chen', status: 'Active', budget: '£45,000', actual: '£28,400', actualWarning: false },
   { id: 2, name: 'Westside Apartment Complex', manager: 'Sarah Miller', status: 'Active', budget: '£12,000', actual: '£3,500', actualWarning: false },
   { id: 3, name: 'City Park Gazebo', manager: 'David Wilson', status: 'Completed', budget: '£8,500', actual: '£8,200', actualWarning: true },
@@ -20,7 +20,9 @@ const getStatusColor = (status) => {
   }
 };
 
-const ProjectCostList = () => {
+const ProjectCostList = ({ data }) => {
+  const DATA = (data && data.length > 0) ? data : FALLBACK_DATA;
+
   return (
     <View style={styles.card}>
       <Text style={styles.title}>Project Cost Summary</Text>

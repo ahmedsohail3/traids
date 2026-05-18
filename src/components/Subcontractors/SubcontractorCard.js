@@ -19,36 +19,38 @@ import { MapPin, Star } from 'lucide-react-native';
 import { Text, Button } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 
-const SubcontractorCard = ({ name, trade, rating, reviews, distance, about, hourlyRate, avatarUri, onViewProfile }) => {
+const SubcontractorCard = ({ fullName, primaryTrade, totalRatings, yearsOfExperience, distance,cityLocation, professionalBio, hourlyRate, profileImage, onViewProfile }) => {
   return (
     <View style={styles.card}>
       {/* Top row: avatar + info */}
       <View style={styles.topRow}>
         <Image
-          source={avatarUri ? { uri: avatarUri } : { uri: `https://i.pravatar.cc/150?u=${name}` }}
+          source={profileImage ? { uri: profileImage } : { uri: `https://i.pravatar.cc/150?u=${fullName}` }}
           style={styles.avatar}
         />
         <View style={styles.info}>
-          <Text style={styles.name}>{name}</Text>
-          <Text style={styles.trade}>{trade}</Text>
+          <Text style={styles.name}>{fullName}</Text>
+          <Text style={styles.trade}>{primaryTrade}</Text>
         </View>
       </View>
 
       <View style={styles.metaRow}>
             <View style={styles.ratingWrap}>
               <Star size={RFValue(10)} color="#B45309" fill="#B45309" />
-              <Text style={styles.ratingText}>{rating}</Text>
-              <Text style={styles.reviewsText}>({reviews})</Text>
+              <Text style={styles.ratingText}>{totalRatings}</Text>
+              <Text style={styles.reviewsText}>(Exp: {yearsOfExperience})</Text>
             </View>
             <View style={styles.distanceWrap}>
               <MapPin size={RFValue(10)} color="#94A3B8" />
-              <Text style={styles.distanceText}>{distance}</Text>
+              <Text style={styles.distanceText}>{distance || cityLocation || "Distance not available"}</Text>
             </View>
           </View>
 
       {/* About */}
+      {professionalBio && <>
       <Text style={styles.aboutLabel}>About</Text>
-      <Text style={styles.aboutText} numberOfLines={3}>{about}</Text>
+      <Text style={styles.aboutText} numberOfLines={3}>{professionalBio}</Text>
+      </>}
 
       {/* Footer: hourly rate + view profile */}
       <View style={styles.footer}>
@@ -99,6 +101,7 @@ const styles = StyleSheet.create({
     fontSize: RFValue(10),
     color: '#64748B',
     marginBottom: 4,
+    textTransform: 'capitalize',
   },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   ratingWrap: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#FFFBEB', paddingHorizontal: 5, borderRadius: 4 },

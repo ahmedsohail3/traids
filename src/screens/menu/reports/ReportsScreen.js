@@ -1,18 +1,25 @@
-import React from 'react';
-import { View, StyleSheet, } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { ScrollView } from '~components/Common';
 import Header from '~components/Header';
 import { useTheme } from '~context/ThemeContext';
 import StatCard from '~components/Common/StatCard';
 import { PoundSterling, Briefcase, Clock, CheckSquare } from 'lucide-react-native';
+import useCompanyReports from '~hooks/useCompanyReports';
 
 import SpendTrendChart from './components/SpendTrendChart';
 import CostDistributionChart from './components/CostDistributionChart';
 import ProjectCostList from './components/ProjectCostList';
 import TopContractorsList from './components/TopContractorsList';
 
-const ReportsScreen = ({ navigation }) => {
+const ReportsScreen = () => {
   const { colors } = useTheme();
+  const { reports, loading, getReports } = useCompanyReports();
+  console.log('reports', reports);
+
+  useEffect(() => { getReports(); }, []);
+
+  const s = reports?.stats;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -21,6 +28,11 @@ const ReportsScreen = ({ navigation }) => {
         subtitle="Insights into project costs, timelines, and contractor performance."
         showBackButton
       />
+      {loading && (
+        <View style={styles.loader}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContainer}>
         {/* Top 2x2 Stats */}
@@ -29,21 +41,21 @@ const ReportsScreen = ({ navigation }) => {
             <View style={styles.statCell}>
               <StatCard
                 label="Total Spend (YTD)"
-                value="£142,500"
-                subLabel="↘ +12% vs last year"
+                value={s?.totalSpend ?? '£142,500'}
+                subLabel={s?.totalSpendSub ?? '↘ +12% vs last year'}
                 icon={PoundSterling}
                 iconColor="#10375C"
-                positive={false}
+                positive={s?.totalSpendPositive ?? false}
               />
             </View>
             <View style={styles.statCell}>
               <StatCard
                 label="Active Projects"
-                value="8"
-                subLabel="↗ +2 vs last month"
+                value={s?.activeProjects ?? '8'}
+                subLabel={s?.activeProjectsSub ?? '↗ +2 vs last month'}
                 icon={Briefcase}
                 iconColor="#10375C"
-                positive={true}
+                positive={s?.activeProjectsPositive ?? true}
               />
             </View>
           </View>
@@ -51,7 +63,7 @@ const ReportsScreen = ({ navigation }) => {
             <View style={styles.statCell}>
               <StatCard
                 label="Avg Contractor Rating"
-                value="4.8/5.0"
+                value={s?.avgRating ?? '4.8/5.0'}
                 subLabel="↗ Top 10% of Industry"
                 icon={CheckSquare}
                 iconColor="#10375C"
@@ -61,23 +73,23 @@ const ReportsScreen = ({ navigation }) => {
             <View style={styles.statCell}>
               <StatCard
                 label="On-Time Completion"
-                value="94%"
-                subLabel="↘ -2% vs target"
+                value={s?.onTimeCompletion ?? '94%'}
+                subLabel={s?.onTimeSub ?? '↘ -2% vs target'}
                 icon={Clock}
                 iconColor="#10375C"
-                positive={false}
+                positive={s?.onTimePositive ?? false}
               />
             </View>
           </View>
         </View>
 
-        <SpendTrendChart />
+        <SpendTrendChart data={reports?.spendTrend} />
 
-        <CostDistributionChart />
+        <CostDistributionChart data={reports?.costDistribution} />
 
-        <ProjectCostList />
+        <ProjectCostList data={reports?.projectCosts} />
 
-        <TopContractorsList />
+        <TopContractorsList data={reports?.topContractors} />
 
       </ScrollView>
     </View>
@@ -86,6 +98,10 @@ const ReportsScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  loader: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center', justifyContent: 'center', zIndex: 10,
+  },
   scrollContainer: {
     padding: 16,
     paddingBottom: 120, // space for tab bar

@@ -1,30 +1,19 @@
 /**
  * CompanyDashboardScreen
  *
- * Displays two states:
- *   • Empty  — 00 stats, no-activity placeholders (no chart, no jobs)
- *   • Filled — real metrics, trend chart, budget bars, recent jobs list
+ * Displays two states per section:
+ *   • Empty  — EmptyState placeholder when value is 0 / null / missing
+ *   • Filled — real data from /company/dashboard
  *
- * The `hasData` boolean is derived from the redux store. It switches automatically;
- * no extra prop is needed.
+ * Stat cards always render; chart / budget / jobs sections gate on real values.
  */
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import {
-  Briefcase,
-  Users,
-  ClipboardCheck,
-  PoundSterling,
-  BarChart3,
-  BanknoteIcon,
-} from 'lucide-react-native';
+import { Briefcase, Users, ClipboardCheck, PoundSterling } from 'lucide-react-native';
 
 import Header from '~components/Header';
-import {
-  ScrollView,
-  Text,
-} from '~components/Common';
+import { ScrollView, Text } from '~components/Common';
 import StatCard from '~components/Common/StatCard';
 import SectionCard from '~components/Common/SectionCard';
 import EmptyState from '~components/Common/EmptyState';
@@ -36,48 +25,67 @@ import PostingBlockedModal from '~components/Dashboard/PostingBlockedModal';
 import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 import { Images } from '~assets';
+import useDashboard from '~hooks/useDashboard';
 
-// ─── Mock data (replace with Redux selectors) ─────────────────────────────────
-const EMPTY_STATS = {
-  activeJobs: 0,
-  subsBooked: 0,
-  pendingApprovals: 0,
-  monthlySpend: 0,
+// ─── Data mapping ─────────────────────────────────────────────────────────────
+
+const mapStats = (data) => ({
+  activeJobs:            data?.activeJobs?.current        ?? 0,
+  activeJobsChange:      data?.activeJobs?.change         ?? 0,
+  subsBooked:            data?.subsBooked?.current        ?? 0,
+  subsBookedChange:      data?.subsBooked?.change         ?? 0,
+  pendingApprovals:      data?.pendingApprovals?.current  ?? 0,
+  pendingApprovalsChange:data?.pendingApprovals?.change   ?? 0,
+  monthlySpend:          data?.monthlySpend?.current      ?? 0,
+  monthlySpendChangePct: data?.monthlySpend?.changePercent ?? 0,
+});
+
+const mapTrend = (data) => {
+  const items = data?.activeJobsTrend ?? [];
+  return {
+    values: items.map((i) => i.count),
+    labels: items.map((i) => i.day),
+    hasData: items.some((i) => i.count > 0),
+  };
 };
 
-const FILLED_STATS = {
-  activeJobs: 14,
-  subsBooked: 38,
-  pendingApprovals: 5,
-  monthlySpend: 42500,
+const mapBudget = (data) => {
+  const b = data?.budgetSpent;
+  const total = b?.total ?? 0;
+  const labor = b?.labor ?? 0;
+  if (total <= 0) return { bars: [], hasData: false };
+  const other = Math.max(0, total - labor);
+  const pct = (n) => Math.round((n / total) * 100);
+  return {
+    hasData: true,
+    bars: [
+      { label: 'Labour', value: pct(labor), color: '#F2A154' },
+      { label: 'Other',  value: pct(other), color: '#94A3B8' },
+    ],
+  };
 };
 
-const TREND_DATA   = [2, 5, 4, 8, 6, 9, 7];
-const TREND_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const mapRecentJobs = (data) => data?.recentJobs ?? [];
 
-const BUDGET_ITEMS = [
-  { label: 'Materials', value: 90, color: '#10375C' },
-  { label: 'Labor',     value: 65, color: '#F2A154' },
-  { label: 'Permits',   value: 30, color: '#94A3B8' },
-  { label: 'Other',     value: 20, color: '#CBD5E1' },
-];
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const RECENT_JOBS = [
-  { jobId: 'Job #1', title: 'Downtown Office Renovation', trade: 'Electrician', location: '123 Market St, Downt...', assignee: 'Unassigned', startDate: 'Starts Nov 1', status: 'Pending' },
-  { jobId: 'Job #1', title: 'Plumber Required for Small Task', trade: 'Electrician', location: '123 Market St, Downt...', assignee: 'Unassigned', startDate: 'Starts Nov 1', status: 'Active' },
-  { jobId: 'Job #1', title: 'Electrician Required', trade: 'Electrician', location: '123 Market St, Downt...', assignee: 'Unassigned', startDate: 'Starts Nov 1', status: 'Accepted' },
-];
+const fmtChange = (n) => `${n > 0 ? '+' : ''}${n} vs last month`;
+const fmtPct    = (n) => `${n > 0 ? '+' : ''}${n}% vs last month`;
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 const CompanyDashboardScreen = ({ navigation }) => {
   const { colors } = useTheme();
+  const { dashboard, loading, hasData, getDashboard } = useDashboard();
 
-  // TODO: replace with real selector: const hasData = useSelector(s => s.jobs.hasData);
-  const [hasData, setHasData] = useState(false); // Toggle for dev preview
   const [hasUnpaidInvoice, setHasUnpaidInvoice] = useState(true);
-  const [showBlockedModal, setShowBlockedModal] = useState(false);
+  const [showBlockedModal, setShowBlockedModal]  = useState(false);
 
-  const stats = hasData ? FILLED_STATS : EMPTY_STATS;
+  useEffect(() => { getDashboard(); }, []);
+
+  const stats      = mapStats(dashboard);
+  const trend      = mapTrend(dashboard);
+  const budget     = mapBudget(dashboard);
+  const recentJobs = mapRecentJobs(dashboard);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -85,66 +93,63 @@ const CompanyDashboardScreen = ({ navigation }) => {
         title="Dashboard"
         subtitle="Welcome back, here's what's happening today."
         showPostButton
-        onPostPress={() => {
-          if (hasUnpaidInvoice) {
-            setShowBlockedModal(true);
-          } else {
-            navigation.navigate?.('PostJob');
-          }
-        }}
+        onPostPress={() =>
+          hasUnpaidInvoice ? setShowBlockedModal(true) : navigation.navigate?.('PostJob')
+        }
       />
 
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}>
-        
+      {loading && !hasData && (
+        <View style={styles.loader}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
+
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+
         {hasUnpaidInvoice && <UnpaidInvoiceBanner />}
 
-        {/* ── Stats grid ── */}
+        {/* ── Stats grid — always visible ── */}
         <View style={styles.statsGrid}>
           <View style={styles.statsRow}>
             <StatCard
               label="Active Jobs"
               value={stats.activeJobs}
-              subLabel={hasData ? '+3 vs last month' : 'No active jobs yet'}
+              subLabel={stats.activeJobs > 0 ? fmtChange(stats.activeJobsChange) : 'No active jobs yet'}
               icon={Briefcase}
-              positive={hasData}
+              positive={stats.activeJobs > 0}
             />
             <View style={styles.statsGap} />
             <StatCard
               label="Subs Booked"
               value={stats.subsBooked}
-              subLabel={hasData ? '+12% vs last month' : 'No subs booked'}
+              subLabel={stats.subsBooked > 0 ? fmtChange(stats.subsBookedChange) : 'No subs booked'}
               icon={Users}
-              positive={hasData}
+              positive={stats.subsBooked > 0}
             />
           </View>
           <View style={styles.statsRow}>
             <StatCard
               label="Pending Approvals"
               value={stats.pendingApprovals}
-              subLabel={hasData ? '+2 vs last month' : 'Nothing pending'}
+              subLabel={stats.pendingApprovals > 0 ? fmtChange(stats.pendingApprovalsChange) : 'Nothing pending'}
               icon={ClipboardCheck}
-              positive={hasData}
+              positive={stats.pendingApprovals > 0}
             />
             <View style={styles.statsGap} />
             <StatCard
               label="Monthly Spend"
-              value={hasData ? `£${stats.monthlySpend.toLocaleString()}` : stats.monthlySpend}
-              subLabel={hasData ? '+8.5% vs last month' : 'No spending recorded'}
+              value={stats.monthlySpend > 0 ? `£${stats.monthlySpend.toLocaleString()}` : 0}
+              subLabel={stats.monthlySpend > 0 ? fmtPct(stats.monthlySpendChangePct) : 'No spending recorded'}
               icon={PoundSterling}
-              positive={hasData}
+              positive={stats.monthlySpend > 0}
             />
           </View>
         </View>
 
         {/* ── Active Jobs Trend ── */}
-        <SectionCard
-          title="Active Jobs Trend"
-          rightLabel="This Week ▾"
-          style={styles.sectionMargin}>
-          {hasData ? (
-            <TrendChart data={TREND_DATA} labels={TREND_LABELS} color="#10375C" />
+        <SectionCard title="Active Jobs Trend" rightLabel="This Week ▾" style={styles.sectionMargin}>
+          {trend.hasData ? (
+            <TrendChart data={trend.values} labels={trend.labels} color="#10375C" />
           ) : (
             <EmptyState
               icon={Images.noJobs}
@@ -156,8 +161,8 @@ const CompanyDashboardScreen = ({ navigation }) => {
 
         {/* ── Budget Spent ── */}
         <SectionCard title="Budget Spent" style={styles.sectionMargin}>
-          {hasData ? (
-            BUDGET_ITEMS.map(b => (
+          {budget.hasData ? (
+            budget.bars.map((b) => (
               <BudgetBar key={b.label} label={b.label} value={b.value} color={b.color} />
             ))
           ) : (
@@ -169,8 +174,8 @@ const CompanyDashboardScreen = ({ navigation }) => {
           )}
         </SectionCard>
 
-        {/* ── Recent Jobs (only when data exists) ── */}
-        {hasData && (
+        {/* ── Recent Jobs ── */}
+        {recentJobs.length > 0 && (
           <View style={styles.sectionMargin}>
             <View style={styles.recentHeader}>
               <Text style={[styles.recentTitle, { color: colors.textPrimary }]}>Recent Jobs</Text>
@@ -178,84 +183,51 @@ const CompanyDashboardScreen = ({ navigation }) => {
                 <Text style={[styles.viewAll, { color: colors.secondary }]}>View All Jobs</Text>
               </TouchableOpacity>
             </View>
-            {RECENT_JOBS.map((job, i) => (
-              <JobCard
-                key={i}
-                {...job}
-                onEdit={() => {}}
-                onDelete={() => {}}
-              />
+            {recentJobs.map((job, i) => (
+              <JobCard key={job.id ?? i} {...job} onEdit={() => {}} onDelete={() => {}} />
             ))}
           </View>
         )}
 
         {/* Dev toggle — remove in production */}
         <TouchableOpacity
-          onPress={() => setHasData(p => !p)}
-          style={[styles.devToggle, { backgroundColor: colors.primary }]}>
-          <Text style={styles.devToggleText}>
-            {hasData ? 'Switch to Empty State' : 'Switch to Data State'}
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          onPress={() => setHasUnpaidInvoice(p => !p)}
-          style={[styles.devToggle, { backgroundColor: '#EF4444', marginTop: 12 }]}>
+          onPress={() => setHasUnpaidInvoice((p) => !p)}
+          style={[styles.devToggle, { marginTop: 24 }]}>
           <Text style={styles.devToggleText}>
             {hasUnpaidInvoice ? 'Remove Unpaid Invoice' : 'Trigger Unpaid Invoice'}
           </Text>
         </TouchableOpacity>
+
       </ScrollView>
 
       <PostingBlockedModal
         visible={showBlockedModal}
         onDismiss={() => setShowBlockedModal(false)}
-        onViewInvoices={() => {
-          setShowBlockedModal(false);
-          // navigation.navigate('Invoices');
-        }}
+        onViewInvoices={() => setShowBlockedModal(false)}
       />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  scroll: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 120,
+  root:   { flex: 1 },
+  loader: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center', justifyContent: 'center', zIndex: 10,
   },
-  statsGrid: { gap: 12 },
-  statsRow: { flexDirection: 'row' },
-  statsGap: { width: 12 },
-  sectionMargin: { marginTop: 16 },
+  scroll:       { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 120 },
+  statsGrid:    { gap: 12 },
+  statsRow:     { flexDirection: 'row' },
+  statsGap:     { width: 12 },
+  sectionMargin:{ marginTop: 16 },
   recentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 12,
   },
-  recentTitle: {
-    fontSize: RFValue(13),
-    fontFamily: FontFamily.bold,
-  },
-  viewAll: {
-    fontSize: RFValue(11),
-    fontFamily: FontFamily.medium,
-  },
-  // Dev only
-  devToggle: {
-    marginTop: 24,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  devToggleText: {
-    color: '#fff',
-    fontFamily: FontFamily.semiBold,
-    fontSize: RFValue(11),
-  },
+  recentTitle:  { fontSize: RFValue(13), fontFamily: FontFamily.bold },
+  viewAll:      { fontSize: RFValue(11), fontFamily: FontFamily.medium },
+  devToggle:    { paddingVertical: 10, borderRadius: 10, alignItems: 'center', backgroundColor: '#EF4444' },
+  devToggleText:{ color: '#fff', fontFamily: FontFamily.semiBold, fontSize: RFValue(11) },
 });
 
 export default CompanyDashboardScreen;

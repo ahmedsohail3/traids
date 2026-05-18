@@ -16,6 +16,9 @@ import BudgetBar from "./BudgetBar";
 import JobCard from "./JobCard";
 import TrendChart from "./TrendChart";
 import Checkbox from "./Checkbox";
+import PriceSlider from "./PriceSlider";
+import DocumentPickerField from "./DocumentPickerField";
+import ImagePickerField from "./ImagePickerField";
 
 export {
   AppText as Text,
@@ -36,5 +39,8 @@ export {
   JobCard,
   TrendChart,
   Checkbox,
+  PriceSlider,
+  DocumentPickerField,
+  ImagePickerField,
 };
 

@@ -21,7 +21,7 @@ const ProfileSetupScreen = ({ navigation }) => {
   );
 
   const handlePickFile = useCallback(setter => {
-    // TODO: integrate react-native-document-picker / image picker
+    // TODO: integrate @react-native-documents/picker / image picker
     setter({ name: 'photo.jpg', uri: '' });
   }, []);
 

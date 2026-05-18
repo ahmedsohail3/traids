@@ -65,10 +65,10 @@ const ApplicantCard = ({
       </View>
 
       {/* Message Section */}
-      <View style={styles.messageSection}>
+      {message && <View style={styles.messageSection}>
         <Text style={[styles.messageTitle, { color: colors.textPrimary }]}>Message</Text>
         <Text style={[styles.messageBody, { color: '#64748B' }]}>{message}</Text>
-      </View>
+      </View>}
 
       {/* Bottom Actions */}
       <View style={styles.actionsRow}>

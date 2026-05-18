@@ -38,7 +38,7 @@ const JobCard = ({
   location,
   assignee,
   startDate,
-  status = 'Pending',
+  status,
   onPress,
   onEdit,
   onDelete,
@@ -52,7 +52,7 @@ const JobCard = ({
     return STATUS_COLORS[status] ?? STATUS_COLORS.Pending;
   };
   const statusStyle = getStatusColor();
-
+  
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={[styles.card, { backgroundColor: colors.surface }]}>
       {/* Top row: job id + status badge */}

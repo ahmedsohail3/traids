@@ -4,7 +4,7 @@ import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { RFValue } from 'react-native-responsive-fontsize';
 
-const DATA = [
+const FALLBACK_DATA = [
   { month: 'May', labor: 13000, materials: 5000 },
   { month: 'Jun', labor: 16000, materials: 6000 },
   { month: 'Jul', labor: 12000, materials: 4000 },
@@ -13,12 +13,14 @@ const DATA = [
   { month: 'Oct', labor: 20000, materials: 6000 },
 ];
 
-const MAX_VALUE = 30000;
-const Y_AXIS = [30000, 22500, 15000, 7500, 0];
-
 const CHART_HEIGHT = 120; // Exact pixel height available for bars
 
-const SpendTrendChart = () => {
+const SpendTrendChart = ({ data }) => {
+  const DATA      = (data && data.length > 0) ? data : FALLBACK_DATA;
+  const MAX_VALUE = Math.max(...DATA.map(i => i.labor + i.materials), 1);
+  const step      = Math.ceil(MAX_VALUE / 4 / 1000) * 1000;
+  const Y_AXIS    = [step * 4, step * 3, step * 2, step, 0];
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
@@ -53,7 +55,6 @@ const SpendTrendChart = () => {
           {/* Bars */}
           <View style={styles.barsArea}>
             {DATA.map((item, idx) => {
-              const total = item.labor + item.materials;
               const laborHeight = (item.labor / MAX_VALUE) * CHART_HEIGHT;
               const materialHeight = (item.materials / MAX_VALUE) * CHART_HEIGHT;
 

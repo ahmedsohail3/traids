@@ -5,14 +5,16 @@ import { FontFamily } from '~theme/fonts';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Filter, BadgeCheck } from 'lucide-react-native';
 
-const CONTRACTORS = [
+const FALLBACK_DATA = [
   { id: 1, name: 'Michael Chen', trade: 'Electrician', jobs: 12, spend: '£45.2k', rating: '4.9', onTime: '88%', verified: true },
   { id: 2, name: 'Sarah Miller', trade: 'Plumber', jobs: 8, spend: '£45.2k', rating: '4.9', onTime: '88%', verified: true },
   { id: 3, name: 'James Rodriguez', trade: 'HVAC', jobs: 5, spend: '£45.2k', rating: '4.9', onTime: '88%', verified: true },
   { id: 4, name: 'Emma Thompson', trade: 'Painter', jobs: 7, spend: '£45.2k', rating: '4.9', onTime: '88%', verified: true },
 ];
 
-const TopContractorsList = () => {
+const TopContractorsList = ({ data }) => {
+  const CONTRACTORS = (data && data.length > 0) ? data : FALLBACK_DATA;
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
@@ -23,7 +25,7 @@ const TopContractorsList = () => {
       </View>
 
       <View style={styles.list}>
-        {CONTRACTORS.map((item, index) => (
+        {CONTRACTORS.map((item) => (
           <View 
             key={item.id} 
             style={[

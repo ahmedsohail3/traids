@@ -1,47 +1,27 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Button, TextInput, SelectDropdown } from '~components/Common';
-import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 import RegisterContainer from '../RegisterContainer';
+import useCompanySignup from '~hooks/useCompanySignup';
 
 const INDUSTRY_OPTIONS = [
-  { label: 'Construction', value: 'construction' },
-  { label: 'Engineering', value: 'engineering' },
-  { label: 'Architecture', value: 'architecture' },
-  { label: 'Real Estate', value: 'real_estate' },
+  { label: 'Construction',   value: 'construction' },
+  { label: 'Engineering',    value: 'engineering' },
+  { label: 'Architecture',   value: 'architecture' },
+  { label: 'Real Estate',    value: 'real_estate' },
   { label: 'Infrastructure', value: 'infrastructure' },
-  { label: 'Mining', value: 'mining' },
-  { label: 'Other', value: 'other' },
+  { label: 'Mining',         value: 'mining' },
+  { label: 'Other',          value: 'other' },
 ];
 
 const BusinessDetailsScreen = ({ navigation }) => {
-  const { colors } = useTheme();
-
-  const [companyName, setCompanyName] = useState('');
-  const [regNumber, setRegNumber] = useState('');
-  const [vatNumber, setVatNumber] = useState('');
-  const [industry, setIndustry] = useState('');
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
-
-  const validate = useCallback(() => {
-    const e = {};
-    if (!companyName.trim()) e.companyName = 'Company name is required';
-    if (!regNumber.trim()) e.regNumber = 'Registration number is required';
-    if (!industry) e.industry = 'Please select an industry type';
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  }, [companyName, regNumber, industry]);
+  const { formData, errors, updateField, clearError, validateStep } = useCompanySignup();
 
   const handleContinue = useCallback(() => {
-    if (!validate()) return;
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      navigation.navigate('CardDetails', { companyName, regNumber, vatNumber, industry });
-    }, 500);
-  }, [validate, navigation, companyName, regNumber, vatNumber, industry]);
+    if (!validateStep(1)) return;
+    navigation.navigate('CardDetails');
+  }, [validateStep, navigation]);
 
   return (
     <RegisterContainer
@@ -57,8 +37,8 @@ const BusinessDetailsScreen = ({ navigation }) => {
 
       <TextInput
         label="Company Name"
-        value={companyName}
-        onChangeText={v => { setCompanyName(v); setErrors(p => ({ ...p, companyName: '' })); }}
+        value={formData.companyName}
+        onChangeText={v => { updateField('companyName', v); clearError('companyName'); }}
         placeholder="Acme Construction Ltd"
         autoCapitalize="words"
         error={errors.companyName}
@@ -66,17 +46,17 @@ const BusinessDetailsScreen = ({ navigation }) => {
 
       <TextInput
         label="Registration Number *"
-        value={regNumber}
-        onChangeText={v => { setRegNumber(v); setErrors(p => ({ ...p, regNumber: '' })); }}
+        value={formData.registrationNumber}
+        onChangeText={v => { updateField('registrationNumber', v); clearError('registrationNumber'); }}
         placeholder="12345678"
         keyboardType="default"
-        error={errors.regNumber}
+        error={errors.registrationNumber}
       />
 
       <TextInput
         label="VAT Number"
-        value={vatNumber}
-        onChangeText={setVatNumber}
+        value={formData.vatNumber}
+        onChangeText={v => updateField('vatNumber', v)}
         placeholder="GB 123 4567 89"
         keyboardType="default"
       />
@@ -84,13 +64,12 @@ const BusinessDetailsScreen = ({ navigation }) => {
       <SelectDropdown
         label="Industry Type *"
         options={INDUSTRY_OPTIONS}
-        value={industry}
-        onSelect={v => { setIndustry(v); setErrors(p => ({ ...p, industry: '' })); }}
+        value={formData.industryType}
+        onSelect={v => { updateField('industryType', v); clearError('industryType'); }}
         placeholder="Construction"
-        error={errors.industry}
+        error={errors.industryType}
       />
 
-      {/* Bottom action row */}
       <View style={styles.actionRow}>
         <Button
           title="Cancel"
@@ -102,7 +81,6 @@ const BusinessDetailsScreen = ({ navigation }) => {
           title="Save & Continue"
           style={styles.continueBtn}
           onPress={handleContinue}
-          loading={loading}
         />
       </View>
     </RegisterContainer>
@@ -110,17 +88,9 @@ const BusinessDetailsScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  actionRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  cancelBtn: {
-    flex: 1,
-  },
-  continueBtn: {
-    flex: 2,
-  },
+  actionRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  cancelBtn:  { flex: 1 },
+  continueBtn:{ flex: 2 },
 });
 
 export default BusinessDetailsScreen;

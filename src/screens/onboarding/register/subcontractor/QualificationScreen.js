@@ -37,7 +37,7 @@ const QualificationScreen = ({ navigation }) => {
   }, []);
 
   const handlePickFile = useCallback(setter => {
-    // TODO: integrate react-native-document-picker
+    // TODO: integrate @react-native-documents/picker
     setter({ name: 'document.pdf', uri: '' });
   }, []);
 

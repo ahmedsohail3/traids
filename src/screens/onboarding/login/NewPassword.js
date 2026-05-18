@@ -1,9 +1,11 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Text, Button, TextInput } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
+import useAuth from '~hooks/useAuth';
+import { useSelector } from 'react-redux';
 import PasswordSuccessModal from './PasswordSuccessModal';
 import AuthContainer from './AuthContainer';
 
@@ -33,13 +35,20 @@ const RuleRow = ({ label, passed, colors }) => (
 
 const NewPasswordScreen = ({ navigation }) => {
   const { colors } = useTheme();
+  const { resetPassword, resetFlow, clearResetFlow } = useAuth();
+  const userType = useSelector((s) => s.auth.user.type);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [successVisible, setSuccessVisible] = useState(false);
 
   const allRulesPassed = PASSWORD_RULES.every(r => r.test(password));
+
+  useEffect(() => {
+    if (resetFlow.isComplete) {
+      setSuccessVisible(true);
+    }
+  }, [resetFlow.isComplete]);
 
   const handleReset = useCallback(() => {
     const newErrors = {};
@@ -49,12 +58,8 @@ const NewPasswordScreen = ({ navigation }) => {
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setSuccessVisible(true);
-    }, 1200);
-  }, [password, confirm, allRulesPassed]);
+    resetPassword(password, userType);
+  }, [password, confirm, allRulesPassed, resetPassword, userType]);
 
   return (
     <>
@@ -92,10 +97,14 @@ const NewPasswordScreen = ({ navigation }) => {
           containerStyle={styles.confirmInput}
         />
 
+        {resetFlow.error ? (
+          <Text style={[styles.ruleText, { color: colors.error, marginBottom: 8 }]}>{resetFlow.error}</Text>
+        ) : null}
+
         <Button
           title="Reset Password"
           onPress={handleReset}
-          loading={loading}
+          loading={resetFlow.loading}
           style={styles.btn}
         />
       </AuthContainer>
@@ -104,6 +113,7 @@ const NewPasswordScreen = ({ navigation }) => {
         visible={successVisible}
         onContinue={() => {
           setSuccessVisible(false);
+          clearResetFlow();
           navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
         }}
       />

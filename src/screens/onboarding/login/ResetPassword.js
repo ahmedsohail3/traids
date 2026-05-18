@@ -1,18 +1,28 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Text, Button, TextInput } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
+import { useSelector } from 'react-redux';
+import useAuth from '~hooks/useAuth';
 import AuthContainer from './AuthContainer';
 
-const ResetPasswordScreen = ({ navigation }) => {
+const ResetPasswordScreen = ({ navigation, route }) => {
   const { colors } = useTheme();
+  const { forgotPassword, resetFlow, clearResetError } = useAuth();
+  const userType = route?.params?.userType || 'company';
+  console.log("userType",userType);
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
 
-  const handleReset = useCallback(() => {
+  useEffect(() => {
+    if (resetFlow.email) {
+      navigation.navigate('TwoStepVerification');
+    }
+  }, [resetFlow.email]);
+
+  const handleReset = useCallback(async () => {
     if (!email.trim()) {
       setEmailError('Email is required');
       return;
@@ -21,12 +31,9 @@ const ResetPasswordScreen = ({ navigation }) => {
       setEmailError('Enter a valid email address');
       return;
     }
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      navigation.navigate('TwoStepVerification', { email });
-    }, 1200);
-  }, [email, navigation]);
+    clearResetError();
+    forgotPassword(email.trim(), userType);
+  }, [email, userType, forgotPassword, clearResetError]);
 
   return (
     <AuthContainer showBack onBackPress={() => navigation.goBack()}>
@@ -39,17 +46,17 @@ const ResetPasswordScreen = ({ navigation }) => {
         label="Email Address"
         value={email}
         onChangeText={v => { setEmail(v); setEmailError(''); }}
-        placeholder="example@gmail.com" /* Placeholder from screenshot matching */
+        placeholder="example@gmail.com"
         keyboardType="email-address"
         autoCapitalize="none"
-        error={emailError}
+        error={emailError || resetFlow.error}
         containerStyle={styles.inputContainer}
       />
 
       <Button
         title="Reset Password"
         onPress={handleReset}
-        loading={loading}
+        loading={resetFlow.loading}
         style={styles.btn}
       />
     </AuthContainer>

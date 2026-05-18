@@ -7,67 +7,99 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // import listReducer from "../reducers/listReducer";
 // import locationReducer from "../reducers/locationReducer";
 // import notificationReducer from "../reducers/notificationReducer";
-// import profileReducer from "../reducers/profileReducer";
 // import searchReducer from "../reducers/searchReducer";
 // import sessionReducer from "../reducers/sessionReducer";
 import themeReducer from "../reducers/themeReducer";
-import authReducer from "../reducers/authSlice";
+import authReducer, { logout } from "../reducers/authSlice";
+import profileReducer from "../reducers/profileSlice";
+import dashboardReducer from "../reducers/dashboardSlice";
+import companySubcontractorsReducer from "../reducers/companySubcontractorsSlice";
+import companyReportsReducer from "../reducers/companyReportsSlice";
+import companySignupReducer from "../reducers/companySignupSlice";
+import subcontractorJobsReducer from "../reducers/subcontractorJobsSlice";
+import subcontractorBookingsReducer from "../reducers/subcontractorBookingsSlice";
+import companyJobsReducer from "../reducers/companyJobsSlice";
 // import settingsReducer from "../reducers/settingsReducer";
 
 // ─── Combined slice reducer ────────────────────────────────────────────────────
 const combinedReducer = combineReducers({
   auth: authReducer,
+  profile: profileReducer,
+  dashboard: dashboardReducer,
+  companySubcontractors: companySubcontractorsReducer,
+  companyReports: companyReportsReducer,
+  companySignup: companySignupReducer,
+  subcontractorJobs: subcontractorJobsReducer,
+  subcontractorBookings: subcontractorBookingsReducer,
+  companyJobs: companyJobsReducer,
   theme: themeReducer,
 });
 
 // ─── Root reducer — full state reset on logout ─────────────────────────────────
 // Passing `undefined` causes every slice to return its initialState.
 const rootReducer = (state, action) => {
-//   if (action.type === logout.type) {
-//     return combinedReducer(undefined, action);
-//   }
+  if (action.type === logout.type) {
+    // Full state reset on logout — every slice returns its initialState
+    return combinedReducer(undefined, action);
+  }
   return combinedReducer(state, action);
 };
 
 // ─── Persistence config ────────────────────────────────────────────────────────
 //
-// stateReconciler: On rehydration, walk every persisted slice and force all
-// loading flags → false and error flags → null.  This prevents a crash or
-// kill mid-request from permanently baking `loading: true` into AsyncStorage.
+// Slices to persist — chosen for UX (show cached data while fresh data loads):
+//   profile               — user's own profile, stable between sessions
+//   dashboard             — role-scoped dashboard data (nested: company / subcontractor)
+//   companySubcontractors — subcontractor list, shows cached results while refetching
+//   companyReports        — report data, slow to load so caching helps
+//   theme                 — user preference, must survive restarts
 //
-const sanitizeLoadingState = (inboundState, originalState, reducedState) => {
-  const sanitized = { ...reducedState };
+// NOT persisted:
+//   auth                  — tokens live in AsyncStorage, rehydrated by useAppInit
+//   companySubcontractorProfile — per-navigation, always fetched fresh
+//
+const PERSISTED_KEYS = [
+  "profile",
+  "dashboard",
+  "companySubcontractors",
+  "companyReports",
+  "theme",
+];
 
-  // Only sanitize slices that are actually persisted (in whitelist)
-  const persistedKeys = ["theme"];
-
-  for (const sliceKey of persistedKeys) {
-    const inbound = inboundState?.[sliceKey];
-    if (!inbound || typeof inbound !== "object") continue;
-
-    // Start with the rehydrated values
-    const cleaned = { ...inbound };
-
-    // Reset every key that looks like a loading flag or error flag
-    for (const key of Object.keys(cleaned)) {
-      const lower = key.toLowerCase();
-      if (lower.includes("loading")) {
-        cleaned[key] = false;
-      } else if (lower === "error" || lower.endsWith("error")) {
-        cleaned[key] = null;
-      }
+// Recursively reset loading → false and error → null on any rehydrated object.
+// Handles both flat slices ({ loading, error, data }) and nested ones
+// like dashboard ({ company: { loading, error, data }, subcontractor: { ... } }).
+const sanitizeSlice = (obj) => {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return obj;
+  const out = { ...obj };
+  for (const key of Object.keys(out)) {
+    const lower = key.toLowerCase();
+    if (lower.includes("loading")) {
+      out[key] = false;
+    } else if (lower === "error" || lower.endsWith("error")) {
+      out[key] = null;
+    } else if (out[key] && typeof out[key] === "object" && !Array.isArray(out[key])) {
+      out[key] = sanitizeSlice(out[key]);
     }
-
-    sanitized[sliceKey] = cleaned;
   }
+  return out;
+};
 
+const sanitizeLoadingState = (inboundState, _originalState, reducedState) => {
+  const sanitized = { ...reducedState };
+  for (const key of PERSISTED_KEYS) {
+    const inbound = inboundState?.[key];
+    if (inbound && typeof inbound === "object") {
+      sanitized[key] = sanitizeSlice(inbound);
+    }
+  }
   return sanitized;
 };
 
 const persistConfig = {
   key: "root",
   storage: AsyncStorage,
-  whitelist: ["theme"],
+  whitelist: PERSISTED_KEYS,
   stateReconciler: sanitizeLoadingState,
 };
 
@@ -122,9 +154,9 @@ export const persistor = persistStore(store);
 //   persistor.purge();
 // };
 
-// // ─── forceLogoutAndPurge ───────────────────────────────────────────────────────
-// // Bypass server — used by the 401 interceptor when the token is already expired.
-// export const forceLogoutAndPurge = () => {
-//   store.dispatch(logout());
-//   persistor.purge();
-// };
+// ─── forceLogoutAndPurge ───────────────────────────────────────────────────────
+// Bypass server — used by the 401 interceptor when the token is already expired.
+export const forceLogoutAndPurge = () => {
+  store.dispatch(logout());
+  persistor.purge();
+};

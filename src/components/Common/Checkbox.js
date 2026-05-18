@@ -1,5 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, View, StyleSheet, Text } from 'react-native';
+import { Check } from 'lucide-react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
@@ -20,7 +21,7 @@ const Checkbox = ({ label, checked, onPress, style }) => {
           checked && { backgroundColor: colors.primary }
         ]}
       >
-        {checked && <View style={styles.checkmark} />}
+        {checked && <Check size={RFValue(12)} color="#FFFFFF" />}
       </View>
       <Text style={[styles.label, { color: colors.textPrimary }]}>{label}</Text>
     </TouchableOpacity>
@@ -41,12 +42,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
-  },
-  checkmark: {
-    width: RFValue(9),
-    height: RFValue(9),
-    backgroundColor: '#FFFFFF',
-    borderRadius: 1,
   },
   label: {
     fontFamily: FontFamily.regular,

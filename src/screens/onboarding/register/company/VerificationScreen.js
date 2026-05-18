@@ -1,42 +1,41 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Button, UploadField } from '~components/Common';
 import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 import RegisterContainer from '../RegisterContainer';
+import useCompanySignup from '~hooks/useCompanySignup';
 
 const VerificationScreen = ({ navigation }) => {
   const { colors } = useTheme();
+  const {
+    formData, errors, updateField, clearError,
+    validateStep, submit, loading, submitted, reset,
+  } = useCompanySignup();
 
-  const [companyDoc, setCompanyDoc] = useState(null);
-  const [insuranceCert, setInsuranceCert] = useState(null);
-  const [healthPolicy, setHealthPolicy] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
+  // Navigate away once the API call succeeds, then wipe signup state
+  useEffect(() => {
+    if (submitted) {
+      reset();
+      navigation.navigate('Login');
+    }
+  }, [submitted]);
 
-  // In a real app, this would open the document picker
-  const handlePickFile = useCallback(setter => {
-    // TODO: integrate react-native-document-picker
-    setter({ name: 'document.pdf', uri: '' });
-  }, []);
-
-  const validate = useCallback(() => {
-    const e = {};
-    if (!companyDoc) e.companyDoc = 'Company document is required';
-    if (!insuranceCert) e.insuranceCert = 'Insurance certificate is required';
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  }, [companyDoc, insuranceCert]);
+  // In a real app this would open the document picker
+  const handlePickFile = useCallback((field) => {
+    // TODO: integrate @react-native-documents/picker
+    updateField(field, { name: 'document.pdf', uri: '', type: 'application/pdf' });
+  }, [updateField]);
 
   const handleContinue = useCallback(() => {
-    if (!validate()) return;
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      // TODO: navigate to dashboard / success screen
-      navigation.navigate('Login');
-    }, 800);
-  }, [validate, navigation]);
+    if (!validateStep(4)) return;
+    submit();
+  }, [validateStep, submit]);
+
+  console.log('formData', formData);
+  console.log('errors', errors);
+  console.log('loading', loading);
+  console.log('submitted', submitted);
 
   return (
     <RegisterContainer
@@ -53,33 +52,32 @@ const VerificationScreen = ({ navigation }) => {
       <UploadField
         label="Company Document *"
         hint="PDF, JPG or PNG (max. 5MB)"
-        file={companyDoc}
-        onPress={() => handlePickFile(setCompanyDoc)}
-        style={errors.companyDoc ? { borderColor: colors.error } : undefined}
+        file={formData.companyDocuments}
+        onPress={() => { handlePickFile('companyDocuments'); clearError('companyDocuments'); }}
+        style={errors.companyDocuments ? { borderColor: colors.error } : undefined}
       />
-      {errors.companyDoc ? (
-        <Text style={[styles.fieldError, { color: colors.error }]}>{errors.companyDoc}</Text>
+      {errors.companyDocuments ? (
+        <Text style={[styles.fieldError, { color: colors.error }]}>{errors.companyDocuments}</Text>
       ) : null}
 
       <UploadField
         label="Insurance Certificate *"
         hint="PDF, JPG or PNG (max. 5MB)"
-        file={insuranceCert}
-        onPress={() => handlePickFile(setInsuranceCert)}
-        style={errors.insuranceCert ? { borderColor: colors.error } : undefined}
+        file={formData.insuranceCertificate}
+        onPress={() => { handlePickFile('insuranceCertificate'); clearError('insuranceCertificate'); }}
+        style={errors.insuranceCertificate ? { borderColor: colors.error } : undefined}
       />
-      {errors.insuranceCert ? (
-        <Text style={[styles.fieldError, { color: colors.error }]}>{errors.insuranceCert}</Text>
+      {errors.insuranceCertificate ? (
+        <Text style={[styles.fieldError, { color: colors.error }]}>{errors.insuranceCertificate}</Text>
       ) : null}
 
       <UploadField
         label="Health & Safety Policy"
         hint="PDF, JPG or PNG (max. 5MB)"
-        file={healthPolicy}
-        onPress={() => handlePickFile(setHealthPolicy)}
+        file={formData.healthAndSafetyPolicy}
+        onPress={() => handlePickFile('healthAndSafetyPolicy')}
       />
 
-      {/* Bottom action row */}
       <View style={styles.actionRow}>
         <Button
           title="Cancel"
@@ -105,13 +103,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     fontFamily: FontFamily.regular,
   },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  cancelBtn: { flex: 1 },
-  continueBtn: { flex: 2 },
+  actionRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  cancelBtn:  { flex: 1 },
+  continueBtn:{ flex: 2 },
 });
 
 export default VerificationScreen;

@@ -4,71 +4,75 @@
  * "Find Subcontractors" screen for Company role.
  * Shows a searchable, filterable list of subcontractors.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, StyleSheet, TouchableOpacity, FlatList,
+  View, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator,
 } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { Briefcase, DollarSign, MapPin, Search, ArrowDownUp } from 'lucide-react-native';
-import { Text, TextInput, Checkbox } from '~components/Common';
+import { Briefcase, DollarSign, MapPin, ArrowDownUp } from 'lucide-react-native';
+import { Text, TextInput, Checkbox, PriceSlider } from '~components/Common';
 import Header from '~components/Header';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
 import SubcontractorCard from '~components/Subcontractors/SubcontractorCard';
+import useCompanySubcontractors from '~hooks/useCompanySubcontractors';
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-const MOCK_SUBS = [
-  {
-    id: '1', name: 'Michael Chen', trade: 'Electrician', rating: 4.9, reviews: 154, distance: '2.5 mi',
-    about: 'Highly skilled Electrician with over 8 years of experience in both residential and commercial projects. Specialising in energy-efficient installations and rapid troubleshooting. Committed to delivering high-quality...',
-    hourlyRate: '£12/hr', avatarUri: 'https://i.pravatar.cc/150?u=michael',
-  },
-  {
-    id: '2', name: 'Sarah Miller', trade: 'Plumber', rating: 4.3, reviews: 140, distance: '2.5 mi',
-    about: 'Highly skilled Electrician with over 8 years of experience in both residential and commercial projects. Specialising in energy-efficient installations and rapid troubleshooting. Committed to delivering high-quality...',
-    hourlyRate: '£12/hr', avatarUri: 'https://i.pravatar.cc/150?u=sarah',
-  },
-  {
-    id: '3', name: 'David Willson', trade: 'Carpenter', rating: 4.9, reviews: 124, distance: '2.5 mi',
-    about: 'Highly skilled Electrician with over 8 years of experience in both residential and commercial projects. Specialising in energy-efficient installations and rapid troubleshooting. Committed to delivering high-quality...',
-    hourlyRate: '£12/hr', avatarUri: 'https://i.pravatar.cc/150?u=david',
-  },
-  {
-    id: '4', name: 'James Rodriguez', trade: 'HVAC Tech', rating: 4.9, reviews: 98, distance: '1.5 mi',
-    about: 'Highly skilled Electrician with over 8 years of experience in both residential and commercial projects. Specialising in energy-efficient installations and rapid troubleshooting. Committed to delivering high-quality...',
-    hourlyRate: '£12/hr', avatarUri: 'https://i.pravatar.cc/150?u=james',
-  },
-];
-
-const TRADES = ['Electrician', 'Plumber', 'Carpenter', 'HVAC Tech', 'Painter', 'Masonry'];
+const TRADES = [{id: 1, name: 'Electrician', key: 'electrician'}, {id: 2, name: 'Plumber', key: 'plumber'}, {id: 3, name: 'Carpenter', key: 'carpenter'}, {id: 4, name: 'Masonry', key: 'masonry'}];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 const SubcontractorListScreen = ({ navigation }) => {
   const { colors } = useTheme();
-  const [selectedTrades, setSelectedTrades] = useState(['Electrician', 'Plumber']);
+  const { subcontractors, loading, fetch } = useCompanySubcontractors();
+
+  console.log('subcontractors', subcontractors);
+
+  const [selectedTrades, setSelectedTrades] = useState([]);
   const [maxRate, setMaxRate] = useState(600);
-  const [location, setLocation] = useState('');
+  const [locationInput, setLocationInput] = useState('');
   const [search, setSearch] = useState('');
+  const locationTimer = useRef(null);
+
+  useEffect(() => {
+    fetch({
+      maxHourlyRate: maxRate,
+      primaryTrade: selectedTrades.map(t => t.key).join(',') || undefined,
+    });
+  }, [selectedTrades, maxRate]);
+
+  const handleLocationChange = (text) => {
+    setLocationInput(text);
+    if (locationTimer.current) clearTimeout(locationTimer.current);
+    locationTimer.current = setTimeout(() => {
+      fetch({
+        maxHourlyRate: maxRate,
+        location: text || undefined,
+        primaryTrade: selectedTrades.map(t => t.key).join(',') || undefined,
+      });
+    }, 2000);
+  };
 
   const toggleTrade = (trade) => {
     setSelectedTrades(prev =>
-      prev.includes(trade) ? prev.filter(t => t !== trade) : [...prev, trade]
+      prev.includes(trade) ? prev.filter(t => t.key !== trade.key) : [...prev, trade]
     );
   };
 
-  const filtered = MOCK_SUBS.filter(s =>
-    s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.trade.toLowerCase().includes(search.toLowerCase())
+  const filtered = subcontractors.filter(s =>
+    !search ||
+    (s.name ?? '').toLowerCase().includes(search.toLowerCase()) ||
+    (s.trade ?? s.primaryTrade ?? '').toLowerCase().includes(search.toLowerCase())
   );
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       {/* Top row: Recommended and Sort By */}
-      <View style={styles.topRow}>
+      <View style={[styles.filterSection, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
         <Text style={styles.sectionHeading}>Recommended Subcontractors</Text>
         <TouchableOpacity style={styles.sortBtn} activeOpacity={0.7}>
           <Text style={styles.sortText}>Sort By:</Text>
-          <ArrowDownUp size={RFValue(12)} color="#94A3B8" />
+          <View style={styles.arrowContainer}>
+            <ArrowDownUp size={RFValue(11)} color="#94A3B8" />
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -81,9 +85,9 @@ const SubcontractorListScreen = ({ navigation }) => {
         <View style={styles.tradesContainer}>
           {TRADES.map(trade => (
             <Checkbox
-              key={trade}
-              label={trade}
-              checked={selectedTrades.includes(trade)}
+              key={trade.id}
+              label={trade.name}
+              checked={selectedTrades.some(t => t.id === trade.id)}
               onPress={() => toggleTrade(trade)}
               style={styles.tradeCheckbox}
             />
@@ -91,37 +95,34 @@ const SubcontractorListScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Max Hourly Rate Filter */}
+      {/* Max Hourly Rate + Location Filter */}
       <View style={styles.filterSection}>
-        <View style={styles.filterTitleRow}>
-          <DollarSign size={RFValue(14)} color="#F2A154" />
-          <Text style={styles.filterTitle}>Max Hourly Rate</Text>
-          <Text style={[styles.filterTitle, { marginLeft: 'auto' }]}>£{maxRate}</Text>
-        </View>
-        <View style={styles.rateRow}>
-          <Text style={styles.rateSmall}>£200</Text>
-          <Text style={styles.rateSmall}>£1000+</Text>
-        </View>
-        <View style={styles.sliderTrack}>
-          <View style={[styles.sliderFill, { width: `${(maxRate / 1000) * 100}%` }]} />
-          <View style={styles.sliderThumb} />
-        </View>
-      </View>
-
-      {/* Location Filter */}
-      <View style={styles.filterSection}>
+        <PriceSlider
+          icon={DollarSign}
+          title="Max Hourly Rate"
+          min={10}
+          max={100}
+          step={10}
+          value={maxRate}
+          onChange={setMaxRate}
+          prefix="£"
+          minLabel="£10"
+          maxLabel="£100+"
+        />
+        <View style={styles.divider} />
         <View style={styles.filterTitleRow}>
           <MapPin size={RFValue(14)} color="#F2A154" />
           <Text style={styles.filterTitle}>Location</Text>
         </View>
         <TextInput
-          value={location}
-          onChangeText={setLocation}
+          value={locationInput}
+          onChangeText={handleLocationChange}
           placeholder="Enter Location"
           forceLight
           containerStyle={styles.inputContainer}
         />
       </View>
+
 
       {/* Search Filter */}
       <View style={styles.filterSection}>
@@ -140,15 +141,21 @@ const SubcontractorListScreen = ({ navigation }) => {
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <Header title="Find Subcontractors" subtitle="Discover and book top rated professionals for your project." />
+      {loading && (
+        <View style={styles.loader}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
 
       <FlatList
         data={filtered}
-        keyExtractor={item => item.id}
+        keyExtractor={item => item._id}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={renderHeader}
         renderItem={({ item }) => (
           <SubcontractorCard
+          key={item._id}
             {...item}
             onViewProfile={() => navigation.navigate('SubcontractorProfile', { sub: item })}
           />
@@ -173,6 +180,10 @@ const SubcontractorListScreen = ({ navigation }) => {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  loader: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center', justifyContent: 'center', zIndex: 10,
+  },
   list: {
     paddingHorizontal: 16,
     paddingBottom: 130,
@@ -181,15 +192,16 @@ const styles = StyleSheet.create({
   headerContainer: {
     marginBottom: 16,
   },
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
+  arrowContainer: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 5,
+    padding: 4,
   },
   sectionHeading: {
     fontFamily: FontFamily.bold,
-    fontSize: RFValue(12),
+    fontSize: RFValue(10),
     color: '#10375C',
   },
   sortBtn: {
@@ -199,11 +211,21 @@ const styles = StyleSheet.create({
   },
   sortText: {
     fontFamily: FontFamily.medium,
-    fontSize: RFValue(10),
+    fontSize: RFValue(9),
     color: '#94A3B8',
   },
   filterSection: {
     marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    padding: 15,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
   filterTitleRow: {
     flexDirection: 'row',
@@ -216,43 +238,18 @@ const styles = StyleSheet.create({
     fontSize: RFValue(11),
     color: '#10375C',
   },
+  divider: {
+    width: '100%',
+    height: 1.5,
+    backgroundColor: '#F1F5F9',
+    marginTop: 25,
+    marginBottom: 15,
+  },
   tradesContainer: {
     // paddingLeft: 22, // Align with the text, not the icon
   },
   tradeCheckbox: {
     marginBottom: 10,
-  },
-  rateRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  rateSmall: {
-    fontFamily: FontFamily.regular,
-    fontSize: RFValue(9),
-    color: '#94A3B8',
-  },
-  sliderTrack: {
-    height: 4,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  sliderFill: {
-    height: 4,
-    backgroundColor: '#10375C',
-    borderRadius: 2,
-  },
-  sliderThumb: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#10375C',
-    position: 'absolute',
-    left: '60%', // Matches maxRate = 600 / 1000
-    top: -6,
   },
   inputContainer: {
     marginBottom: 0, // Input component has bottom margin by default, override it

@@ -1,310 +1,350 @@
-/**
- * SubJobBoardScreen — Job Board for the Subcontractor role.
- * Displays a searchable, filterable list of available jobs.
- */
-import React, { useState, useMemo } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator,
+} from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { Search, SlidersHorizontal } from 'lucide-react-native';
+import { Briefcase, DollarSign, MapPin, Calendar, ArrowDownUp } from 'lucide-react-native';
 import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
-import { ScrollView, Text } from '~components/Common';
+import { Text, TextInput, Checkbox, PriceSlider } from '~components/Common';
 import Header from '~components/Header';
 import SubJobCard from '~components/Job/SubJobCard';
-import SubJobFilterModal from '~components/Job/SubJobFilterModal';
+import useSubcontractorJobs from '~hooks/useSubcontractorJobs';
 
-const MOCK_JOBS = [
-  {
-    id: '1',
-    companyName: 'Voltpark Ltd',
-    companyInitial: 'V',
-    companyColorIndex: 0,
-    location: '81 Guild Street, London, UK',
-    distance: 'Downtown (2.5 mi away)',
-    rate: '£20/hour',
-    title: 'Senior Electrician',
-    description:
-      'We are looking for a skilled and reliable Electrician to handle electrical installations, repairs, and maintenance work for our ongoing project. The ideal candidate should have strong technical knowledge, attention to detail, and the ability to deliver high-quality work within deadlines.',
-    startDate: 'Starts Now 1',
-    workersRequired: 2,
-    trade: 'Electrician',
-    applicantCount: 11,
-  },
-  {
-    id: '2',
-    companyName: 'Acme Construction',
-    companyInitial: 'A',
-    companyColorIndex: 1,
-    location: '81 Guild Street, London, UK',
-    distance: 'Downtown (3.1 mi away)',
-    rate: '£30/hour',
-    title: 'Senior Constructor',
-    description:
-      'We are looking for a skilled and reliable Electrician to handle electrical installations, repairs, and maintenance work for our ongoing project. The ideal candidate should have strong technical knowledge, attention to detail, and the ability to deliver high-quality work.',
-    startDate: 'Starts Nov 1',
-    workersRequired: 3,
-    trade: 'Electrician',
-    applicantCount: 11,
-  },
-  {
-    id: '3',
-    companyName: 'ElectroHub',
-    companyInitial: 'E',
-    companyColorIndex: 2,
-    location: '81 Guild Street, London, UK',
-    distance: 'Downtown (1.8 mi away)',
-    rate: '£25/hour',
-    title: 'Senior Constructor',
-    description:
-      'We are looking for a skilled and reliable Electrician to handle electrical installations, repairs, and maintenance work for our ongoing project. The ideal candidate should have strong technical knowledge, attention to detail, and the ability to deliver high-quality work.',
-    startDate: 'Starts Nov 1',
-    workersRequired: 3,
-    trade: 'Electrician',
-    applicantCount: 11,
-  },
-  {
-    id: '4',
-    companyName: 'Worldpark Ltd',
-    companyInitial: 'W',
-    companyColorIndex: 3,
-    location: '81 Guild Street, London, UK',
-    distance: 'Downtown (3.5 mi away)',
-    rate: '£20/hour',
-    title: 'Senior Electrician',
-    description:
-      'We are looking for a skilled and reliable Electrician to handle electrical installations, repairs, and maintenance work for our ongoing project. The ideal candidate should have strong technical knowledge, attention to detail, and the ability to deliver high-quality work within deadlines.',
-    startDate: 'Starts Nov 1',
-    workersRequired: 2,
-    trade: 'Electrician',
-    applicantCount: 11,
-  },
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const TRADES = [
+  { id: 1, name: 'Electrician',  key: 'electrician' },
+  { id: 2, name: 'Plumber',      key: 'plumber' },
+  { id: 3, name: 'Carpenter',    key: 'carpenter' },
+  { id: 4, name: 'Masonry',      key: 'masonry' },
 ];
+
+// ── Data mapper ───────────────────────────────────────────────────────────────
+
+const AVATAR_COLORS = ['#10375C', '#F2A154', '#3BB273', '#6366F1', '#EC4899'];
+
+const mapJob = (raw, index) => ({
+  id:               raw._id     ?? raw.id ?? String(index),
+  companyName:      raw.companyName  ?? raw.company?.name ?? '—',
+  companyInitial:   (raw.companyName ?? raw.company?.name ?? '?').charAt(0).toUpperCase(),
+  companyColorIndex: index % AVATAR_COLORS.length,
+  location:         raw.location     ?? raw.address    ?? '—',
+  distance:         raw.distance     ?? '',
+  rate:             raw.hourlyRate   != null ? `£${raw.hourlyRate}/hr` : (raw.rate ?? '—'),
+  title:            raw.title        ?? raw.jobTitle   ?? '—',
+  description:      raw.description  ?? raw.details    ?? '',
+  startDate:        raw.startDate    ?? raw.start       ?? '—',
+  workersRequired:  raw.workersRequired ?? raw.workers  ?? 1,
+  trade:            raw.trade        ?? raw.primaryTrade ?? '—',
+  applicantCount:   raw.applicantCount ?? raw.applicants ?? 0,
+});
+
+// ── Screen ────────────────────────────────────────────────────────────────────
 
 const SubJobBoardScreen = ({ navigation }) => {
   const { colors } = useTheme();
-  const [search, setSearch] = useState('');
-  const [filterVisible, setFilterVisible] = useState(false);
-  const [activeFilters, setActiveFilters] = useState(null);
+  const {
+    availableJobs,
+    availableLoading: loading,
+    availablePage:       page,
+    availableTotalPages: totalPages,
+    availableTotalCount: totalCount,
+    getAvailableJobs,
+  } = useSubcontractorJobs();
 
-  const filteredJobs = useMemo(() => {
-    let jobs = MOCK_JOBS;
+  const [selectedTrades, setSelectedTrades] = useState([]);
+  const [maxRate,         setMaxRate]        = useState(100);
+  const [locationInput,  setLocationInput]   = useState('');
+  const [startDate,      setStartDate]       = useState('');
+  const [currentPage,    setCurrentPage]     = useState(1);
 
-    if (search.trim()) {
-      jobs = jobs.filter(
-        j =>
-          j.title.toLowerCase().includes(search.toLowerCase()) ||
-          j.companyName.toLowerCase().includes(search.toLowerCase()) ||
-          j.trade.toLowerCase().includes(search.toLowerCase()),
-      );
-    }
+  const locationTimer = useRef(null);
 
-    if (activeFilters?.trades?.length) {
-      jobs = jobs.filter(j => activeFilters.trades.includes(j.trade));
-    }
+  // ── Fetch helper ─────────────────────────────────────────────────────────────
 
-    return jobs;
-  }, [search, activeFilters]);
+  const fetchJobs = useCallback((pg = 1) => {
+    getAvailableJobs({
+      page:       pg,
+      trade:      selectedTrades.map((t) => t.key).join(',') || undefined,
+      maxHourlyRate: maxRate,
+      location:   locationInput || undefined,
+      startDate:  startDate     || undefined,
+    });
+  }, [selectedTrades, maxRate, locationInput, startDate, getAvailableJobs]);
 
-  return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <Header
-        title="Job Board"
-        subtitle="Browse verified jobs and apply instantly."
-      />
+  // Re-fetch whenever filters change (reset to page 1)
+  useEffect(() => {
+    setCurrentPage(1);
+    fetchJobs(1);
+  }, [selectedTrades, maxRate, startDate]);
 
-      {/* Search bar */}
-      <View style={[styles.searchCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <View style={[styles.searchBox, { borderColor: '#E4E4E4' }]}>
-          <Search size={RFValue(13)} color="#94A3B8" />
-          <TextInput
-            style={[styles.searchInput, { color: colors.textPrimary }]}
-            placeholder="Search jobs & keywords..."
-            placeholderTextColor="#94A3B8"
-            value={search}
-            onChangeText={setSearch}
+  // Location uses a 2-second debounce to avoid hammering the API on each keystroke
+  const handleLocationChange = (text) => {
+    setLocationInput(text);
+    if (locationTimer.current) clearTimeout(locationTimer.current);
+    locationTimer.current = setTimeout(() => {
+      setCurrentPage(1);
+      getAvailableJobs({
+        page: 1,
+        trade: selectedTrades.map((t) => t.key).join(',') || undefined,
+        maxHourlyRate: maxRate,
+        location: text || undefined,
+        startDate: startDate || undefined,
+      });
+    }, 2000);
+  };
+
+  const toggleTrade = (trade) => {
+    setSelectedTrades((prev) =>
+      prev.some((t) => t.id === trade.id)
+        ? prev.filter((t) => t.id !== trade.id)
+        : [...prev, trade],
+    );
+  };
+
+  const goToPage = (pg) => {
+    if (pg < 1 || pg > totalPages) return;
+    setCurrentPage(pg);
+    fetchJobs(pg);
+  };
+
+  // ── Derived data ──────────────────────────────────────────────────────────────
+
+  const jobs = (availableJobs ?? []).map(mapJob);
+
+  // ── List header (inline filters) ─────────────────────────────────────────────
+
+  const renderHeader = () => (
+    <View style={styles.headerContainer}>
+      <View style={[styles.filterSection, styles.titleRow]}>
+        <Text style={styles.sectionHeading}>Available Jobs</Text>
+        <TouchableOpacity style={styles.sortBtn} activeOpacity={0.7}>
+          <Text style={styles.sortText}>Sort By:</Text>
+          <View style={styles.arrowContainer}>
+            <ArrowDownUp size={RFValue(11)} color="#94A3B8" />
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* Trade Type */}
+      <View style={styles.filterSection}>
+        <View style={styles.filterTitleRow}>
+          <Briefcase size={RFValue(14)} color="#F2A154" />
+          <Text style={styles.filterTitle}>Trade Type</Text>
+        </View>
+        {TRADES.map((trade) => (
+          <Checkbox
+            key={trade.id}
+            label={trade.name}
+            checked={selectedTrades.some((t) => t.id === trade.id)}
+            onPress={() => toggleTrade(trade)}
+            style={styles.tradeCheckbox}
           />
+        ))}
+      </View>
+
+      {/* Max Hourly Rate + Location */}
+      <View style={styles.filterSection}>
+        <PriceSlider
+          icon={DollarSign}
+          title="Max Hourly Rate"
+          min={10}
+          max={100}
+          step={10}
+          value={maxRate}
+          onChange={setMaxRate}
+          prefix="£"
+          minLabel="£10"
+          maxLabel="£100+"
+        />
+        <View style={styles.divider} />
+        <View style={styles.filterTitleRow}>
+          <MapPin size={RFValue(14)} color="#F2A154" />
+          <Text style={styles.filterTitle}>Location</Text>
+        </View>
+        <TextInput
+          value={locationInput}
+          onChangeText={handleLocationChange}
+          placeholder="Enter location"
+          forceLight
+          containerStyle={styles.inputContainer}
+        />
+      </View>
+
+      {/* Start Date */}
+      <View style={styles.filterSection}>
+        <View style={styles.filterTitleRow}>
+          <Calendar size={RFValue(14)} color="#F2A154" />
+          <Text style={styles.filterTitle}>Start Date</Text>
+        </View>
+        <TextInput
+          value={startDate}
+          onChangeText={setStartDate}
+          placeholder="e.g. 2025-06-01"
+          forceLight
+          containerStyle={styles.inputContainer}
+        />
+      </View>
+    </View>
+  );
+
+  // ── Pagination footer ─────────────────────────────────────────────────────────
+
+  const renderFooter = () => {
+    const pageCount = totalPages > 0 ? totalPages : 1;
+    const shown     = jobs.length;
+    const from      = shown === 0 ? 0 : (currentPage - 1) * shown + 1;
+    const to        = (currentPage - 1) * shown + shown;
+
+    const pages = Array.from({ length: pageCount }, (_, i) => i + 1).filter(
+      (p) => p === 1 || p === pageCount || Math.abs(p - currentPage) <= 1,
+    );
+
+    return (
+      <View style={styles.paginationRow}>
+        <Text style={styles.paginationText}>
+          {totalCount > 0 ? `Showing ${from}–${to} of ${totalCount}` : 'No results'}
+        </Text>
+        <View style={styles.pageButtons}>
           <TouchableOpacity
-            style={[styles.filterBtn, activeFilters ? styles.filterBtnActive : {}]}
-            onPress={() => setFilterVisible(true)}
-            activeOpacity={0.8}
+            style={[styles.pageBtn, currentPage === 1 && styles.pageBtnDisabled]}
+            onPress={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 1}
           >
-            <SlidersHorizontal
-              size={RFValue(13)}
-              color={activeFilters ? '#FFFFFF' : '#64748B'}
-              strokeWidth={2}
-            />
+            <Text style={styles.pageText}>«</Text>
+          </TouchableOpacity>
+
+          {pages.map((p, i) => (
+            <TouchableOpacity
+              key={`${p}-${i}`}
+              style={[styles.pageBtn, p === currentPage && styles.pageBtnActive]}
+              onPress={() => goToPage(p)}
+            >
+              <Text style={[styles.pageText, p === currentPage && { color: '#FFFFFF' }]}>{p}</Text>
+            </TouchableOpacity>
+          ))}
+
+          <TouchableOpacity
+            style={[styles.pageBtn, currentPage === pageCount && styles.pageBtnDisabled]}
+            onPress={() => goToPage(currentPage + 1)}
+            disabled={currentPage === pageCount}
+          >
+            <Text style={styles.pageText}>»</Text>
           </TouchableOpacity>
         </View>
       </View>
+    );
+  };
 
-      {/* Recommended Jobs header */}
-      <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Recommended Jobs</Text>
-        <View style={styles.sortRow}>
-          <Text style={[styles.sortLabel, { color: colors.textSecondary }]}>Sort By: </Text>
-          <Text style={[styles.sortValue, { color: colors.textPrimary }]}>%</Text>
+  // ── Render ────────────────────────────────────────────────────────────────────
+
+  return (
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <Header title="Job Board" subtitle="Browse verified jobs and apply instantly." />
+
+      {loading && (
+        <View style={styles.loader}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      </View>
+      )}
 
-      {/* Jobs list */}
-      <ScrollView
+      <FlatList
+        data={jobs}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-      >
-        {filteredJobs.length > 0 ? (
-          filteredJobs.map(job => (
-            <SubJobCard
-              key={job.id}
-              {...job}
-              onPress={() => navigation.navigate('SubJobDetail', { job })}
-              onApply={() => navigation.navigate('SubJobDetail', { job, openApply: true })}
-            />
-          ))
-        ) : (
-          <View style={styles.emptyWrap}>
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              No jobs match your search.
-            </Text>
-          </View>
+        ListHeaderComponent={renderHeader}
+        ListFooterComponent={renderFooter}
+        renderItem={({ item }) => (
+          <SubJobCard
+            {...item}
+            onPress={() => navigation.navigate('SubJobDetail', { job: item })}
+            onApply={() => navigation.navigate('SubJobDetail', { job: item, openApply: true })}
+          />
         )}
-
-        <View style={styles.paginationRow}>
-          <Text style={[styles.paginationText, { color: colors.textSecondary }]}>
-            Showing 1–{filteredJobs.length} of {MOCK_JOBS.length}
-          </Text>
-          <View style={styles.pageButtons}>
-            <TouchableOpacity style={[styles.pageBtn, { borderColor: '#E2E8F0' }]}>
-              <Text style={[styles.pageText, { color: colors.textPrimary }]}>«</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.pageBtn, styles.pageBtnActive]}>
-              <Text style={[styles.pageText, { color: '#FFFFFF' }]}>1</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.pageBtn, { borderColor: '#E2E8F0' }]}>
-              <Text style={[styles.pageText, { color: colors.textPrimary }]}>2</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.pageBtn, { borderColor: '#E2E8F0' }]}>
-              <Text style={[styles.pageText, { color: colors.textPrimary }]}>»</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
-
-      <SubJobFilterModal
-        visible={filterVisible}
-        onClose={() => setFilterVisible(false)}
-        onApply={filters => setActiveFilters(filters)}
+        ListEmptyComponent={
+          !loading && (
+            <View style={styles.emptyWrap}>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                No jobs match your filters.
+              </Text>
+            </View>
+          )
+        }
       />
     </View>
   );
 };
 
+// ── Styles ────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  searchCard: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 14,
+  loader: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center', justifyContent: 'center', zIndex: 10,
   },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderRadius: 30,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
+  list: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 130,
   },
-  searchInput: {
-    flex: 1,
-    fontFamily: FontFamily.regular,
-    fontSize: RFValue(11),
-    padding: 0,
-  },
-  filterBtn: {
-    width: RFValue(28),
-    height: RFValue(28),
-    borderRadius: RFValue(7),
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F1F5F9',
-  },
-  filterBtnActive: {
-    backgroundColor: '#10375C',
-  },
-  sectionHeader: {
+  headerContainer: { marginBottom: 16 },
+  titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 10,
-    marginTop: 4,
   },
-  sectionTitle: {
+  sectionHeading: {
     fontFamily: FontFamily.bold,
-    fontSize: RFValue(13),
-  },
-  sortRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sortLabel: {
-    fontFamily: FontFamily.regular,
     fontSize: RFValue(10),
+    color: '#10375C',
   },
-  sortValue: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: RFValue(10),
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 120,
-  },
-  emptyWrap: {
-    alignItems: 'center',
-    paddingTop: 40,
-  },
-  emptyText: {
-    fontFamily: FontFamily.regular,
-    fontSize: RFValue(12),
-  },
-  paginationRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  paginationText: {
-    fontFamily: FontFamily.medium,
-    fontSize: RFValue(10),
-  },
-  pageButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  pageBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sortText: { fontFamily: FontFamily.medium, fontSize: RFValue(9), color: '#94A3B8' },
+  arrowContainer: {
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 5,
+    padding: 4,
   },
-  pageBtnActive: {
-    backgroundColor: '#10375C',
-    borderColor: '#10375C',
+  filterSection: {
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    padding: 15,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  pageText: {
-    fontFamily: FontFamily.medium,
-    fontSize: RFValue(10),
+  filterTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  filterTitle: { fontFamily: FontFamily.bold, fontSize: RFValue(11), color: '#10375C' },
+  tradeCheckbox: { marginBottom: 10 },
+  divider: { width: '100%', height: 1.5, backgroundColor: '#F1F5F9', marginTop: 25, marginBottom: 15 },
+  inputContainer: { marginBottom: 0 },
+  emptyWrap: { alignItems: 'center', paddingTop: 40 },
+  emptyText: { fontFamily: FontFamily.regular, fontSize: RFValue(12) },
+  paginationRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginTop: 8, paddingVertical: 12,
+    borderTopWidth: 1, borderTopColor: '#F1F5F9',
   },
+  paginationText: { fontFamily: FontFamily.medium, fontSize: RFValue(10), color: '#64748B' },
+  pageButtons: { flexDirection: 'row', gap: 4 },
+  pageBtn: {
+    width: 24, height: 24, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#E2E8F0',
+  },
+  pageBtnActive:   { backgroundColor: '#10375C', borderColor: '#10375C' },
+  pageBtnDisabled: { opacity: 0.4 },
+  pageText: { fontFamily: FontFamily.medium, fontSize: RFValue(10), color: '#10375C' },
 });
 
 export default SubJobBoardScreen;

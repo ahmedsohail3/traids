@@ -15,6 +15,8 @@ import { FileText, ShieldCheck, PieChart, BarChart2, CreditCard, Settings, LogOu
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useSelector } from 'react-redux';
+import useAuth from '~hooks/useAuth';
+import useProfile from '~hooks/useProfile';
 
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.75;
@@ -39,8 +41,18 @@ const MenuDrawerOverlay = ({ visible, onClose }) => {
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   
-  const userType = useSelector(state => state.auth?.user?.type ?? 'subcontractor');
+  const { logout } = useAuth();
+  const { profile } = useProfile();
+  console.log("profile", profile);
+  const userType = useSelector((s) => s.auth?.user?.type ?? 'subcontractor');
   const ACTIVE_MENU = userType === 'subcontractor' ? SUBCONTRACTOR_MENU_ITEMS : COMPANY_MENU_ITEMS;
+
+  const handleLogout = () => {
+    onClose();
+    // Wait for drawer close animation before clearing state so the
+    // transition to the Auth screen looks intentional, not abrupt.
+    setTimeout(logout, 280);
+  };
 
   // Local state to keep the Modal mounted during exit animations
   const [modalVisible, setModalVisible] = useState(visible);
@@ -110,12 +122,14 @@ const MenuDrawerOverlay = ({ visible, onClose }) => {
   // Don't render until modalVisible is true
   if (!modalVisible) return null;
 
+  const tabsRoot = userType === 'subcontractor' ? 'SubTabs' : 'CompanyTabs';
+
   const handleMenuPress = (route) => {
     onClose();
     setTimeout(() => {
-      navigation.navigate('App', {
+      navigation.navigate(tabsRoot, {
         screen: 'More',
-        params: { screen: route }
+        params: { screen: route },
       });
     }, 280); // Wait until close animation mostly finishes
   };
@@ -137,14 +151,19 @@ const MenuDrawerOverlay = ({ visible, onClose }) => {
             {/* Profile Info */}
             <View style={styles.profileRow}>
               <View style={styles.avatarWrap}>
-                <Image 
-                  source={{ uri: 'https://i.pravatar.cc/150?u=johndoe' }} 
-                  style={styles.avatarImg} 
-                />
+                {profile?.profileImage ? (
+                  <Image source={{ uri: profile.profileImage }} style={styles.avatarImg} />
+                ) : (
+                  <View style={[styles.avatarImg, styles.avatarFallback]}>
+                    <Text style={styles.avatarInitial}>
+                      {profile?.primaryContactName?.[0]?.toUpperCase() ?? '?'}
+                    </Text>
+                  </View>
+                )}
               </View>
               <View style={styles.profileTextWrap}>
-                <Text style={styles.profileName}>John Doe</Text>
-                <Text style={styles.profileEmail}>johndoe@gmail.com</Text>
+                <Text style={styles.profileName}>{profile?.primaryContactName || profile?.fullName || '—'}</Text>
+                <Text style={styles.profileEmail}>{profile?.workEmail || profile?.email || '—'}</Text>
               </View>
             </View>
 
@@ -152,6 +171,7 @@ const MenuDrawerOverlay = ({ visible, onClose }) => {
 
             {/* Menu Items */}
             {ACTIVE_MENU.map((item, idx) => {
+              console.log('item', item);
               const IconComp = item.icon;
               return (
                 <TouchableOpacity 
@@ -169,7 +189,7 @@ const MenuDrawerOverlay = ({ visible, onClose }) => {
 
           {/* Bottom Section */}
           <View style={styles.bottomSection}>
-            <TouchableOpacity style={styles.menuItem} onPress={onClose} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.menuItem} onPress={handleLogout} activeOpacity={0.7}>
               <LogOut size={RFValue(18)} color="#EF4444" strokeWidth={2} />
               <Text style={[styles.menuItemText, { color: '#EF4444' }]}>Logout</Text>
             </TouchableOpacity>
@@ -223,6 +243,16 @@ const styles = StyleSheet.create({
   avatarImg: {
     width: '100%',
     height: '100%',
+  },
+  avatarFallback: {
+    backgroundColor: '#10375C',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: {
+    color: '#FFFFFF',
+    fontFamily: FontFamily.bold,
+    fontSize: RFValue(16),
   },
   profileTextWrap: {
     flex: 1,

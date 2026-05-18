@@ -5,8 +5,7 @@ import { Text, Button, TextInput } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
 import { Images } from '~assets';
-import { useDispatch } from 'react-redux';
-import { setCredentials } from '~redux/reducers/authSlice';
+import useAuth from '~hooks/useAuth';
 import AuthContainer from './AuthContainer';
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
@@ -21,33 +20,26 @@ const Logo = () => (
 // ─── Screen ───────────────────────────────────────────────────────────────────
 const LoginScreen = ({ route, navigation }) => {
   const { colors } = useTheme();
-  const dispatch = useDispatch();
+  const { login, loading, error, clearError } = useAuth();
   const accountType = route?.params?.accountType || 'company';
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const validate = useCallback(() => {
-    const newErrors = {};
-    if (!email.trim()) newErrors.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Invalid email address';
-    if (!password) newErrors.password = 'Password is required';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const next = {};
+    if (!email.trim()) next.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(email)) next.email = 'Invalid email address';
+    if (!password) next.password = 'Password is required';
+    setFieldErrors(next);
+    return Object.keys(next).length === 0;
   }, [email, password]);
 
-  const handleLogin = useCallback(async () => {
+  const handleLogin = useCallback(() => {
     if (!validate()) return;
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
-      // Log the user in, setting their role
-      dispatch(setCredentials({ type: accountType }));
-    }, 1500);
-  }, [validate, dispatch, accountType]);
+    login(email, password, accountType);
+  }, [validate, login, email, password, accountType]);
 
   return (
     <AuthContainer>
@@ -67,32 +59,38 @@ const LoginScreen = ({ route, navigation }) => {
         <TextInput
           label="Email*"
           value={email}
-          onChangeText={v => { setEmail(v); setErrors(p => ({ ...p, email: '' })); }}
+          onChangeText={v => { setEmail(v); setFieldErrors(p => ({ ...p, email: '' })); clearError(); }}
           placeholder="Enter your email"
           keyboardType="email-address"
           autoCapitalize="none"
-          error={errors.email}
+          error={fieldErrors.email}
         />
         <TextInput
           label="Password*"
           value={password}
-          onChangeText={v => { setPassword(v); setErrors(p => ({ ...p, password: '' })); }}
-          placeholder="Enter your email" /* Placeholder from screenshot matching */
+          onChangeText={v => { setPassword(v); setFieldErrors(p => ({ ...p, password: '' })); clearError(); }}
+          placeholder="Enter your password"
           secureTextEntry
-          error={errors.password}
+          error={fieldErrors.password}
         />
 
         {/* Remember + Forgot row */}
         <View style={styles.forgotRow}>
-          {/* Note: Screenshot has a checkbox "Remember me", stubbed as empty view for layout alignment */}
-          <View style={{ flexDirection: 'row', alignItems: 'center'}}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={styles.checkboxStub} />
-            <Text style={{fontSize: RFValue(10), color: colors.textSecondary }}>Remember me</Text>
+            <Text style={{ fontSize: RFValue(10), color: colors.textSecondary }}>Remember me</Text>
           </View>
-          <TouchableOpacity onPress={() => navigation.navigate('ResetPassword')}>
-            <Text style={{fontSize: RFValue(10), color: colors.secondary }}>Forgot Password?</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('ResetPassword', { userType: accountType })}>
+            <Text style={{ fontSize: RFValue(10), color: colors.secondary }}>Forgot Password?</Text>
           </TouchableOpacity>
         </View>
+
+        {/* API error */}
+        {!!error && (
+          <Text style={[styles.apiError, { color: colors.error ?? '#D0342C' }]}>
+            {error}
+          </Text>
+        )}
       </View>
 
       <Button title="Login" onPress={handleLogin} loading={loading} style={styles.btn} />
@@ -127,24 +125,13 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: RFValue(18),
   },
-  title: {
-    fontFamily: FontFamily.bold,
-    fontSize: RFValue(18),
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontFamily: FontFamily.regular,
-    fontSize: RFValue(12),
-    lineHeight: RFValue(18),
-    marginBottom: 24,
-  },
   form: { marginBottom: 4 },
   forgotRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: -4,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   checkboxStub: {
     width: 14,
@@ -154,9 +141,11 @@ const styles = StyleSheet.create({
     borderRadius: 1,
     marginRight: 6,
   },
-  forgotText: {
+  apiError: {
     fontSize: RFValue(11),
-    fontFamily: FontFamily.medium,
+    fontFamily: FontFamily.regular,
+    marginBottom: 12,
+    textAlign: 'center',
   },
   btn: { marginBottom: 24 },
   registerRow: {
@@ -164,14 +153,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 80,
-  },
-  registerText: {
-    fontSize: RFValue(12),
-    fontFamily: FontFamily.regular,
-  },
-  registerLink: {
-    fontSize: RFValue(12),
-    fontFamily: FontFamily.bold,
   },
 });
 
