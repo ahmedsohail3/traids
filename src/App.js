@@ -7,6 +7,7 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { ThemeProvider } from '~context/ThemeContext';
 import { store, persistor } from '~redux/store';
 import RootNavigator from '~routes/RootNavigator';
+import AlertProvider from './providers/AlertProvider';
 // DEV ONLY — remove before release
 import DevRoleSwitcher from '~components/DevRoleSwitcher';
 
@@ -15,13 +16,15 @@ const App = () => (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <ThemeProvider>
-          <SafeAreaProvider>
-            <NavigationContainer>
-              <RootNavigator />
-              {/* DEV ONLY — remove before release */}
-              <DevRoleSwitcher />
-            </NavigationContainer>
-          </SafeAreaProvider>
+          <AlertProvider>
+            <SafeAreaProvider>
+              <NavigationContainer>
+                <RootNavigator />
+                {/* DEV ONLY — remove before release */}
+                <DevRoleSwitcher />
+              </NavigationContainer>
+            </SafeAreaProvider>
+          </AlertProvider>
         </ThemeProvider>
       </PersistGate>
     </Provider>

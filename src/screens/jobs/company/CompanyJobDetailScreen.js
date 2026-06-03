@@ -38,46 +38,90 @@ const formatDate = (iso) => {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
-// Normalise both offer and application records into a single shape for ApplicantCard.
+// ── Normalise helpers ─────────────────────────────────────────────────────────
+
+const fromOffer = (o) => {
+  const sub = o.subcontractor ?? {};
+  return {
+    _id:       o._id,
+    name:      sub.fullName     ?? '—',
+    trade:     sub.primaryTrade ?? '—',
+    rate:      sub.hourlyRate   != null ? `£${sub.hourlyRate}/hr` : '—',
+    avatarUri: sub.profileImage ?? null,
+    isVerified: sub.isVerified  ?? false,
+    message:   sub?.professionalBio ?? '',
+    status:    o.status         ?? 'pending',
+  };
+};
+
+const fromApplication = (a) => {
+  const sub = a.subcontractor ?? {};
+  return {
+    _id:       a._id,
+    name:      sub.fullName     ?? a.fullName ?? '—',
+    trade:     sub.primaryTrade ?? '—',
+    rate:      sub.hourlyRate   != null
+      ? `£${sub.hourlyRate}/hr`
+      : a.proposedDailyRate != null
+        ? `£${a.proposedDailyRate}/day`
+        : '—',
+    avatarUri:  sub.profileImage ?? null,
+    isVerified: sub.isVerified   ?? false,
+    message:    a.message ?? sub?.professionalBio ?? '',
+    status:     a.status         ?? 'pending',
+  };
+};
+
+const fromAssignedTo = (s) => ({
+  _id:       s._id,
+  name:      s.fullName     ?? s.name     ?? '—',
+  trade:     s.primaryTrade ?? s.trade    ?? '—',
+  rate:      s.hourlyRate   != null ? `£${s.hourlyRate}/hr` : '—',
+  avatarUri: s.profileImage ?? s.avatarUri ?? null,
+  isVerified: s.isVerified  ?? false,
+  message: s?.professionalBio ?? '',
+  status:    'accepted',
+});
+
+// Selects the correct source list based on typeOfJob × status rules.
 const normaliseApplicants = (job) => {
-  // typeOfJob === 'offer'   → applicants live in job.offers[].subcontractor
-  // typeOfJob === 'request' → applicants live in job.applications[].subcontractor
+  const type   = job.typeOfJob ?? '';
+  const status = (job.status ?? '').toLowerCase();
+  const isActive = status === 'in_progress' || status === 'in progress' || status === 'completed';
+
   const offers       = Array.isArray(job.offers)       ? job.offers       : [];
   const applications = Array.isArray(job.applications) ? job.applications : [];
+  const assignedTo   = Array.isArray(job.assignedTo)   ? job.assignedTo   : [];
 
-  const fromOffers = offers.map((o) => {
-    const sub = o.subcontractor ?? {};
-    return {
-      _id:      o._id,
-      name:     sub.fullName     ?? '—',
-      trade:    sub.primaryTrade ?? '—',
-      rate:     sub.hourlyRate   != null ? `£${sub.hourlyRate}/hr` : '—',
-      avatarUri: sub.profileImage ?? null,
-      isVerified: sub.isVerified ?? false,
-      message:  o.message ?? '',
-      status:   o.status  ?? 'pending',
-    };
-  });
+  // request + pending   → applications + offers
+  if (type === 'request' && !isActive) {
+    return [
+      ...applications.map(fromApplication),
+      ...offers.map(fromOffer),
+    ];
+  }
 
-  const fromApplications = applications.map((a) => {
-    const sub = a.subcontractor ?? {};
-    return {
-      _id:      a._id,
-      name:     sub.fullName     ?? a.fullName ?? '—',
-      trade:    sub.primaryTrade ?? '—',
-      rate:     sub.hourlyRate   != null
-        ? `£${sub.hourlyRate}/hr`
-        : a.proposedDailyRate != null
-          ? `£${a.proposedDailyRate}/day`
-          : '—',
-      avatarUri:  sub.profileImage ?? null,
-      isVerified: sub.isVerified   ?? false,
-      message:  a.message ?? '',
-      status:   a.status  ?? 'pending',
-    };
-  });
+  // request + in_progress / completed → assignedTo
+  if (type === 'request' && isActive) {
+    return assignedTo.map(fromAssignedTo);
+  }
 
-  return [...fromOffers, ...fromApplications];
+  // offer + pending → offers
+  if (type === 'offer' && !isActive) {
+    return offers.map(fromOffer);
+  }
+
+  // offer + in_progress → assignedTo
+  if (type === 'offer' && isActive) {
+    return assignedTo.map(fromAssignedTo);
+  }
+
+  // Fallback: show whatever is available
+  return [
+    ...offers.map(fromOffer),
+    ...applications.map(fromApplication),
+    ...assignedTo.map(fromAssignedTo),
+  ];
 };
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -180,7 +224,7 @@ const CompanyJobDetailScreen = ({ route }) => {
               rate={a.rate}
               avatarUri={a.avatarUri}
               isVerified={a.isVerified}
-              message={a.message}
+              message={a.message || a.professionalBio || ''}
               status={a.status === 'accepted' ? 'accepted' : 'pending'}
               onCancel={() => {}}
               onAccept={() => {}}

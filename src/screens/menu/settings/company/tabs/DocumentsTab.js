@@ -1,63 +1,153 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Text, Button } from '~components/Common';
-import UploadField from '~components/Common/UploadField';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native';
+import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
+import DocumentPickerField from '~components/Common/DocumentPickerField';
+import { buildCompanyProfileFormData } from '~utils/buildFormData';
+import useAlert from '~hooks/useAlert';
 
-const FormLabel = ({ text }) => (
-  <View style={styles.labelRow}>
-    <Text style={styles.labelText}>{text}</Text>
-  </View>
-);
+/**
+ * Convert an S3 URL to a file descriptor with isNew: false.
+ * Returns null if url is falsy.
+ */
+const urlToFile = (url) => {
+  if (!url) return null;
+  try {
+    const decoded = decodeURIComponent(url);
+    const parts = decoded.split('/');
+    const name = parts[parts.length - 1] || 'document';
+    return {
+      uri: url,
+      type: 'application/octet-stream',
+      name,
+      isNew: false,
+    };
+  } catch {
+    return {
+      uri: url,
+      type: 'application/octet-stream',
+      name: 'document',
+      isNew: false,
+    };
+  }
+};
 
-const DocumentsTab = () => {
+const DocumentsTab = ({ profile, updateCompanyProfile, updatingProfile }) => {
+  const { showAlert } = useAlert();
   const [docs, setDocs] = useState({
-    company: { name: 'phoenix-document.pdf', size: '6.77 MB' },
-    insurance: { name: 'phoenix-document.pdf', size: '6.77 MB' },
-    health: { name: 'phoenix-document.pdf', size: '6.77 MB' }
+    company: null,
+    insurance: null,
+    health: null,
   });
 
-  const removeDoc = (key) => setDocs(p => ({ ...p, [key]: null }));
-  const uploadDoc = (key) => setDocs(p => ({ ...p, [key]: { name: 'new-document.pdf', size: '2.4 MB' } }));
+  useEffect(() => {
+    if (profile) {
+      const companyUrl = Array.isArray(profile.companyDocuments)
+        ? profile.companyDocuments[0]
+        : profile.companyDocuments;
+      setDocs({
+        company: urlToFile(companyUrl),
+        insurance: urlToFile(profile.insuranceCertificate),
+        health: urlToFile(profile.healthAndSafetyPolicy),
+      });
+    }
+  }, [profile]);
+
+  const handleDocChange = useCallback((key, file) => {
+    if (!file) {
+      setDocs((p) => ({ ...p, [key]: null }));
+      return;
+    }
+    setDocs((p) => ({ ...p, [key]: { ...file, isNew: true } }));
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    const hasNewFiles =
+      docs.company?.isNew === true ||
+      docs.insurance?.isNew === true ||
+      docs.health?.isNew === true;
+
+    if (!hasNewFiles) {
+      showAlert({ title: 'No Changes', message: 'No new documents to upload.', type: 'info' });
+      return;
+    }
+
+    try {
+      const formData = buildCompanyProfileFormData({
+        companyDocuments: docs.company,
+        insuranceCertificate: docs.insurance,
+        healthAndSafetyPolicy: docs.health,
+      });
+      await updateCompanyProfile(formData);
+      showAlert({ title: 'Success', message: 'Documents updated.', type: 'success' });
+    } catch (err) {
+      showAlert({ title: 'Error', message: err?.message ?? 'Update failed.', type: 'error' });
+    }
+  }, [docs, updateCompanyProfile]);
+
 
   return (
     <View style={styles.container}>
-      <UploadField
+      <DocumentPickerField
         label="Company Document"
-        onPress={() => uploadDoc('company')}
-        file={docs.company}
-        onRemove={() => removeDoc('company')}
+        hint="PDF, DOC, or DOCX up to 10MB"
+        value={docs.company}
+        onChange={(file) => handleDocChange('company', file)}
       />
 
-      <UploadField
+      <DocumentPickerField
         label="Insurance Certificate"
-        onPress={() => uploadDoc('insurance')}
-        file={docs.insurance}
-        onRemove={() => removeDoc('insurance')}
+        hint="PDF, DOC, or DOCX up to 10MB"
+        value={docs.insurance}
+        onChange={(file) => handleDocChange('insurance', file)}
       />
 
-      <UploadField
+      <DocumentPickerField
         label="Health and Safety Policy"
-        onPress={() => uploadDoc('health')}
-        file={docs.health}
-        onRemove={() => removeDoc('health')}
+        hint="PDF, DOC, or DOCX up to 10MB"
+        value={docs.health}
+        onChange={(file) => handleDocChange('health', file)}
       />
 
-      <Button title="Save Changes" variant="secondary" onPress={() => {}} />
+      <TouchableOpacity
+        style={[styles.saveButton, updatingProfile && styles.saveButtonDisabled]}
+        onPress={handleSave}
+        disabled={updatingProfile}
+        activeOpacity={0.8}>
+        {updatingProfile ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Text style={styles.saveButtonText}>Save Changes</Text>
+        )}
+      </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { marginTop: 10 },
-  labelRow: {
-    marginBottom: 8,
+  saveButton: {
+    backgroundColor: '#10375C',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    minHeight: 48,
   },
-  labelText: {
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
     fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#10375C',
-  }
+    fontSize: 12,
+    color: '#FFFFFF',
+  },
 });
 
 export default DocumentsTab;

@@ -1,8 +1,16 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TextInput as RNTextInput } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  StyleSheet,
+  TextInput as RNTextInput,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { Text, Button } from '~components/Common';
+import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
+import { buildCompanyProfileFormData } from '~utils/buildFormData';
+import useAlert from '~hooks/useAlert';
 
 const FormLabel = ({ text, required }) => (
   <View style={styles.labelRow}>
@@ -21,31 +29,68 @@ const Input = ({ placeholder, val, onChange }) => (
   />
 );
 
-const ContactInfoTab = () => {
+const ContactInfoTab = ({ profile, updateCompanyProfile, updatingProfile }) => {
+  const { showAlert } = useAlert();
   const [form, setForm] = useState({
-    name: 'John Doe',
-    email: 'john@acme.com',
-    phone: '+44 7700 900000',
-    address: '123 Construction Way, London, UK'
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
   });
 
-  const setItem = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        name: profile.primaryContactName ?? '',
+        email: profile.workEmail ?? '',
+        phone: profile.phoneNumber ?? '',
+        address: profile.headOfficeAddress ?? '',
+      });
+    }
+  }, [profile]);
+
+  const setItem = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  const handleSave = useCallback(async () => {
+    try {
+      const formData = buildCompanyProfileFormData({
+        primaryContactName: form.name,
+        workEmail: form.email,
+        phoneNumber: form.phone,
+        headOfficeAddress: form.address,
+      });
+      await updateCompanyProfile(formData);
+      showAlert({ title: 'Success', message: 'Contact information updated.', type: 'success' });
+    } catch (err) {
+      showAlert({ title: 'Error', message: err?.message ?? 'Update failed.', type: 'error' });
+    }
+  }, [form, updateCompanyProfile]);
 
   return (
     <View style={styles.container}>
       <FormLabel text="Primary Contact Name" />
-      <Input val={form.name} onChange={v => setItem('name', v)} />
+      <Input val={form.name} onChange={(v) => setItem('name', v)} />
 
       <FormLabel text="Work Email" />
-      <Input val={form.email} onChange={v => setItem('email', v)} />
+      <Input val={form.email} onChange={(v) => setItem('email', v)} />
 
       <FormLabel text="Phone Number" />
-      <Input val={form.phone} onChange={v => setItem('phone', v)} />
+      <Input val={form.phone} onChange={(v) => setItem('phone', v)} />
 
       <FormLabel text="Head Office Address" />
-      <Input val={form.address} onChange={v => setItem('address', v)} />
+      <Input val={form.address} onChange={(v) => setItem('address', v)} />
 
-      <Button title="Save Changes" variant="secondary" onPress={() => {}} />
+      <TouchableOpacity
+        style={[styles.saveButton, updatingProfile && styles.saveButtonDisabled]}
+        onPress={handleSave}
+        disabled={updatingProfile}
+        activeOpacity={0.8}>
+        {updatingProfile ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Text style={styles.saveButtonText}>Save Changes</Text>
+        )}
+      </TouchableOpacity>
     </View>
   );
 };
@@ -61,6 +106,10 @@ const styles = StyleSheet.create({
     fontSize: RFValue(11),
     color: '#10375C',
   },
+  requiredMark: {
+    color: '#EF4444',
+    marginLeft: 2,
+  },
   input: {
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -71,7 +120,24 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     color: '#334155',
     marginBottom: 20,
-  }
+  },
+  saveButton: {
+    backgroundColor: '#10375C',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+    minHeight: 48,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    fontFamily: FontFamily.bold,
+    fontSize: RFValue(12),
+    color: '#FFFFFF',
+  },
 });
 
 export default ContactInfoTab;

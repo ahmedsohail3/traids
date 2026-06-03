@@ -19,6 +19,11 @@ import companySignupReducer from "../reducers/companySignupSlice";
 import subcontractorJobsReducer from "../reducers/subcontractorJobsSlice";
 import subcontractorBookingsReducer from "../reducers/subcontractorBookingsSlice";
 import companyJobsReducer from "../reducers/companyJobsSlice";
+import companyTimesheetReducer from "../reducers/companyTimesheetSlice";
+import companyInvoicesReducer from "../reducers/companyInvoicesSlice";
+import companyComplianceReducer from "../reducers/companyComplianceSlice";
+import companyFinancialsReducer from "../reducers/companyFinancialsSlice";
+import chatReducer from "../reducers/chatSlice";
 // import settingsReducer from "../reducers/settingsReducer";
 
 // ─── Combined slice reducer ────────────────────────────────────────────────────
@@ -32,6 +37,11 @@ const combinedReducer = combineReducers({
   subcontractorJobs: subcontractorJobsReducer,
   subcontractorBookings: subcontractorBookingsReducer,
   companyJobs: companyJobsReducer,
+  companyTimesheet: companyTimesheetReducer,
+  companyInvoices: companyInvoicesReducer,
+  companyCompliance: companyComplianceReducer,
+  companyFinancials: companyFinancialsReducer,
+  chat: chatReducer,
   theme: themeReducer,
 });
 

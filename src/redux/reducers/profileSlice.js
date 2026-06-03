@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getProfileApi } from '~services/profileService';
+import { getProfileApi, updateCompanyProfileApi } from '~services/profileService';
 import { getErrorMessage } from '~utils';
 
 // ── Async Thunks ───────────────────────────────────────────────────────────────
@@ -18,12 +18,26 @@ export const fetchProfile = createAsyncThunk(
   },
 );
 
+export const updateCompanyProfile = createAsyncThunk(
+  'profile/update',
+  async (formData, { rejectWithValue }) => {
+    try {
+      const res = await updateCompanyProfileApi(formData);
+      return res.data ?? res;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
 // ── Slice ──────────────────────────────────────────────────────────────────────
 
 const initialState = {
   data: null,   // Populated after fetchProfile resolves
   loading: false,
   error: null,
+  updatingProfile: false,
+  updateError: null,
 };
 
 const profileSlice = createSlice({
@@ -48,6 +62,20 @@ const profileSlice = createSlice({
       .addCase(fetchProfile.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload ?? 'Failed to load profile.';
+      })
+      .addCase(updateCompanyProfile.pending, (state) => {
+        state.updatingProfile = true;
+        state.updateError = null;
+      })
+      .addCase(updateCompanyProfile.fulfilled, (state, action) => {
+        state.updatingProfile = false;
+        if (state.data && action.payload) {
+          Object.assign(state.data, action.payload);
+        }
+      })
+      .addCase(updateCompanyProfile.rejected, (state, action) => {
+        state.updatingProfile = false;
+        state.updateError = action.payload ?? 'Failed to update profile.';
       });
   },
 });

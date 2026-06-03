@@ -3,63 +3,64 @@ import { View, StyleSheet } from 'react-native';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { RFValue } from 'react-native-responsive-fontsize';
+import { FolderOpen } from 'lucide-react-native';
 
-const FALLBACK_DATA = [
-  { id: 1, name: 'Downtown Office Renovation', manager: 'Michael Chen', status: 'Active', budget: '£45,000', actual: '£28,400', actualWarning: false },
-  { id: 2, name: 'Westside Apartment Complex', manager: 'Sarah Miller', status: 'Active', budget: '£12,000', actual: '£3,500', actualWarning: false },
-  { id: 3, name: 'City Park Gazebo', manager: 'David Wilson', status: 'Completed', budget: '£8,500', actual: '£8,200', actualWarning: true },
-  { id: 4, name: 'Lakeside Retail Fitout', manager: 'James Rodriguez', status: 'Delayed', budget: '£12,000', actual: '£3,500', actualWarning: false },
-];
-
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'Active': return '#10375C'; // Navy
-    case 'Completed': return '#22C55E'; // Green
-    case 'Delayed': return '#EF4444'; // Red
-    default: return '#64748B';
-  }
+const STATUS_COLORS = {
+  active:    '#10375C',
+  completed: '#22C55E',
+  delayed:   '#EF4444',
 };
 
+const statusColor = (status) =>
+  STATUS_COLORS[status?.toLowerCase()] ?? '#64748B';
+
 const ProjectCostList = ({ data }) => {
-  const DATA = (data && data.length > 0) ? data : FALLBACK_DATA;
+  const hasData = Array.isArray(data) && data.length > 0;
 
   return (
     <View style={styles.card}>
       <Text style={styles.title}>Project Cost Summary</Text>
 
-      <View style={styles.list}>
-        {DATA.map((item, index) => (
-          <View 
-            key={item.id} 
-            style={[
-              styles.itemRow, 
-              index !== DATA.length - 1 && styles.borderBottom
-            ]}
-          >
-            <View style={styles.topRow}>
-              <View style={styles.nameBlock}>
-                <Text style={styles.projectName}>{item.name}</Text>
-                <Text style={styles.managerName}>{item.manager}</Text>
+      {hasData ? (
+        <View style={styles.list}>
+          {data.map((item, index) => (
+            <View
+              key={item._id ?? item.id ?? index}
+              style={[styles.itemRow, index !== data.length - 1 && styles.borderBottom]}
+            >
+              <View style={styles.topRow}>
+                <View style={styles.nameBlock}>
+                  <Text style={styles.projectName}>{item.name ?? item.jobTitle ?? '—'}</Text>
+                  {(item.manager ?? item.managerName) ? (
+                    <Text style={styles.managerName}>{item.manager ?? item.managerName}</Text>
+                  ) : null}
+                </View>
+                <View style={[styles.statusPill, { backgroundColor: statusColor(item.status) }]}>
+                  <Text style={styles.statusText}>
+                    {item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '—'}
+                  </Text>
+                </View>
               </View>
-              <View style={[styles.statusPill, { backgroundColor: getStatusColor(item.status) }]}>
-                <Text style={styles.statusText}>{item.status}</Text>
-              </View>
-            </View>
 
-            <View style={styles.bottomRow}>
-              <Text style={styles.bottomText}>
-                Budget: {item.budget}
-              </Text>
-              <Text style={[
-                styles.bottomText, 
-                item.actualWarning && { color: '#EF4444', fontFamily: FontFamily.bold }
-              ]}>
-                Actual: <Text style={[styles.boldText, item.actualWarning && { color: '#EF4444' }]}>{item.actual}</Text>
-              </Text>
+              <View style={styles.bottomRow}>
+                {item.budget != null && (
+                  <Text style={styles.bottomText}>Budget: {item.budget}</Text>
+                )}
+                {item.actual != null && (
+                  <Text style={[styles.bottomText, item.actualWarning && styles.warning]}>
+                    Actual: <Text style={[styles.boldText, item.actualWarning && styles.warning]}>{item.actual}</Text>
+                  </Text>
+                )}
+              </View>
             </View>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.emptyWrap}>
+          <FolderOpen size={32} color="#CBD5E1" />
+          <Text style={styles.emptyText}>No project cost data yet.</Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -83,12 +84,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 16,
   },
-  list: {
-    paddingHorizontal: 20,
-  },
-  itemRow: {
-    paddingVertical: 14,
-  },
+  list:       { paddingHorizontal: 20 },
+  itemRow:    { paddingVertical: 14 },
   borderBottom: {
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
@@ -99,10 +96,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 12,
   },
-  nameBlock: {
-    flex: 1,
-    paddingRight: 10,
-  },
+  nameBlock: { flex: 1, paddingRight: 10 },
   projectName: {
     fontFamily: FontFamily.bold,
     fontSize: RFValue(11),
@@ -137,6 +131,17 @@ const styles = StyleSheet.create({
   boldText: {
     fontFamily: FontFamily.bold,
     color: '#334155',
+  },
+  warning: { color: '#EF4444' },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 10,
+  },
+  emptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10),
+    color: '#94A3B8',
   },
 });
 

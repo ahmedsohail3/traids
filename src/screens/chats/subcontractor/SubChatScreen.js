@@ -1,168 +1,223 @@
-/**
- * SubChatScreen — Individual conversation view for Subcontractor.
- * Features: sent/received messages, context menu, deleted states, profile modal.
- */
-import React, { useState, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, FlatList } from 'react-native';
-import { Text } from '~components/Common';
-import { useTheme } from '~context/ThemeContext';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Keyboard,
+  Platform,
+  FlatList,
+  ActivityIndicator,
+} from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
+import { MessageCircle } from 'lucide-react-native';
+import { Text } from '~components/Common';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 import Header from '~components/Header';
 import MessageBubble from '~components/Chat/MessageBubble';
 import MessageInput from '~components/Chat/MessageInput';
 import ViewProfileModal from '~components/Chat/ViewProfileModal';
+import useChat from '~hooks/useChat';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const MY_ID = 'me';
-
-const MOCK_MESSAGES = [
-  {
-    id: '1', senderId: 'company', senderName: 'Acme Construction',
-    text: 'At that time, no one was truly happy.',
-    time: 'Yesterday at 10:44 AM',
-    avatarUri: 'https://i.pravatar.cc/150?u=company1',
-  },
-  {
-    id: '2', senderId: MY_ID, senderName: 'Walliamson',
-    text: 'At that time, no one was truly happy.',
-    time: 'Yesterday at 10:44 AM',
-    avatarUri: 'https://i.pravatar.cc/150?u=me',
-  },
-  {
-    id: '3', senderId: 'company', senderName: 'Acme Construction',
-    text: 'At that time, no one was truly happy.',
-    time: 'Yesterday at 10:44 AM',
-    avatarUri: 'https://i.pravatar.cc/150?u=company1',
-  },
-  {
-    id: '4', senderId: MY_ID, senderName: 'Walliamson',
-    text: 'At that time, no one was truly happy.',
-    time: 'Yesterday at 10:44 AM',
-    avatarUri: 'https://i.pravatar.cc/150?u=me',
-  },
-  {
-    id: '5', senderId: MY_ID, senderName: 'Walliamson',
-    text: 'At that time, no one was truly happy.',
-    time: 'Yesterday at 10:44 AM',
-    avatarUri: 'https://i.pravatar.cc/150?u=me',
-  },
-];
-
-const MOCK_PROFILE = {
-  name: 'Acme Construction',
-  role: 'Residential Construction',
-  logoEmoji: '🏗️',
-  about: 'BuildRight Construction is a premier construction and infrastructure contractor dedicated to delivering excellence in every project. With over 15 years of industry experience, we specialize in commercial fit-outs, residential developments, and large-scale renovation projects.',
-};
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
 const SubChatScreen = ({ route }) => {
   const { colors } = useTheme();
-  const { conversation } = route?.params || {};
-  const [messages, setMessages] = useState(MOCK_MESSAGES);
-  const [inputText, setInputText] = useState('');
+  const insets = useSafeAreaInsets();
+  const { conversation } = route?.params ?? {};
+
+  const chatId   = conversation?._id;
+  const subData  = conversation?.subcontractor ?? {};
+  const chatName = subData.fullName ?? conversation?.name ?? 'Chat';
+
+  const {
+    getMessagesForChat,
+    getPaginationForChat,
+    loadingMessages,
+    getMessages,
+    loadMoreMessages,
+    resetMessages,
+    markConversationAsRead,
+    sendMessage,
+    sendingMessage,
+  } = useChat();
+
   const [profileVisible, setProfileVisible] = useState(false);
-  const listRef = useRef(null);
+  const [kbOffset,       setKbOffset]       = useState(0);
+  const listRef      = useRef(null);
+  const loadGuardRef = useRef(false);
 
-  const handleSend = () => {
-    const text = inputText.trim();
-    if (!text) return;
-    setMessages(prev => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        senderId: MY_ID,
-        senderName: 'Walliamson',
-        text,
-        time: 'Now',
-        avatarUri: 'https://i.pravatar.cc/150?u=me',
-      },
-    ]);
-    setInputText('');
-    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
-  };
+  useEffect(() => {
+    if (chatId) {
+      getMessages(chatId);
+      markConversationAsRead(chatId);
+    }
+    return () => { if (chatId) resetMessages(chatId); };
+  }, [chatId]); // intentionally omit stable callbacks
 
-  const handleDelete = (msgId) => {
-    setMessages(prev =>
-      prev.map(m => m.id !== msgId ? m : {
-        ...m,
-        deletedForAll: m.senderId === MY_ID ? true : undefined,
-        deletedForMe: m.senderId !== MY_ID ? true : undefined,
-      })
+  const apiMessages = useMemo(
+    () => getMessagesForChat(chatId, conversation),
+    [getMessagesForChat, chatId, conversation],
+  );
+
+  const allMessages = apiMessages;
+
+  const pagination = getPaginationForChat(chatId);
+
+  useEffect(() => {
+    if (allMessages.length > 0) {
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 50);
+    }
+  }, [apiMessages.length]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const show = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKbOffset(e.endCoordinates.height);
+    });
+    const hide = Keyboard.addListener('keyboardDidHide', () => {
+      setKbOffset(0);
+    });
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+
+  const handleScroll = useCallback(
+    ({ nativeEvent }) => {
+      const y = nativeEvent.contentOffset.y;
+      if (y < 80 && pagination.hasMore && !loadingMessages && !loadGuardRef.current) {
+        loadGuardRef.current = true;
+        loadMoreMessages(chatId);
+        setTimeout(() => { loadGuardRef.current = false; }, 1500);
+      }
+    },
+    [chatId, loadMoreMessages, pagination.hasMore, loadingMessages],
+  );
+
+  const handleSend = useCallback(({ text, attachments = [] }) => {
+    if ((!text && attachments.length === 0) || sendingMessage) return;
+    sendMessage({ conversationId: chatId, content: text, attachments }).then(() => {
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+    });
+  }, [sendingMessage, sendMessage, chatId]);
+
+  const handleDelete = useCallback((_msgId) => {
+    // deletion is not yet supported by the API
+  }, []);
+
+  const renderItem = useCallback(
+    ({ item }) => (
+      <MessageBubble
+        message={item}
+        isSent={item.isSent}
+        onDelete={handleDelete}
+      />
+    ),
+    [handleDelete],
+  );
+
+  const keyExtractor = useCallback((item) => item.id ?? item._id, []);
+
+  const ListHeader = useMemo(() => {
+    if (!pagination.hasMore) return null;
+    return (
+      <View style={styles.loadMoreWrap}>
+        {loadingMessages ? (
+          <ActivityIndicator size="small" color="#10375C" />
+        ) : (
+          <TouchableOpacity
+            onPress={() => loadMoreMessages(chatId)}
+            style={styles.loadMoreBtn}
+            activeOpacity={0.7}>
+            <Text style={styles.loadMoreText}>Load earlier messages</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     );
-  };
+  }, [pagination.hasMore, loadingMessages, chatId, loadMoreMessages]);
+
+  const EmptyState = () => (
+    <View style={styles.emptyWrap}>
+      <MessageCircle size={RFValue(32)} color="#CBD5E1" strokeWidth={1.5} />
+      <Text style={styles.emptyTitle}>No messages yet</Text>
+      <Text style={styles.emptySub}>Start the conversation below.</Text>
+    </View>
+  );
+
+  const profile = useMemo(() => ({
+    name:      chatName,
+    role:      subData.primaryTrade ?? 'Subcontractor',
+    logoEmoji: '👷',
+    about:     subData.about ?? '',
+    avatarUri: subData.profileImage ?? null,
+  }), [chatName, subData]);
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.root, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
-    >
-      {/* Dark blue app header with back arrow */}
-      <Header
-        title="Messages"
-        subtitle="Manage your chat system here."
-        showBackButton
-      />
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <Header title="Messages" subtitle="Manage your chat system here." showBackButton />
 
-      {/* Chat container card */}
-      <View style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.kavFill}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={[styles.container, { marginBottom: kbOffset > 0 ? kbOffset + Math.max(insets.bottom, 16) : Math.max(insets.bottom, 16) }]}>
+          {/* Contact bar */}
+          <TouchableOpacity
+            style={styles.contactRow}
+            onPress={() => setProfileVisible(true)}
+            activeOpacity={0.8}>
+            <Text style={styles.contactName}>{chatName}</Text>
+            <Text style={[styles.contactStatus, { color: colors.success }]}>Active Now</Text>
+          </TouchableOpacity>
 
-      {/* Contact name + "Active Now" — tappable to open profile modal */}
-      <TouchableOpacity
-        style={styles.contactRow}
-        onPress={() => setProfileVisible(true)}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.contactName}>{conversation?.name ?? 'Acme Construction'}</Text>
-        <Text style={styles.contactStatus}>Active Now</Text>
-      </TouchableOpacity>
+          {/* Initial loading */}
+          {loadingMessages && allMessages.length === 0 && (
+            <View style={styles.centerLoader}>
+              <ActivityIndicator size="small" color="#10375C" />
+            </View>
+          )}
 
-        {/* Messages */}
-        <FlatList
-          ref={listRef}
-          data={messages}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <MessageBubble
-              message={item}
-              isSent={item.senderId === MY_ID}
-              onDelete={handleDelete}
+          {/* Message list */}
+          {(!loadingMessages || allMessages.length > 0) && (
+            <FlatList
+              ref={listRef}
+              data={allMessages}
+              keyExtractor={keyExtractor}
+              renderItem={renderItem}
+              ListHeaderComponent={ListHeader}
+              ListEmptyComponent={EmptyState}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              onScroll={handleScroll}
+              scrollEventThrottle={200}
+              removeClippedSubviews
+              maxToRenderPerBatch={20}
+              windowSize={10}
             />
           )}
-          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-        />
 
-        {/* Input */}
-        <MessageInput
-          value={inputText}
-          onChangeText={setInputText}
-          onSend={handleSend}
-        />
-      </View>
+          <MessageInput
+            onSend={handleSend}
+            sendingMessage={sendingMessage}
+          />
+        </View>
+      </KeyboardAvoidingView>
 
-      {/* Profile bottom sheet */}
       <ViewProfileModal
         visible={profileVisible}
         onClose={() => setProfileVisible(false)}
-        profile={MOCK_PROFILE}
+        profile={profile}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-
+  root:      { flex: 1 },
+  kavFill:   { flex: 1 },
   container: {
     flex: 1,
     marginTop: 16,
     marginHorizontal: 16,
-    marginBottom: 40,
+    marginBottom: 0,
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     borderWidth: 1,
@@ -186,8 +241,39 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: RFValue(10),
   },
-
-  listContainer: { paddingTop: 16, paddingBottom: 8 },
+  listContent:  { paddingTop: 12, paddingBottom: 8, flexGrow: 1 },
+  centerLoader: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },
+  loadMoreWrap: { alignItems: 'center', paddingVertical: 12 },
+  loadMoreBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  loadMoreText: {
+    fontFamily: FontFamily.medium,
+    fontSize: RFValue(10),
+    color: '#64748B',
+  },
+  emptyWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: RFValue(13),
+    color: '#10375C',
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  emptySub: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10),
+    color: '#94A3B8',
+  },
 });
 
 export default SubChatScreen;

@@ -26,36 +26,38 @@ import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 import { Images } from '~assets';
 import useDashboard from '~hooks/useDashboard';
+import useCompanyJobs from '~hooks/useCompanyJobs';
 
 // ─── Data mapping ─────────────────────────────────────────────────────────────
 
 const mapStats = (data) => ({
-  activeJobs:            data?.activeJobs?.current        ?? 0,
-  activeJobsChange:      data?.activeJobs?.change         ?? 0,
-  subsBooked:            data?.subsBooked?.current        ?? 0,
-  subsBookedChange:      data?.subsBooked?.change         ?? 0,
-  pendingApprovals:      data?.pendingApprovals?.current  ?? 0,
-  pendingApprovalsChange:data?.pendingApprovals?.change   ?? 0,
-  monthlySpend:          data?.monthlySpend?.current      ?? 0,
-  monthlySpendChangePct: data?.monthlySpend?.changePercent ?? 0,
+  activeJobs:             data?.activeJobs?.current          ?? 0,
+  activeJobsChange:       data?.activeJobs?.change           ?? 0,
+  subsBooked:             data?.subsBooked?.current          ?? 0,
+  subsBookedChange:       data?.subsBooked?.change           ?? 0,
+  pendingApprovals:       data?.pendingApprovals?.current    ?? 0,
+  pendingApprovalsChange: data?.pendingApprovals?.change     ?? 0,
+  monthlySpend:           data?.monthlySpend?.current        ?? 0,
+  monthlySpendPrev:       data?.monthlySpend?.previousMonth  ?? 0,
+  monthlySpendChangePct:  data?.monthlySpend?.changePercent  ?? 0,
 });
 
 const mapTrend = (data) => {
   const items = data?.activeJobsTrend ?? [];
   return {
-    values: items.map((i) => i.count),
-    labels: items.map((i) => i.day),
-    hasData: items.some((i) => i.count > 0),
+    values:  items.map((i) => i.count),
+    labels:  items.map((i) => i.day),
+    hasData: items.length > 0,
   };
 };
 
 const mapBudget = (data) => {
-  const b = data?.budgetSpent;
+  const b     = data?.budgetSpent;
   const total = b?.total ?? 0;
   const labor = b?.labor ?? 0;
   if (total <= 0) return { bars: [], hasData: false };
   const other = Math.max(0, total - labor);
-  const pct = (n) => Math.round((n / total) * 100);
+  const pct   = (n) => Math.round((n / total) * 100);
   return {
     hasData: true,
     bars: [
@@ -65,27 +67,59 @@ const mapBudget = (data) => {
   };
 };
 
-const mapRecentJobs = (data) => data?.recentJobs ?? [];
+const STATUS_MAP = {
+  in_progress: 'In Progress',
+  'in progress': 'In Progress',
+  pending:     'Pending',
+  completed:   'Completed',
+  accepted:    'Accepted',
+  active:      'Active',
+};
+
+const mapJobToCard = (job, index) => ({
+  jobId:     `Job #${index + 1}`,
+  title:     job.jobTitle    ?? '—',
+  trade:     job.trade       ?? '—',
+  location:  job.siteAddress ?? '—',
+  assignee:  Array.isArray(job.assignedTo) && job.assignedTo.length > 0
+               ? `${job.assignedTo.length} Worker${job.assignedTo.length > 1 ? 's' : ''}`
+               : 'Unassigned',
+  startDate: job.timelineStartDate
+               ? new Date(job.timelineStartDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+               : '—',
+  status:    STATUS_MAP[(job.status ?? '').toLowerCase()] ?? 'Pending',
+  _id:       job._id,
+  _raw:      job,
+});
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const fmtChange = (n) => `${n > 0 ? '+' : ''}${n} vs last month`;
-const fmtPct    = (n) => `${n > 0 ? '+' : ''}${n}% vs last month`;
+const fmtChange = (n) =>
+  n === 0 ? 'Same as last month' : `${n > 0 ? '+' : ''}${n} vs last month`;
+
+const fmtPct = (n) =>
+  n === 0 ? 'Same as last month' : `${n > 0 ? '+' : ''}${n}% vs last month`;
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 const CompanyDashboardScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const { dashboard, loading, hasData, getDashboard } = useDashboard();
+  const { jobs, getJobs } = useCompanyJobs();
 
   const [hasUnpaidInvoice, setHasUnpaidInvoice] = useState(true);
   const [showBlockedModal, setShowBlockedModal]  = useState(false);
 
-  useEffect(() => { getDashboard(); }, []);
+  useEffect(() => { getDashboard(); getJobs(); }, []);
 
   const stats      = mapStats(dashboard);
   const trend      = mapTrend(dashboard);
   const budget     = mapBudget(dashboard);
-  const recentJobs = mapRecentJobs(dashboard);
+  const recentJobs = (() => {
+    const active    = jobs.filter((j) => (j.status ?? '').toLowerCase() !== 'completed');
+    const completed = jobs.filter((j) => (j.status ?? '').toLowerCase() === 'completed');
+    const priority  = [...active, ...completed].slice(0, 3);
+    return priority.map(mapJobToCard);
+  })();
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -138,8 +172,12 @@ const CompanyDashboardScreen = ({ navigation }) => {
             <View style={styles.statsGap} />
             <StatCard
               label="Monthly Spend"
-              value={stats.monthlySpend > 0 ? `£${stats.monthlySpend.toLocaleString()}` : 0}
-              subLabel={stats.monthlySpend > 0 ? fmtPct(stats.monthlySpendChangePct) : 'No spending recorded'}
+              value={stats.monthlySpend > 0 ? `£${stats.monthlySpend.toLocaleString()}` : `£0`}
+              subLabel={
+                stats.monthlySpend > 0 || stats.monthlySpendPrev > 0
+                  ? fmtPct(stats.monthlySpendChangePct)
+                  : 'No spending recorded'
+              }
               icon={PoundSterling}
               positive={stats.monthlySpend > 0}
             />
@@ -174,6 +212,7 @@ const CompanyDashboardScreen = ({ navigation }) => {
           )}
         </SectionCard>
 
+
         {/* ── Recent Jobs ── */}
         {recentJobs.length > 0 && (
           <View style={styles.sectionMargin}>
@@ -184,7 +223,13 @@ const CompanyDashboardScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
             {recentJobs.map((job, i) => (
-              <JobCard key={job.id ?? i} {...job} onEdit={() => {}} onDelete={() => {}} />
+              <JobCard
+                key={job._id ?? i}
+                {...job}
+                onPress={() => navigation.navigate('CompanyJobDetail', { job: job._raw })}
+                onEdit={() => {}}
+                onDelete={() => {}}
+              />
             ))}
           </View>
         )}

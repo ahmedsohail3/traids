@@ -6,14 +6,26 @@ import { FontFamily } from '~theme/fonts';
 import { ChevronDown, Clock } from 'lucide-react-native';
 import { useTheme } from '~context/ThemeContext';
 
-const MOCK_DATA = [
-  { day: 'Monday', hours: '8 hours', date: 'Oct 24, 2023', checkedIn: '30 Hours', checkedOut: '08:00 AM', pill: '8 hrs' },
-  { day: 'Tuesday', hours: '8 hours', date: 'Oct 24, 2023', checkedIn: '30 Hours', checkedOut: '08:00 AM', pill: '8 hrs' },
-  { day: 'Wednesday', hours: '8 hours', date: 'Oct 24, 2023', checkedIn: '30 Hours', checkedOut: '08:00 AM', pill: '8 hrs' },
-];
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const formatLogDate = (iso) => {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const buildDailyLogs = (dailyLogs) =>
+  (dailyLogs ?? []).map((log) => ({
+    day:        log.date ? DAY_NAMES[new Date(log.date).getDay()] : '—',
+    hours:      log.hoursWorked != null ? `${log.hoursWorked} hrs` : '—',
+    date:       formatLogDate(log.date),
+    checkedIn:  log.checkIn  ?? '—',
+    checkedOut: log.checkOut ?? '—',
+    pill:       log.hoursWorked != null ? `${log.hoursWorked} hrs` : '—',
+  }));
 
 const WorkerTimesheetModal = ({ visible, onClose, worker }) => {
   const { colors } = useTheme();
+  const logs = buildDailyLogs(worker?.dailyLogs);
 
   return (
     <Modal
@@ -31,7 +43,7 @@ const WorkerTimesheetModal = ({ visible, onClose, worker }) => {
               {/* Header */}
               <View style={styles.header}>
                 <View style={styles.headerLeft}>
-                  <Image source={{ uri: `https://i.pravatar.cc/150?u=${worker?.id || 1}` }} style={styles.avatar} />
+                  <Image source={{ uri: worker?.avatarUri ?? `https://i.pravatar.cc/150?u=${worker?._id || 1}` }} style={styles.avatar} />
                   <View>
                     <Text style={styles.title}>Timesheet</Text>
                     <Text style={styles.subtitle}>{worker?.name || 'John Smith'}'s Timesheet</Text>
@@ -39,14 +51,14 @@ const WorkerTimesheetModal = ({ visible, onClose, worker }) => {
                 </View>
 
                 <TouchableOpacity style={styles.dropdownWrap}>
-                  <Text style={styles.dropdownText}>Week 1</Text>
+                  <Text style={styles.dropdownText}>Week {worker?.weekNumber ?? 1}</Text>
                   <ChevronDown size={RFValue(12)} color="#94A3B8" />
                 </TouchableOpacity>
               </View>
 
               {/* Scrollable list */}
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContainer}>
-                {MOCK_DATA.map((item, idx) => (
+                {logs.map((item, idx) => (
                   <View key={idx} style={styles.dayCard}>
                     {/* Top row */}
                     <View style={styles.dayHeader}>

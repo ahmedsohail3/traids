@@ -6,6 +6,7 @@ import ContactInfoTab from './tabs/ContactInfoTab';
 import DocumentsTab from './tabs/DocumentsTab';
 import SecurityTab from './tabs/SecurityTab';
 import NotificationsTab from './tabs/NotificationsTab';
+import useProfile from '~hooks/useProfile';
 
 const TABS = [
   { id: 'business', label: 'Business Details' },
@@ -17,22 +18,53 @@ const TABS = [
 
 const CompanySettingsScreen = () => {
   const [activeTab, setActiveTab] = useState('business');
+  const { profile, updateCompanyProfile, updatingProfile } = useProfile();
 
   const renderTabContent = () => {
     switch(activeTab) {
-      case 'business': return <BusinessDetailsTab />;
-      case 'contact': return <ContactInfoTab />;
-      case 'documents': return <DocumentsTab />;
-      case 'security': return <SecurityTab />;
-      case 'notifications': return <NotificationsTab />;
-      default: return null;
+      case 'business':
+        return (
+          <BusinessDetailsTab
+            profile={profile}
+            updateCompanyProfile={updateCompanyProfile}
+            updatingProfile={updatingProfile}
+          />
+        );
+      case 'contact':
+        return (
+          <ContactInfoTab
+            profile={profile}
+            updateCompanyProfile={updateCompanyProfile}
+            updatingProfile={updatingProfile}
+          />
+        );
+      case 'documents':
+        return (
+          <DocumentsTab
+            profile={profile}
+            updateCompanyProfile={updateCompanyProfile}
+            updatingProfile={updatingProfile}
+          />
+        );
+      case 'security':
+        return <SecurityTab />;
+      case 'notifications':
+        return (
+          <NotificationsTab
+            profile={profile}
+            updateCompanyProfile={updateCompanyProfile}
+            updatingProfile={updatingProfile}
+          />
+        );
+      default:
+        return null;
     }
   };
 
   return (
     <View style={styles.cardContainer}>
       <TabsHeader activeTab={activeTab} onTabSelect={setActiveTab} tabs={TABS} />
-      
+
       <View style={styles.contentContainer}>
         {renderTabContent()}
       </View>

@@ -3,74 +3,79 @@ import { View, StyleSheet } from 'react-native';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { RFValue } from 'react-native-responsive-fontsize';
+import { BarChart2 } from 'lucide-react-native';
 
-const FALLBACK_DATA = [
-  { month: 'May', labor: 13000, materials: 5000 },
-  { month: 'Jun', labor: 16000, materials: 6000 },
-  { month: 'Jul', labor: 12000, materials: 4000 },
-  { month: 'Aug', labor: 19000, materials: 6500 },
-  { month: 'Sep', labor: 22000, materials: 8000 },
-  { month: 'Oct', labor: 20000, materials: 6000 },
-];
+const CHART_HEIGHT = 120;
 
-const CHART_HEIGHT = 120; // Exact pixel height available for bars
+const Bars = ({ data }) => {
+  const MAX_VALUE = Math.max(...data.map(i => (i.labor ?? 0) + (i.materials ?? 0)), 1);
+  const step   = Math.ceil(MAX_VALUE / 4 / 1000) * 1000 || 1;
+  const Y_AXIS = [step * 4, step * 3, step * 2, step, 0];
+
+  return (
+    <View style={styles.chartArea}>
+      <View style={styles.yAxis}>
+        {Y_AXIS.map(val => (
+          <Text key={val} style={styles.yAxisText}>{val === 0 ? '0' : val >= 1000 ? `${val / 1000}k` : val}</Text>
+        ))}
+      </View>
+
+      <View style={styles.barsContainer}>
+        <View style={styles.gridLines}>
+          {Y_AXIS.map(val => (
+            <View key={`grid-${val}`} style={styles.gridLine} />
+          ))}
+        </View>
+
+        <View style={styles.barsArea}>
+          {data.map((item, idx) => {
+            const laborHeight    = ((item.labor    ?? 0) / MAX_VALUE) * CHART_HEIGHT;
+            const materialHeight = ((item.materials ?? 0) / MAX_VALUE) * CHART_HEIGHT;
+            return (
+              <View key={idx} style={styles.barCol}>
+                <View style={styles.barStack}>
+                  <View style={[styles.segment, { height: materialHeight, backgroundColor: '#F2A154' }]} />
+                  <View style={[styles.segment, { height: laborHeight,    backgroundColor: '#10375C' }]} />
+                </View>
+                <Text style={styles.xLabel}>{item.month}</Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+    </View>
+  );
+};
 
 const SpendTrendChart = ({ data }) => {
-  const DATA      = (data && data.length > 0) ? data : FALLBACK_DATA;
-  const MAX_VALUE = Math.max(...DATA.map(i => i.labor + i.materials), 1);
-  const step      = Math.ceil(MAX_VALUE / 4 / 1000) * 1000;
-  const Y_AXIS    = [step * 4, step * 3, step * 2, step, 0];
+  const hasData = Array.isArray(data) && data.length > 0;
 
   return (
     <View style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.title}>Monthly Spend Trend</Text>
-        <View style={styles.legend}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#10375C' }]} />
-            <Text style={styles.legendText}>Labor</Text>
+        {hasData && (
+          <View style={styles.legend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#10375C' }]} />
+              <Text style={styles.legendText}>Labor</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#F2A154' }]} />
+              <Text style={styles.legendText}>Materials</Text>
+            </View>
           </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#F2A154' }]} />
-            <Text style={styles.legendText}>Materials</Text>
-          </View>
-        </View>
+        )}
       </View>
 
-      <View style={styles.chartArea}>
-        <View style={styles.yAxis}>
-          {Y_AXIS.map(val => (
-            <Text key={val} style={styles.yAxisText}>{val === 0 ? '0' : val}</Text>
-          ))}
+      {hasData ? (
+        <Bars data={data} />
+      ) : (
+        <View style={styles.emptyWrap}>
+          <BarChart2 size={32} color="#CBD5E1" />
+          <Text style={styles.emptyText}>No spend trend data yet.</Text>
         </View>
-
-        <View style={styles.barsContainer}>
-          {/* Horizontal Grid lines */}
-          <View style={styles.gridLines}>
-            {Y_AXIS.map(val => (
-              <View key={`grid-${val}`} style={styles.gridLine} />
-            ))}
-          </View>
-
-          {/* Bars */}
-          <View style={styles.barsArea}>
-            {DATA.map((item, idx) => {
-              const laborHeight = (item.labor / MAX_VALUE) * CHART_HEIGHT;
-              const materialHeight = (item.materials / MAX_VALUE) * CHART_HEIGHT;
-
-              return (
-                <View key={idx} style={styles.barCol}>
-                  <View style={styles.barStack}>
-                    <View style={[styles.segment, { height: materialHeight, backgroundColor: '#F2A154' }]} />
-                    <View style={[styles.segment, { height: laborHeight, backgroundColor: '#10375C' }]} />
-                  </View>
-                  <Text style={styles.xLabel}>{item.month}</Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      </View>
+      )}
     </View>
   );
 };
@@ -99,28 +104,27 @@ const styles = StyleSheet.create({
     fontSize: RFValue(11),
     color: '#10375C',
   },
-  legend: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  legendDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
+  legend: { flexDirection: 'row', gap: 12 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  legendDot: { width: 6, height: 6, borderRadius: 3 },
   legendText: {
     fontFamily: FontFamily.regular,
     fontSize: RFValue(9),
     color: '#64748B',
   },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 10,
+  },
+  emptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10),
+    color: '#94A3B8',
+  },
   chartArea: {
     flexDirection: 'row',
-    height: CHART_HEIGHT + 20, // Add space for x labels
+    height: CHART_HEIGHT + 20,
   },
   yAxis: {
     justifyContent: 'space-between',
@@ -132,7 +136,7 @@ const styles = StyleSheet.create({
     fontSize: RFValue(8),
     color: '#94A3B8',
     textAlign: 'right',
-    width: 30, // Fixed width for alignment
+    width: 30,
   },
   barsContainer: {
     flex: 1,
@@ -141,38 +145,29 @@ const styles = StyleSheet.create({
   },
   gridLines: {
     position: 'absolute',
-    top: 6,  // text mid-alignment adjustment
+    top: 6,
     left: 0,
     right: 0,
     bottom: 0,
     justifyContent: 'space-between',
     height: CHART_HEIGHT,
   },
-  gridLine: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-  },
+  gridLine: { height: 1, backgroundColor: '#F1F5F9' },
   barsArea: {
     flexDirection: 'row',
-    height: CHART_HEIGHT + 20, 
+    height: CHART_HEIGHT + 20,
     justifyContent: 'space-around',
     alignItems: 'flex-end',
-    paddingLeft: 4,
-    paddingRight: 4,
+    paddingHorizontal: 4,
   },
-  barCol: {
-    alignItems: 'center',
-    width: 28,
-  },
+  barCol: { alignItems: 'center', width: 28 },
   barStack: {
     width: 14,
     justifyContent: 'flex-end',
     alignItems: 'center',
     marginBottom: 8,
   },
-  segment: {
-    width: '100%',
-  },
+  segment: { width: '100%' },
   xLabel: {
     fontFamily: FontFamily.regular,
     fontSize: RFValue(9),

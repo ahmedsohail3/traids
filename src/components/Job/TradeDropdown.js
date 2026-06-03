@@ -6,13 +6,22 @@ import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
 
-const NAVY = '#10375C';
 const BORDER = '#E2E8F0';
-const TRADE_OPTIONS = ['Electrician', 'Plumber', 'Bricklayer', 'Carpenter', 'Roofer', 'Painter'];
+
+const TRADE_OPTIONS = [
+  { label: 'Electrician', value: 'electrician' },
+  { label: 'Plumber',     value: 'plumber' },
+  { label: 'Carpenter',   value: 'carpenter' },
+  { label: 'Masonry',     value: 'masonry' },
+];
+
+const tradeLabel = (val) =>
+  TRADE_OPTIONS.find(o => o.value === val)?.label ?? val ?? '';
 
 const TradeDropdown = ({ value, onSelect }) => {
   const [open, setOpen] = useState(false);
   const { colors } = useTheme();
+  const display = tradeLabel(value);
 
   return (
     <View style={{ zIndex: 10, marginBottom: 14 }}>
@@ -20,19 +29,21 @@ const TradeDropdown = ({ value, onSelect }) => {
         style={[styles.dropdown, { borderColor: BORDER, backgroundColor: colors.surface }]}
         activeOpacity={0.8}
         onPress={() => setOpen(o => !o)}>
-        <Text style={[styles.dropdownText, { color: value ? '#000000' : '#94A3B8' }]}>
-          {value || 'Select trade'}
+        <Text style={[styles.dropdownText, { color: display ? '#000000' : '#94A3B8' }]}>
+          {display || 'Select trade'}
         </Text>
-        <ChevronDown size={RFValue(14)} color={value ? '#000000' : '#94A3B8'} />
+        <ChevronDown size={RFValue(14)} color={display ? '#000000' : '#94A3B8'} />
       </TouchableOpacity>
       {open && (
         <View style={[styles.dropdownMenu, { backgroundColor: colors.surface }]}>
-          {TRADE_OPTIONS.map(t => (
+          {TRADE_OPTIONS.map(opt => (
             <TouchableOpacity
-              key={t}
-              style={styles.dropdownItem}
-              onPress={() => { onSelect(t); setOpen(false); }}>
-              <Text style={[styles.dropdownItemText, { color: colors.textPrimary }]}>{t}</Text>
+              key={opt.value}
+              style={[styles.dropdownItem, value === opt.value && styles.dropdownItemActive]}
+              onPress={() => { onSelect(opt.value); setOpen(false); }}>
+              <Text style={[styles.dropdownItemText, { color: colors.textPrimary }, value === opt.value && styles.dropdownItemTextActive]}>
+                {opt.label}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -67,8 +78,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  dropdownItem: { paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: BORDER },
-  dropdownItemText: { fontFamily: FontFamily.regular, fontSize: RFValue(11) },
+  dropdownItem:         { paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: BORDER },
+  dropdownItemActive:   { backgroundColor: '#F0F6FF' },
+  dropdownItemText:     { fontFamily: FontFamily.regular, fontSize: RFValue(11) },
+  dropdownItemTextActive: { fontFamily: FontFamily.bold, color: '#10375C' },
 });
 
 export default TradeDropdown;

@@ -43,7 +43,7 @@ const MenuDrawerOverlay = ({ visible, onClose }) => {
   
   const { logout } = useAuth();
   const { profile } = useProfile();
-  console.log("profile", profile);
+   
   const userType = useSelector((s) => s.auth?.user?.type ?? 'subcontractor');
   const ACTIVE_MENU = userType === 'subcontractor' ? SUBCONTRACTOR_MENU_ITEMS : COMPANY_MENU_ITEMS;
 
@@ -171,7 +171,6 @@ const MenuDrawerOverlay = ({ visible, onClose }) => {
 
             {/* Menu Items */}
             {ACTIVE_MENU.map((item, idx) => {
-              console.log('item', item);
               const IconComp = item.icon;
               return (
                 <TouchableOpacity 

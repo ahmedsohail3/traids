@@ -3,17 +3,10 @@ import { View, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { Filter, BadgeCheck } from 'lucide-react-native';
-
-const FALLBACK_DATA = [
-  { id: 1, name: 'Michael Chen', trade: 'Electrician', jobs: 12, spend: '£45.2k', rating: '4.9', onTime: '88%', verified: true },
-  { id: 2, name: 'Sarah Miller', trade: 'Plumber', jobs: 8, spend: '£45.2k', rating: '4.9', onTime: '88%', verified: true },
-  { id: 3, name: 'James Rodriguez', trade: 'HVAC', jobs: 5, spend: '£45.2k', rating: '4.9', onTime: '88%', verified: true },
-  { id: 4, name: 'Emma Thompson', trade: 'Painter', jobs: 7, spend: '£45.2k', rating: '4.9', onTime: '88%', verified: true },
-];
+import { Filter, BadgeCheck, Users } from 'lucide-react-native';
 
 const TopContractorsList = ({ data }) => {
-  const CONTRACTORS = (data && data.length > 0) ? data : FALLBACK_DATA;
+  const hasData = Array.isArray(data) && data.length > 0;
 
   return (
     <View style={styles.card}>
@@ -24,41 +17,52 @@ const TopContractorsList = ({ data }) => {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.list}>
-        {CONTRACTORS.map((item) => (
-          <View 
-            key={item.id} 
-            style={[
-              styles.itemRow, 
-            ]}
-          >
-            <View style={styles.contractorInfoRow}>
-              <View style={styles.avatarWrap}>
-                <Image source={{ uri: `https://i.pravatar.cc/150?u=${item.id}` }} style={styles.avatar} />
-                {item.verified && (
-                  <View style={styles.verifiedBadge}>
-                    <BadgeCheck size={RFValue(10)} color="#3B82F6" fill="#fff" />
-                  </View>
+      {hasData ? (
+        <View style={styles.list}>
+          {data.map((item, idx) => (
+            <View key={item._id ?? item.id ?? idx} style={styles.itemRow}>
+              <View style={styles.contractorInfoRow}>
+                <View style={styles.avatarWrap}>
+                  <Image
+                    source={{ uri: item.avatar ?? item.profileImage ?? `https://i.pravatar.cc/150?u=${item._id ?? idx}` }}
+                    style={styles.avatar}
+                  />
+                  {item.verified && (
+                    <View style={styles.verifiedBadge}>
+                      <BadgeCheck size={RFValue(10)} color="#3B82F6" fill="#fff" />
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.detailsCol}>
+                  <Text style={styles.name}>{item.name ?? '—'}</Text>
+                  <Text style={styles.tradeInfo}>
+                    {[item.trade, item.jobs != null ? `${item.jobs} Jobs` : null].filter(Boolean).join(' · ')}
+                  </Text>
+                </View>
+
+                <View style={styles.spendCol}>
+                  <Text style={styles.spendAmount}>{item.spend ?? '—'}</Text>
+                </View>
+              </View>
+
+              <View style={styles.statsRow}>
+                {item.rating != null && (
+                  <Text style={[styles.statText, { fontFamily: FontFamily.medium }]}>Rating: {item.rating}</Text>
+                )}
+                {item.onTime != null && (
+                  <Text style={[styles.statText, { color: '#22C55E' }]}>On-Time: {item.onTime}</Text>
                 )}
               </View>
-              
-              <View style={styles.detailsCol}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Text style={styles.tradeInfo}>{item.trade} · {item.jobs} Jobs</Text>
-              </View>
-
-              <View style={styles.spendCol}>
-                <Text style={styles.spendAmount}>{item.spend}</Text>
-              </View>
             </View>
-
-            <View style={styles.statsRow}>
-              <Text style={[styles.statText, {fontFamily: FontFamily.medium}]}>Rating: {item.rating}</Text>
-              <Text style={[styles.statText, { color: '#22C55E' }]}>On-Time: {item.onTime}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.emptyWrap}>
+          <Users size={32} color="#CBD5E1" />
+          <Text style={styles.emptyText}>No contractor data yet.</Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -150,12 +154,22 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingLeft: 48, // Aligned with text, skipping avatar
+    paddingLeft: 48,
   },
   statText: {
     fontFamily: FontFamily.bold,
     fontSize: RFValue(9.5),
     color: '#64748B',
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 10,
+  },
+  emptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10),
+    color: '#94A3B8',
   },
 });
 

@@ -14,6 +14,7 @@ module.exports = {
           "~redux": "./src/redux",
           "~context": "./src/context",
           "~hooks": "./src/hooks",
+          "~providers": "./src/providers",
           "~routes": "./src/routes",
           "~screens": "./src/screens",
           "~theme": "./src/theme",

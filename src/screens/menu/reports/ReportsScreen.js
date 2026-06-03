@@ -15,7 +15,6 @@ import TopContractorsList from './components/TopContractorsList';
 const ReportsScreen = () => {
   const { colors } = useTheme();
   const { reports, loading, getReports } = useCompanyReports();
-  console.log('reports', reports);
 
   useEffect(() => { getReports(); }, []);
 
@@ -41,8 +40,8 @@ const ReportsScreen = () => {
             <View style={styles.statCell}>
               <StatCard
                 label="Total Spend (YTD)"
-                value={s?.totalSpend ?? '£142,500'}
-                subLabel={s?.totalSpendSub ?? '↘ +12% vs last year'}
+                value={s?.totalSpend ?? '—'}
+                subLabel={s?.totalSpendSub || null}
                 icon={PoundSterling}
                 iconColor="#10375C"
                 positive={s?.totalSpendPositive ?? false}
@@ -51,8 +50,8 @@ const ReportsScreen = () => {
             <View style={styles.statCell}>
               <StatCard
                 label="Active Projects"
-                value={s?.activeProjects ?? '8'}
-                subLabel={s?.activeProjectsSub ?? '↗ +2 vs last month'}
+                value={s?.activeProjects != null ? String(s.activeProjects) : '—'}
+                subLabel={s?.activeProjectsSub || null}
                 icon={Briefcase}
                 iconColor="#10375C"
                 positive={s?.activeProjectsPositive ?? true}
@@ -63,8 +62,7 @@ const ReportsScreen = () => {
             <View style={styles.statCell}>
               <StatCard
                 label="Avg Contractor Rating"
-                value={s?.avgRating ?? '4.8/5.0'}
-                subLabel="↗ Top 10% of Industry"
+                value={s?.avgRating ?? '—'}
                 icon={CheckSquare}
                 iconColor="#10375C"
                 positive={true}
@@ -73,8 +71,8 @@ const ReportsScreen = () => {
             <View style={styles.statCell}>
               <StatCard
                 label="On-Time Completion"
-                value={s?.onTimeCompletion ?? '94%'}
-                subLabel={s?.onTimeSub ?? '↘ -2% vs target'}
+                value={s?.onTimeCompletion ?? '—'}
+                subLabel={s?.onTimeSub || null}
                 icon={Clock}
                 iconColor="#10375C"
                 positive={s?.onTimePositive ?? false}

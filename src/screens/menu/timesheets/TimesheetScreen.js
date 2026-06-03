@@ -1,61 +1,83 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import {
+  View, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator,
+} from 'react-native';
 import { Text } from '~components/Common';
 import Header from '~components/Header';
 import { useTheme } from '~context/ThemeContext';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { FontFamily } from '~theme/fonts';
 import { FileSearch } from 'lucide-react-native';
+import useCompanyJobs from '~hooks/useCompanyJobs';
 
-const DATA = [
-  { id: 1, title: 'Downtown Office Renovation', jobNum: 'Job#1', hours: 30, unbilled: '1,240' },
-  { id: 2, title: 'Dusting surfaces', jobNum: 'Job#2', hours: 30, unbilled: '1,240' },
-  { id: 3, title: 'Windexing mirrors', jobNum: 'Job#3', hours: 30, unbilled: '1,240' },
-  { id: 4, title: 'Assisting with recordkeeping', jobNum: 'Job#4', hours: 30, unbilled: '1,240' },
-  { id: 5, title: 'Maintaining food safety', jobNum: 'Job#5', hours: 30, unbilled: '1,240' },
-  { id: 6, title: 'Vacuuming and / or mopping floors', jobNum: 'Job#6', hours: 30, unbilled: '1,240' },
-];
+const ACTIVE_STATUSES = new Set(['in_progress', 'in progress', 'completed']);
 
 const TimesheetScreen = ({ navigation }) => {
   const { colors } = useTheme();
+  const { jobs, loading, getJobs } = useCompanyJobs();
+
+  useEffect(() => { getJobs(); }, []);
+
+  const timesheetJobs = useMemo(
+    () => jobs.filter((j) => ACTIVE_STATUSES.has((j.status ?? '').toLowerCase())),
+    [jobs],
+  );
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
+      
       <Header
         title="Timesheets"
         subtitle="Review work logs and generate professional projects invoices."
         showBackButton
       />
 
+      {loading && (
+        <View style={styles.loader}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContainer}>
-        {DATA.map((item, idx) => (
-          <TouchableOpacity 
-            key={item.id} 
-            style={styles.card} 
+        {!loading && timesheetJobs.length === 0 && (
+          <View style={styles.emptyWrap}>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              No active timesheets found.
+            </Text>
+          </View>
+        )}
+
+        {timesheetJobs.map((job, index) => (
+          <TouchableOpacity
+            key={job._id ?? index}
+            style={styles.card}
             activeOpacity={0.7}
-            onPress={() => navigation.navigate('TimesheetProject', { projectTitle: item.title })}
+            onPress={() => navigation.navigate('TimesheetProject', { projectTitle: job.jobTitle, job })}
           >
             <View style={styles.cardTop}>
               <View style={styles.iconWrap}>
                 <FileSearch size={RFValue(18)} color="#10375C" />
               </View>
               <View style={styles.titleWrap}>
-                <Text style={styles.titleText}>{item.title}</Text>
-                <Text style={styles.jobText}>{item.jobNum}</Text>
+                <Text style={styles.titleText}>{job.jobTitle ?? '—'}</Text>
+                <Text style={styles.jobText}>Job #{index + 1}</Text>
               </View>
             </View>
 
             <View style={styles.cardBottom}>
               <View style={styles.metricBlockBox}>
-                <Text style={styles.metricLabel}>Hours</Text>
-                <Text style={styles.metricValue}>{item.hours} Hours</Text>
+                <Text style={styles.metricLabel}>Workers</Text>
+                <Text style={styles.metricValue}>
+                  {Array.isArray(job.assignedTo) ? job.assignedTo.length : 0}
+                </Text>
               </View>
               <View style={styles.metricBlockBox}>
-                <Text style={styles.metricLabel}>Unbilled</Text>
-                <Text style={styles.metricValue}>{item.unbilled}</Text>
+                <Text style={styles.metricLabel}>Hourly Rate</Text>
+                <Text style={styles.metricValue}>
+                  {job.hourlyRate != null ? `£${job.hourlyRate}/hr` : '—'}
+                </Text>
               </View>
             </View>
-
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -65,11 +87,17 @@ const TimesheetScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  loader: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center', justifyContent: 'center', zIndex: 10,
+  },
   scrollContainer: {
     padding: 16,
     paddingBottom: 120,
     gap: 12,
   },
+  emptyWrap: { alignItems: 'center', paddingTop: 40 },
+  emptyText: { fontFamily: FontFamily.regular, fontSize: RFValue(12) },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,

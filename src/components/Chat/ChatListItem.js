@@ -7,6 +7,7 @@ import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Text } from '~components/Common';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { FontFamily } from '~theme/fonts';
+import { Paperclip } from 'lucide-react-native';
 
 const ChatListItem = ({ item, onPress }) => (
   <TouchableOpacity style={styles.container} onPress={() => onPress(item)} activeOpacity={0.7}>
@@ -23,7 +24,16 @@ const ChatListItem = ({ item, onPress }) => (
 
     <View style={styles.info}>
       <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-      <Text style={styles.preview} numberOfLines={1}>{item.lastMessage}</Text>
+      {!item.lastMessage && item.lastAttachmentCount > 0 ? (
+        <View style={styles.attachPreview}>
+          <Paperclip size={RFValue(10)} color="#94A3B8" strokeWidth={2} />
+          <Text style={styles.preview}>
+            {item.lastAttachmentCount} attachment{item.lastAttachmentCount !== 1 ? 's' : ''}
+          </Text>
+        </View>
+      ) : (
+        <Text style={styles.preview} numberOfLines={1}>{item.lastMessage}</Text>
+      )}
     </View>
 
     <View style={styles.meta}>
@@ -74,6 +84,11 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: RFValue(10),
     color: '#94A3B8',
+  },
+  attachPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   meta: { alignItems: 'flex-end', gap: 6 },
   time: {

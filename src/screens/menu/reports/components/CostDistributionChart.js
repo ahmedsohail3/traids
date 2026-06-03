@@ -1,26 +1,32 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { RFValue } from 'react-native-responsive-fontsize';
 import Svg, { Circle, G } from 'react-native-svg';
+import { PieChart } from 'lucide-react-native';
 
-const FALLBACK_DATA = [
-  { label: 'Electrical', value: 35000, color: '#10375C', display: '£35.0k' },
-  { label: 'Plumbing',   value: 22000, color: '#F2A154', display: '£22.0k' },
-  { label: 'HVAC',       value: 18000, color: '#0EA5E9', display: '£18.0k' },
-  { label: 'Carpentry',  value: 12500, color: '#64748B', display: '£12.5k' },
-  { label: 'Masonry',    value: 8500,  color: '#CBD5E1', display: '£8.5k' },
-];
-const FALLBACK_TOTAL = 96000;
+const PALETTE = ['#10375C', '#F2A154', '#0EA5E9', '#64748B', '#CBD5E1', '#22C55E', '#F59E0B', '#EF4444'];
 
-// Render basic donut by accumulating strokeDashoffsets
+const capitalize = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
+
+const fmtAmount = (n) => {
+  if (n == null) return '£0';
+  if (n >= 1000) return `£${(n / 1000).toFixed(1)}k`;
+  return `£${Number(n).toFixed(2)}`;
+};
+
+const fmtCenter = (n) => {
+  if (n == null) return '£0';
+  if (n >= 1000) return `£${(n / 1000).toFixed(0)}k`;
+  return `£${Number(n).toFixed(0)}`;
+};
+
 const Donut = ({ items, total }) => {
   const size = 120;
   const strokeWidth = 18;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const centerLabel = total >= 1000 ? `${(total / 1000).toFixed(0)}k` : String(total);
 
   let currentOffset = 0;
 
@@ -29,9 +35,10 @@ const Donut = ({ items, total }) => {
       <Svg width={size} height={size}>
         <G>
           {items.map((item, idx) => {
-            const strokeDasharray = `${(item.value / total) * circumference} ${circumference}`;
+            const fraction = total > 0 ? item.value / total : 0;
+            const strokeDasharray = `${fraction * circumference} ${circumference}`;
             const offset = currentOffset;
-            currentOffset += (item.value / total) * circumference;
+            currentOffset += fraction * circumference;
 
             return (
               <Circle
@@ -49,9 +56,8 @@ const Donut = ({ items, total }) => {
           })}
         </G>
       </Svg>
-      {/* Center Text */}
       <View style={styles.donutCenter}>
-        <Text style={styles.donutCenterValue}>{centerLabel}</Text>
+        <Text style={styles.donutCenterValue}>{fmtCenter(total)}</Text>
         <Text style={styles.donutCenterLabel}>Total</Text>
       </View>
     </View>
@@ -59,29 +65,55 @@ const Donut = ({ items, total }) => {
 };
 
 const CostDistributionChart = ({ data }) => {
-  const items = (data?.items && data.items.length > 0) ? data.items : FALLBACK_DATA;
-  const total = data?.total ?? FALLBACK_TOTAL;
+  const items = useMemo(() => {
+    if (!Array.isArray(data) || data.length === 0) return [];
+    return data.map((entry, idx) => ({
+      label:      capitalize(entry.trade),
+      value:      entry.amount  ?? 0,
+      percentage: entry.percentage != null ? `${entry.percentage}%` : null,
+      color:      PALETTE[idx % PALETTE.length],
+      display:    fmtAmount(entry.amount),
+    }));
+  }, [data]);
+
+  const total = useMemo(() => items.reduce((sum, i) => sum + i.value, 0), [items]);
+
+  const isEmpty = items.length === 0;
 
   return (
     <View style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.title}>Cost Distribution</Text>
-        <Text style={styles.subtitle}>spend breakdown by trade category</Text>
+        <Text style={styles.subtitle}>Spend breakdown by trade category</Text>
       </View>
 
-      <Donut items={items} total={total} />
+      {isEmpty ? (
+        <View style={styles.emptyWrap}>
+          <PieChart size={32} color="#CBD5E1" />
+          <Text style={styles.emptyText}>No cost distribution data yet.</Text>
+        </View>
+      ) : (
+        <>
+          <Donut items={items} total={total} />
 
-      <View style={styles.list}>
-        {items.map((item, idx) => (
-          <View key={idx} style={styles.listItem}>
-            <View style={styles.itemLeft}>
-              <View style={[styles.dot, { backgroundColor: item.color }]} />
-              <Text style={styles.itemLabel}>{item.label}</Text>
-            </View>
-            <Text style={styles.itemValue}>{item.display}</Text>
+          <View style={styles.list}>
+            {items.map((item, idx) => (
+              <View key={idx} style={styles.listItem}>
+                <View style={styles.itemLeft}>
+                  <View style={[styles.dot, { backgroundColor: item.color }]} />
+                  <Text style={styles.itemLabel}>{item.label}</Text>
+                </View>
+                <View style={styles.itemRight}>
+                  {item.percentage && (
+                    <Text style={styles.itemPct}>{item.percentage}</Text>
+                  )}
+                  <Text style={styles.itemValue}>{item.display}</Text>
+                </View>
+              </View>
+            ))}
           </View>
-        ))}
-      </View>
+        </>
+      )}
     </View>
   );
 };
@@ -98,9 +130,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  header: {
-    marginBottom: 20,
-  },
+  header:   { marginBottom: 20 },
   title: {
     fontFamily: FontFamily.bold,
     fontSize: RFValue(12),
@@ -108,6 +138,16 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   subtitle: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10),
+    color: '#94A3B8',
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 10,
+  },
+  emptyText: {
     fontFamily: FontFamily.regular,
     fontSize: RFValue(10),
     color: '#94A3B8',
@@ -132,9 +172,7 @@ const styles = StyleSheet.create({
     fontSize: RFValue(10),
     color: '#94A3B8',
   },
-  list: {
-    gap: 12,
-  },
+  list:     { gap: 12 },
   listItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -145,15 +183,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  itemRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   itemLabel: {
     fontFamily: FontFamily.regular,
     fontSize: RFValue(11),
     color: '#334155',
+  },
+  itemPct: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10),
+    color: '#94A3B8',
   },
   itemValue: {
     fontFamily: FontFamily.semiBold,

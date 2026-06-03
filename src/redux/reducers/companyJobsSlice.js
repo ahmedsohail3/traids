@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getJobsApi, getJobByIdApi } from '~services/companyJobsService';
+import { getJobsApi, getJobByIdApi, getJobRatingsApi, submitJobRatingApi } from '~services/companyJobsService';
 import { getErrorMessage } from '~utils';
 
 // ── Async Thunks ───────────────────────────────────────────────────────────────
@@ -31,6 +31,33 @@ export const fetchCompanyJobById = createAsyncThunk(
   },
 );
 
+export const fetchJobRatings = createAsyncThunk(
+  'companyJobs/fetchJobRatings',
+  async (jobId, { rejectWithValue }) => {
+    try {
+      const res = await getJobRatingsApi(jobId);
+      return {
+        totalRatings:  res.totalRatings  ?? 0,
+        averageRating: res.averageRating ?? 0,
+        ratings:       Array.isArray(res.ratings) ? res.ratings : [],
+      };
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
+export const postJobRating = createAsyncThunk(
+  'companyJobs/postJobRating',
+  async ({ jobId, subcontractorId, rating, comment }, { rejectWithValue }) => {
+    try {
+      await submitJobRatingApi(jobId, subcontractorId, { rating, comment });
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
 // ── Slice ──────────────────────────────────────────────────────────────────────
 
 const companyJobsSlice = createSlice({
@@ -45,6 +72,11 @@ const companyJobsSlice = createSlice({
     selectedJob:    null,
     detailLoading:  false,
     detailError:    null,
+    // Ratings
+    ratingsData: { totalRatings: 0, averageRating: 0, ratings: [] },
+    loadingRatings:   false,
+    submittingRating: false,
+    ratingsError:     null,
   },
   reducers: {
     clearCompanyJobs: (state) => {
@@ -55,6 +87,10 @@ const companyJobsSlice = createSlice({
     clearSelectedJob: (state) => {
       state.selectedJob   = null;
       state.detailError   = null;
+    },
+    clearRatings: (state) => {
+      state.ratingsData = { totalRatings: 0, averageRating: 0, ratings: [] };
+      state.ratingsError = null;
     },
   },
   extraReducers: (builder) => {
@@ -73,6 +109,31 @@ const companyJobsSlice = createSlice({
         state.listLoading = false;
         state.listError   = payload ?? 'Failed to load jobs.';
       })
+      // Ratings — fetch
+      .addCase(fetchJobRatings.pending, (state) => {
+        state.loadingRatings = true;
+        state.ratingsError   = null;
+      })
+      .addCase(fetchJobRatings.fulfilled, (state, { payload }) => {
+        state.loadingRatings = false;
+        state.ratingsData    = payload;
+      })
+      .addCase(fetchJobRatings.rejected, (state, { payload }) => {
+        state.loadingRatings = false;
+        state.ratingsError   = payload ?? 'Failed to load ratings.';
+      })
+      // Ratings — submit
+      .addCase(postJobRating.pending, (state) => {
+        state.submittingRating = true;
+        state.ratingsError     = null;
+      })
+      .addCase(postJobRating.fulfilled, (state) => {
+        state.submittingRating = false;
+      })
+      .addCase(postJobRating.rejected, (state, { payload }) => {
+        state.submittingRating = false;
+        state.ratingsError     = payload ?? 'Failed to submit rating.';
+      })
       // Detail
       .addCase(fetchCompanyJobById.pending, (state) => {
         state.detailLoading = true;
@@ -89,5 +150,5 @@ const companyJobsSlice = createSlice({
   },
 });
 
-export const { clearCompanyJobs, clearSelectedJob } = companyJobsSlice.actions;
+export const { clearCompanyJobs, clearSelectedJob, clearRatings } = companyJobsSlice.actions;
 export default companyJobsSlice.reducer;

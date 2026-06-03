@@ -13,6 +13,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import TimesheetScreen from '~screens/menu/timesheets/TimesheetScreen';
 import TimesheetProjectScreen from '~screens/menu/timesheets/TimesheetProjectScreen';
 import SubTimesheetScreen from '~screens/menu/timesheets/subcontractor/SubTimesheetScreen';
+import InvoiceDetailScreen from '~screens/menu/financial/InvoiceDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -26,6 +27,7 @@ const TimesheetStack = ({ userType = 'company' }) => {
         <>
           <Stack.Screen name="TimesheetRoot" component={TimesheetScreen} />
           <Stack.Screen name="TimesheetProject" component={TimesheetProjectScreen} />
+          <Stack.Screen name="InvoiceDetail" component={InvoiceDetailScreen} options={{ animation: 'slide_from_right' }} />
         </>
       )}
     </Stack.Navigator>

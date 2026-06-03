@@ -1,9 +1,12 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { Text, Button, TextInput } from '~components/Common';
+import { Text, TextInput } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
+import useProfile from '~hooks/useProfile';
+import useAlert from '~hooks/useAlert';
+import { buildCompanyProfileFormData } from '~utils/buildFormData';
 
 const PASSWORD_RULES = [
   { key: 'length', label: 'At least 8 characters', test: p => p.length >= 8 },
@@ -31,6 +34,8 @@ const RuleRow = ({ label, passed, colors }) => (
 
 const SecurityTab = () => {
   const { colors } = useTheme();
+  const { updateCompanyProfile, updatingProfile } = useProfile();
+  const { showAlert } = useAlert();
 
   const [form, setForm] = useState({
     newPw: '',
@@ -45,26 +50,32 @@ const SecurityTab = () => {
 
   const allRulesPassed = PASSWORD_RULES.every(r => r.test(form.newPw));
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     const newErrors = {};
     if (!form.newPw) newErrors.newPw = 'Password is required';
     else if (!allRulesPassed) newErrors.newPw = 'Password does not meet requirements';
     if (form.newPw !== form.confirmPw) newErrors.confirmPw = 'Passwords do not match';
-    
+
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    // TODO: Final save submission logic
-    console.log("Changes Saved via validation check");
-  }, [form.newPw, form.confirmPw, allRulesPassed]);
+    try {
+      const formData = buildCompanyProfileFormData({ password: form.newPw });
+      await updateCompanyProfile(formData);
+      showAlert({ title: 'Success', message: 'Password updated successfully.', type: 'success' });
+      setForm({ newPw: '', confirmPw: '' });
+    } catch (err) {
+      showAlert({ title: 'Error', message: err?.message ?? 'Update failed.', type: 'error' });
+    }
+  }, [form.newPw, form.confirmPw, allRulesPassed, updateCompanyProfile]);
 
   return (
     <View style={styles.container}>
 
-      <TextInput 
-        label="New Password" 
-        value={form.newPw} 
-        onChangeText={v => setItem('newPw', v)} 
+      <TextInput
+        label="New Password"
+        value={form.newPw}
+        onChangeText={v => setItem('newPw', v)}
         placeholder="Enter your new password"
         secureTextEntry
         error={errors.newPw}
@@ -78,17 +89,27 @@ const SecurityTab = () => {
         </View>
       )}
 
-      <TextInput 
-        label="Confirm Password" 
-        value={form.confirmPw} 
-        onChangeText={v => setItem('confirmPw', v)} 
+      <TextInput
+        label="Confirm Password"
+        value={form.confirmPw}
+        onChangeText={v => setItem('confirmPw', v)}
         placeholder="Confirm your new password"
         secureTextEntry
         error={errors.confirmPw}
         containerStyle={styles.confirmInput}
       />
 
-      <Button title="Save Changes" variant="secondary" onPress={handleSave} style={{ marginTop: 24 }} />
+      <TouchableOpacity
+        style={[styles.saveButton, updatingProfile && styles.saveButtonDisabled, { marginTop: 24 }]}
+        onPress={handleSave}
+        disabled={updatingProfile}
+        activeOpacity={0.8}>
+        {updatingProfile ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Text style={styles.saveButtonText}>Save Changes</Text>
+        )}
+      </TouchableOpacity>
     </View>
   );
 };
@@ -115,8 +136,24 @@ const styles = StyleSheet.create({
     fontSize: RFValue(11),
     fontFamily: FontFamily.regular,
   },
-  confirmInput: { 
-    marginTop: 4 
+  confirmInput: {
+    marginTop: 4,
+  },
+  saveButton: {
+    backgroundColor: '#10375C',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    fontFamily: FontFamily.bold,
+    fontSize: RFValue(12),
+    color: '#FFFFFF',
   },
 });
 
