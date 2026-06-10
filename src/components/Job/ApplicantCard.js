@@ -22,6 +22,11 @@ import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
 import { CheckCircle2 } from 'lucide-react-native';
 
+const STATUS_BADGE = {
+  accepted: { label: 'Accepted', color: '#077a09' },
+  rejected: { label: 'Rejected', color: '#DC2626' },
+};
+
 const ApplicantCard = ({
   name,
   trade,
@@ -30,11 +35,13 @@ const ApplicantCard = ({
   avatarUri,
   isVerified,
   status = 'pending',
-  onCancel,
+  loading = false,
+  onReject,
   onAccept,
   onMessage,
 }) => {
   const { colors } = useTheme();
+  const badge = STATUS_BADGE[status];
 
   return (
     <View style={[styles.card, { backgroundColor: colors.surface }]}>
@@ -59,10 +66,26 @@ const ApplicantCard = ({
         </View>
 
         <View style={styles.quoteSection}>
+          {badge ? (
+            <View style={[styles.statusBadge, { backgroundColor: badge.color }]}>
+              <Text style={styles.statusBadgeText}>{badge.label}</Text>
+            </View>
+          ) : (
+            <>
+              <Text style={[styles.quoteLabel, { color: colors.textSecondary }]}>Qoute/Bid</Text>
+              <Text style={[styles.quoteValue, { color: colors.textPrimary }]}>{rate}</Text>
+            </>
+          )}
+        </View>
+      </View>
+
+      {/* Quote for accepted/rejected (badge replaces it in top row) */}
+      {badge && (
+        <View style={styles.quoteRow}>
           <Text style={[styles.quoteLabel, { color: colors.textSecondary }]}>Qoute/Bid</Text>
           <Text style={[styles.quoteValue, { color: colors.textPrimary }]}>{rate}</Text>
         </View>
-      </View>
+      )}
 
       {/* Message Section */}
       {message && <View style={styles.messageSection}>
@@ -71,32 +94,44 @@ const ApplicantCard = ({
       </View>}
 
       {/* Bottom Actions */}
-      <View style={styles.actionsRow}>
-        {status === 'pending' ? (
-          <>
+      {status === 'pending' ? (
+        <>
+          <View style={styles.actionsRow}>
             <Button
-              title="Cancel"
+              title="Reject"
               variant="outline"
-              onPress={onCancel}
+              onPress={onReject}
+              disabled={loading}
               style={{ flex: 1 }}
             />
             <View style={{ width: 12 }} />
             <Button
-              title="Accept"
+              title={loading ? 'Processing…' : 'Accept'}
               variant="primary"
               onPress={onAccept}
+              disabled={loading}
               style={{ flex: 1, backgroundColor: '#F2A154' }}
             />
-          </>
-        ) : (
+          </View>
+          <View style={[styles.actionsRow, styles.messageRow]}>
+            <Button
+              title="Message"
+              variant="outline"
+              onPress={onMessage}
+              style={{ flex: 1 }}
+            />
+          </View>
+        </>
+      ) : (
+        <View style={styles.actionsRow}>
           <Button
             title="Message"
             variant="outline"
             onPress={onMessage}
             style={{ flex: 1 }}
           />
-        )}
-      </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -161,6 +196,20 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: RFValue(13),
   },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  statusBadgeText: {
+    color: '#FFFFFF',
+    fontFamily: FontFamily.semiBold,
+    fontSize: RFValue(9),
+  },
+  quoteRow: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
   messageSection: {
     padding: 16,
     paddingBottom: 0,
@@ -178,6 +227,9 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     padding: 16,
+  },
+  messageRow: {
+    paddingTop: 0,
   },
 });
 

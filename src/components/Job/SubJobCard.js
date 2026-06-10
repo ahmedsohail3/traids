@@ -5,6 +5,7 @@ import { MapPin, Calendar, Users, Briefcase } from 'lucide-react-native';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
+import { stripHtml } from '~utils';
 
 const AVATAR_COLORS = ['#10375C', '#F2A154', '#3BB273', '#6366F1', '#EC4899'];
 
@@ -57,7 +58,7 @@ const SubJobCard = ({
       {/* Title + description */}
       <Text style={[styles.jobTitle, { color: colors.textPrimary }]}>{title}</Text>
       <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={3}>
-        {description}
+        {description ? stripHtml(description) : ''}
       </Text>
 
       {/* Tags */}
@@ -76,14 +77,14 @@ const SubJobCard = ({
         </View>
         <View style={[styles.tag, { borderColor: colors.border }]}>
           <Briefcase size={RFValue(9)} color={colors.textSecondary} strokeWidth={2} />
-          <Text style={[styles.tagText, { color: colors.textSecondary }]}>{trade}</Text>
+          <Text style={[styles.tagText, { color: colors.textSecondary, textTransform: 'capitalize' }]}>{trade}</Text>
         </View>
       </View>
 
       {/* Footer */}
       <View style={[styles.footer, { borderTopColor: colors.border }]}>
         <Text style={[styles.applicantText, { color: colors.textSecondary }]}>
-          Over {applicantCount} Applicants
+          {applicantCount} {applicantCount === 1 ? 'Applicant' : 'Applicants'}
         </Text>
         <TouchableOpacity style={styles.applyBtn} onPress={onApply} activeOpacity={0.85}>
           <Text style={styles.applyBtnText}>Apply Now</Text>

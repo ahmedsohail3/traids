@@ -9,6 +9,9 @@ import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 import ApplicantCard from '~components/Job/ApplicantCard';
 import useCompanyJobs from '~hooks/useCompanyJobs';
+import useChat from '~hooks/useChat';
+import useAlert from '~hooks/useAlert';
+import { stripHtml } from '~utils';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -30,9 +33,6 @@ const STATUS_LABELS = {
   completed:    'Completed',
 };
 
-const stripHtml = (str) =>
-  str ? str.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
-
 const formatDate = (iso) => {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -44,6 +44,7 @@ const fromOffer = (o) => {
   const sub = o.subcontractor ?? {};
   return {
     _id:       o._id,
+    subId:     sub._id ?? null,
     name:      sub.fullName     ?? '—',
     trade:     sub.primaryTrade ?? '—',
     rate:      sub.hourlyRate   != null ? `£${sub.hourlyRate}/hr` : '—',
@@ -58,12 +59,13 @@ const fromApplication = (a) => {
   const sub = a.subcontractor ?? {};
   return {
     _id:       a._id,
+    subId:     sub._id ?? null,
     name:      sub.fullName     ?? a.fullName ?? '—',
     trade:     sub.primaryTrade ?? '—',
-    rate:      sub.hourlyRate   != null
-      ? `£${sub.hourlyRate}/hr`
-      : a.proposedDailyRate != null
-        ? `£${a.proposedDailyRate}/day`
+    rate:      a.proposedDailyRate != null
+      ? `£${a.proposedDailyRate}/hr`
+      : sub.hourlyRate != null
+        ? `£${sub.hourlyRate}/hr`
         : '—',
     avatarUri:  sub.profileImage ?? null,
     isVerified: sub.isVerified   ?? false,
@@ -74,6 +76,7 @@ const fromApplication = (a) => {
 
 const fromAssignedTo = (s) => ({
   _id:       s._id,
+  subId:     s._id ?? null,
   name:      s.fullName     ?? s.name     ?? '—',
   trade:     s.primaryTrade ?? s.trade    ?? '—',
   rate:      s.hourlyRate   != null ? `£${s.hourlyRate}/hr` : '—',
@@ -126,17 +129,75 @@ const normaliseApplicants = (job) => {
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
-const CompanyJobDetailScreen = ({ route }) => {
+const CompanyJobDetailScreen = ({ route, navigation }) => {
   const { colors } = useTheme();
-  const { selectedJob, detailLoading, getJobById, resetSelectedJob } = useCompanyJobs();
+  const { showAlert, showConfirm } = useAlert();
+  const {
+    selectedJob, detailLoading, getJobById, resetSelectedJob,
+    acceptJobApplication, rejectJobApplication, processingApplication,
+  } = useCompanyJobs();
+  const { rawConversations, getConversations } = useChat();
 
   const jobId  = route?.params?.job?._id ?? route?.params?.jobId;
   const status = route?.params?.status ?? selectedJob?.status ?? 'pending';
 
+  const handleAccept = (applicationId) => {
+    showConfirm({
+      title:       'Accept Application',
+      message:     'Are you sure you want to accept this subcontractor application?',
+      confirmText: 'Accept',
+      type:        'success',
+      onConfirm:   async () => {
+        try {
+          await acceptJobApplication(applicationId);
+          showAlert({ title: 'Accepted', message: 'Application accepted successfully.', type: 'success' });
+          if (jobId) getJobById(jobId);
+        } catch (err) {
+          showAlert({ title: 'Error', message: err ?? 'Failed to accept application.', type: 'error' });
+        }
+      },
+    });
+  };
+
+  const handleReject = (applicationId) => {
+    showConfirm({
+      title:       'Reject Application',
+      message:     'Are you sure you want to reject this subcontractor application?',
+      confirmText: 'Reject',
+      type:        'error',
+      onConfirm:   async () => {
+        try {
+          await rejectJobApplication(applicationId);
+          showAlert({ title: 'Rejected', message: 'Application rejected successfully.', type: 'success' });
+          if (jobId) getJobById(jobId);
+        } catch (err) {
+          showAlert({ title: 'Error', message: err ?? 'Failed to reject application.', type: 'error' });
+        }
+      },
+    });
+  };
+
   useEffect(() => {
+    getConversations();
     if (jobId) getJobById(jobId);
     return () => resetSelectedJob();
   }, [jobId]);
+
+  const handleMessage = (applicant) => {
+    const subId = applicant.subId;
+    const existing = rawConversations.find(
+      (c) => c.subcontractor?._id === subId || c.subcontractor === subId,
+    );
+    if (existing) {
+      navigation.navigate('CompanyChat', { conversation: existing });
+    } else {
+      navigation.navigate('CompanyChat', {
+        subcontractorId: subId,
+        subName:         applicant.name,
+        subAvatarUri:    applicant.avatarUri ?? null,
+      });
+    }
+  };
 
   // Fall back to route params while the API loads so screen isn't blank
   const job = selectedJob ?? route?.params?.job ?? {};
@@ -167,14 +228,16 @@ const CompanyJobDetailScreen = ({ route }) => {
             <View style={[styles.tag, { backgroundColor: statusColor }]}>
               <Text style={styles.tagText}>{statusLabel}</Text>
             </View>
-            <TouchableOpacity style={[styles.tag, styles.completeBtn]} activeOpacity={0.8}>
-              <Text style={styles.completeBtnText}>✓ Complete Job</Text>
-            </TouchableOpacity>
+            {statusKey === 'completed' && (
+              <TouchableOpacity style={[styles.tag, styles.completeBtn]} activeOpacity={0.8}>
+                <Text style={styles.completeBtnText}>✓ Complete Job</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <Text style={styles.jobTitle}>{job.jobTitle ?? '—'}</Text>
           <Text style={styles.jobMeta}>
-            {job.trade ?? '—'}
+            {job.trade ? job.trade.charAt(0).toUpperCase() + job.trade.slice(1) : '—'}
             {job.siteAddress ? ` • ${job.siteAddress}` : ''}
           </Text>
 
@@ -225,10 +288,11 @@ const CompanyJobDetailScreen = ({ route }) => {
               avatarUri={a.avatarUri}
               isVerified={a.isVerified}
               message={a.message || a.professionalBio || ''}
-              status={a.status === 'accepted' ? 'accepted' : 'pending'}
-              onCancel={() => {}}
-              onAccept={() => {}}
-              onMessage={() => {}}
+              status={a.status}
+              loading={processingApplication}
+              onReject={() => handleReject(a._id)}
+              onAccept={() => handleAccept(a._id)}
+              onMessage={() => handleMessage(a)}
             />
           ))
         ) : (

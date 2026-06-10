@@ -1,15 +1,85 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator,
+  View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, Platform,
 } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Briefcase, DollarSign, MapPin, Calendar, ArrowDownUp } from 'lucide-react-native';
+import dayjs from 'dayjs';
 import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 import { Text, TextInput, Checkbox, PriceSlider } from '~components/Common';
 import Header from '~components/Header';
 import SubJobCard from '~components/Job/SubJobCard';
 import useSubcontractorJobs from '~hooks/useSubcontractorJobs';
+
+// ── Platform-specific date picker ─────────────────────────────────────────────
+let DatePicker;
+let DateTimePicker;
+if (Platform.OS === 'android') {
+  DatePicker = require('react-native-date-picker').default;
+} else {
+  DateTimePicker = require('@react-native-community/datetimepicker').default;
+}
+
+const DateModal = ({ visible, title, value, onConfirm, onClose }) => {
+  const dateObj = value ? new Date(value) : new Date();
+  const [tempDate, setTempDate] = useState(dateObj);
+
+  const wasVisible = useRef(false);
+  if (visible && !wasVisible.current) {
+    wasVisible.current = true;
+    const next = value ? new Date(value) : new Date();
+    if (next.getTime() !== tempDate.getTime()) setTempDate(next);
+  }
+  if (!visible) wasVisible.current = false;
+
+  const handleConfirm = useCallback((date) => {
+    onConfirm(dayjs(date).format('YYYY-MM-DD'));
+    onClose();
+  }, [onConfirm, onClose]);
+
+  if (Platform.OS === 'android') {
+    return (
+      <DatePicker
+        modal
+        open={visible}
+        date={tempDate}
+        mode="date"
+        title={title}
+        onConfirm={(date) => handleConfirm(date)}
+        onCancel={onClose}
+      />
+    );
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.dateModal}>
+          <Text style={styles.dateModalTitle}>{title}</Text>
+          <DateTimePicker
+            value={tempDate}
+            mode="date"
+            display="spinner"
+            onChange={(_, date) => { if (date) setTempDate(date); }}
+            style={styles.iosDatePicker}
+            textColor="#10375C"
+          />
+          <View style={styles.dateModalActions}>
+            <TouchableOpacity style={styles.dateModalCancel} onPress={onClose}>
+              <Text style={styles.dateModalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.dateModalConfirm}
+              onPress={() => handleConfirm(tempDate)}>
+              <Text style={styles.dateModalConfirmText}>Confirm</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -24,21 +94,34 @@ const TRADES = [
 
 const AVATAR_COLORS = ['#10375C', '#F2A154', '#3BB273', '#6366F1', '#EC4899'];
 
-const mapJob = (raw, index) => ({
-  id:               raw._id     ?? raw.id ?? String(index),
-  companyName:      raw.companyName  ?? raw.company?.name ?? '—',
-  companyInitial:   (raw.companyName ?? raw.company?.name ?? '?').charAt(0).toUpperCase(),
-  companyColorIndex: index % AVATAR_COLORS.length,
-  location:         raw.location     ?? raw.address    ?? '—',
-  distance:         raw.distance     ?? '',
-  rate:             raw.hourlyRate   != null ? `£${raw.hourlyRate}/hr` : (raw.rate ?? '—'),
-  title:            raw.title        ?? raw.jobTitle   ?? '—',
-  description:      raw.description  ?? raw.details    ?? '',
-  startDate:        raw.startDate    ?? raw.start       ?? '—',
-  workersRequired:  raw.workersRequired ?? raw.workers  ?? 1,
-  trade:            raw.trade        ?? raw.primaryTrade ?? '—',
-  applicantCount:   raw.applicantCount ?? raw.applicants ?? 0,
-});
+const formatDate = (iso) => {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const mapJob = (raw, index) => {
+  const company = typeof raw.company === 'object' ? (raw.company ?? {}) : {};
+  const name    = company.companyName ?? raw.companyName ?? '—';
+  return {
+    id:                raw._id ?? raw.id ?? String(index),
+    companyName:       name,
+    companyInitial:    name.charAt(0).toUpperCase(),
+    companyColorIndex: index % AVATAR_COLORS.length,
+    avatarUri:         company.profileImage ?? null,
+    location:          raw.siteAddress   ?? raw.location  ?? '—',
+    distance:          raw.distance      ?? '',
+    rate:              raw.hourlyRate    != null ? `£${raw.hourlyRate}/hr` : (raw.rate ?? '—'),
+    title:             raw.jobTitle      ?? raw.title      ?? '—',
+    description:       raw.description   ?? '',
+    startDate:         formatDate(raw.timelineStartDate ?? raw.startDate),
+    workersRequired:   raw.workersRequired ?? 1,
+    trade:             raw.trade          ?? '—',
+    applicantCount:    raw?.assignedTo?.length ?? 0,
+    typeOfJob:         raw.typeOfJob      ?? '',
+    status:            raw.status         ?? 'pending',
+    _raw:              raw,
+  };
+};
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -53,11 +136,12 @@ const SubJobBoardScreen = ({ navigation }) => {
     getAvailableJobs,
   } = useSubcontractorJobs();
 
-  const [selectedTrades, setSelectedTrades] = useState([]);
-  const [maxRate,         setMaxRate]        = useState(100);
-  const [locationInput,  setLocationInput]   = useState('');
-  const [startDate,      setStartDate]       = useState('');
-  const [currentPage,    setCurrentPage]     = useState(1);
+  const [selectedTrade,      setSelectedTrade]      = useState(null);
+  const [maxRate,            setMaxRate]            = useState(500);
+  const [locationInput,      setLocationInput]      = useState('');
+  const [startDate,          setStartDate]          = useState('');
+  const [datePickerVisible,  setDatePickerVisible]  = useState(false);
+  const [currentPage,        setCurrentPage]        = useState(1);
 
   const locationTimer = useRef(null);
 
@@ -65,19 +149,19 @@ const SubJobBoardScreen = ({ navigation }) => {
 
   const fetchJobs = useCallback((pg = 1) => {
     getAvailableJobs({
-      page:       pg,
-      trade:      selectedTrades.map((t) => t.key).join(',') || undefined,
+      page:          pg,
+      trade:         selectedTrade?.key || undefined,
       maxHourlyRate: maxRate,
-      location:   locationInput || undefined,
-      startDate:  startDate     || undefined,
+      location:      locationInput || undefined,
+      startDate:     startDate     || undefined,
     });
-  }, [selectedTrades, maxRate, locationInput, startDate, getAvailableJobs]);
+  }, [selectedTrade, maxRate, locationInput, startDate, getAvailableJobs]);
 
   // Re-fetch whenever filters change (reset to page 1)
   useEffect(() => {
     setCurrentPage(1);
     fetchJobs(1);
-  }, [selectedTrades, maxRate, startDate]);
+  }, [selectedTrade, maxRate, startDate]);
 
   // Location uses a 2-second debounce to avoid hammering the API on each keystroke
   const handleLocationChange = (text) => {
@@ -86,21 +170,17 @@ const SubJobBoardScreen = ({ navigation }) => {
     locationTimer.current = setTimeout(() => {
       setCurrentPage(1);
       getAvailableJobs({
-        page: 1,
-        trade: selectedTrades.map((t) => t.key).join(',') || undefined,
+        page:          1,
+        trade:         selectedTrade?.key || undefined,
         maxHourlyRate: maxRate,
-        location: text || undefined,
-        startDate: startDate || undefined,
+        location:      text || undefined,
+        startDate:     startDate || undefined,
       });
     }, 2000);
   };
 
   const toggleTrade = (trade) => {
-    setSelectedTrades((prev) =>
-      prev.some((t) => t.id === trade.id)
-        ? prev.filter((t) => t.id !== trade.id)
-        : [...prev, trade],
-    );
+    setSelectedTrade((prev) => prev?.key === trade.key ? null : trade);
   };
 
   const goToPage = (pg) => {
@@ -137,7 +217,7 @@ const SubJobBoardScreen = ({ navigation }) => {
           <Checkbox
             key={trade.id}
             label={trade.name}
-            checked={selectedTrades.some((t) => t.id === trade.id)}
+            checked={selectedTrade?.id === trade.id}
             onPress={() => toggleTrade(trade)}
             style={styles.tradeCheckbox}
           />
@@ -149,14 +229,14 @@ const SubJobBoardScreen = ({ navigation }) => {
         <PriceSlider
           icon={DollarSign}
           title="Max Hourly Rate"
-          min={10}
-          max={100}
+          min={100}
+          max={1000}
           step={10}
           value={maxRate}
           onChange={setMaxRate}
           prefix="£"
-          minLabel="£10"
-          maxLabel="£100+"
+          minLabel="£100"
+          maxLabel="£1000+"
         />
         <View style={styles.divider} />
         <View style={styles.filterTitleRow}>
@@ -178,13 +258,25 @@ const SubJobBoardScreen = ({ navigation }) => {
           <Calendar size={RFValue(14)} color="#F2A154" />
           <Text style={styles.filterTitle}>Start Date</Text>
         </View>
-        <TextInput
-          value={startDate}
-          onChangeText={setStartDate}
-          placeholder="e.g. 2025-06-01"
-          forceLight
-          containerStyle={styles.inputContainer}
-        />
+        <TouchableOpacity
+          style={styles.dateInput}
+          onPress={() => setDatePickerVisible(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.dateInputText, !startDate && styles.dateInputPlaceholder]}>
+            {startDate ? dayjs(startDate).format('D MMM YYYY') : 'Select start date'}
+          </Text>
+          {startDate ? (
+            <TouchableOpacity
+              onPress={() => setStartDate('')}
+              hitSlop={8}
+            >
+              <Text style={styles.dateClear}>✕</Text>
+            </TouchableOpacity>
+          ) : (
+            <Calendar size={RFValue(13)} color="#94A3B8" />
+          )}
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -273,6 +365,14 @@ const SubJobBoardScreen = ({ navigation }) => {
           )
         }
       />
+
+      <DateModal
+        visible={datePickerVisible}
+        title="Start Date"
+        value={startDate}
+        onConfirm={(iso) => setStartDate(iso)}
+        onClose={() => setDatePickerVisible(false)}
+      />
     </View>
   );
 };
@@ -345,6 +445,64 @@ const styles = StyleSheet.create({
   pageBtnActive:   { backgroundColor: '#10375C', borderColor: '#10375C' },
   pageBtnDisabled: { opacity: 0.4 },
   pageText: { fontFamily: FontFamily.medium, fontSize: RFValue(10), color: '#10375C' },
+
+  // Date input
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 46,
+    backgroundColor: '#F8FAFC',
+  },
+  dateInputText: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(11),
+    color: '#10375C',
+  },
+  dateInputPlaceholder: { color: '#94A3B8' },
+  dateClear: {
+    fontFamily: FontFamily.medium,
+    fontSize: RFValue(11),
+    color: '#94A3B8',
+  },
+
+  // Date picker modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.4)',
+    justifyContent: 'flex-end',
+  },
+  dateModal: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    paddingBottom: 36,
+    paddingHorizontal: 20,
+  },
+  dateModalTitle: {
+    fontFamily: FontFamily.bold,
+    fontSize: RFValue(14),
+    color: '#10375C',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  iosDatePicker: { width: '100%', marginBottom: 8 },
+  dateModalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  dateModalCancel: {
+    flex: 1, paddingVertical: 12, borderRadius: 10,
+    borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center',
+  },
+  dateModalCancelText: { fontFamily: FontFamily.semiBold, fontSize: RFValue(12), color: '#64748B' },
+  dateModalConfirm: {
+    flex: 1, paddingVertical: 12, borderRadius: 10,
+    backgroundColor: '#10375C', alignItems: 'center',
+  },
+  dateModalConfirmText: { fontFamily: FontFamily.semiBold, fontSize: RFValue(12), color: '#FFFFFF' },
 });
 
 export default SubJobBoardScreen;

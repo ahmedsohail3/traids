@@ -159,6 +159,7 @@ const styles = StyleSheet.create({
     fontSize: RFValue(11),
     fontFamily: FontFamily.regular,
     marginBottom: 8,
+    textTransform: 'capitalize',
   },
   metaRow: {
     flexDirection: 'row',

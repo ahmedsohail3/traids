@@ -7,7 +7,7 @@ import { FontFamily } from '~theme/fonts';
 
 const NAVY = '#10375C';
 
-const JobPreviewCard = ({ title, trade, rate, description }) => (
+const JobPreviewCard = ({ title, trade, rate, description, location, startDate, endDate }) => (
   <View style={styles.previewCard}>
     <View style={styles.previewTopRow}>
       <View style={{ flex: 1 }}>
@@ -22,11 +22,11 @@ const JobPreviewCard = ({ title, trade, rate, description }) => (
     <View style={styles.metaRow}>
       <View style={styles.metaItem}>
         <MapPin size={RFValue(12)} color="#94A3B8" />
-        <Text style={styles.previewMeta}>Location not specified</Text>
+        <Text style={styles.previewMeta}>{location || 'Location not specified'}</Text>
       </View>
       <View style={styles.metaItem}>
         <Calendar size={RFValue(12)} color="#94A3B8" />
-        <Text style={styles.previewMeta}>Start - End</Text>
+        <Text style={styles.previewMeta}>{startDate || 'Start'} - {endDate || 'End'}</Text>
       </View>
     </View>
 
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   },
   previewTopRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
   previewTitle: { fontFamily: FontFamily.bold, fontSize: RFValue(14), color: NAVY, marginBottom: 4 },
-  previewTrade: { fontFamily: FontFamily.regular, fontSize: RFValue(11), color: '#64748B' },
+  previewTrade: { fontFamily: FontFamily.regular, fontSize: RFValue(11), color: '#64748B', textTransform: 'capitalize' },
   activeBadge: { 
     backgroundColor: '#F8FAFC', 
     borderWidth: 1, 

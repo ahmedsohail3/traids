@@ -8,8 +8,6 @@ import { ThemeProvider } from '~context/ThemeContext';
 import { store, persistor } from '~redux/store';
 import RootNavigator from '~routes/RootNavigator';
 import AlertProvider from './providers/AlertProvider';
-// DEV ONLY — remove before release
-import DevRoleSwitcher from '~components/DevRoleSwitcher';
 
 const App = () => (
   <GestureHandlerRootView style={{ flex: 1 }}>
@@ -20,8 +18,6 @@ const App = () => (
             <SafeAreaProvider>
               <NavigationContainer>
                 <RootNavigator />
-                {/* DEV ONLY — remove before release */}
-                <DevRoleSwitcher />
               </NavigationContainer>
             </SafeAreaProvider>
           </AlertProvider>

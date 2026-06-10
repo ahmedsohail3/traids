@@ -1,89 +1,142 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Text, Button } from '~components/Common';
-import UploadField from '~components/Common/UploadField';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
+import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
+import { RFValue } from 'react-native-responsive-fontsize';
+import DocumentPickerField from '~components/Common/DocumentPickerField';
+import { buildSubcontractorProfileFormData } from '~utils/buildFormData';
+import useAlert from '~hooks/useAlert';
 
-const FormLabel = ({ text }) => (
-  <View style={styles.labelRow}>
-    <Text style={styles.labelText}>{text}</Text>
-  </View>
-);
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
-const DocumentsTab = () => {
-  const [docs, setDocs] = useState({
-    insurance: { name: 'phoenix-document.pdf', size: '6.77 MB' },
-    tickets: { name: 'phoenix-document.pdf', size: '6.77 MB' },
-    certification: { name: 'phoenix-document.pdf', size: '6.77 MB' }
-  });
+const urlToFile = (url) => {
+  if (!url) return null;
+  try {
+    const parts = decodeURIComponent(url).split('/');
+    const name  = parts[parts.length - 1] || 'document';
+    return { uri: url, type: 'application/octet-stream', name, isNew: false };
+  } catch {
+    return { uri: url, type: 'application/octet-stream', name: 'document', isNew: false };
+  }
+};
 
-  const removeDoc = (key) => setDocs(p => ({ ...p, [key]: null }));
-  const uploadDoc = (key) => setDocs(p => ({ ...p, [key]: { name: 'new-document.pdf', size: '2.4 MB' } }));
+// Pick first URL from a documents array/string and convert to file descriptor
+const firstUrlToFile = (val) => {
+  if (!val) return null;
+  const arr = Array.isArray(val) ? val : [val];
+  return urlToFile(arr[0] ?? null);
+};
+
+// ── Tab ────────────────────────────────────────────────────────────────────────
+
+const DocumentsTab = ({ profile, updateProfile, updatingProfile }) => {
+  const { showAlert } = useAlert();
+
+  const [insurance,     setInsurance]     = useState(null);
+  const [tickets,       setTickets]       = useState(null);
+  const [certification, setCertification] = useState(null);
+
+  useEffect(() => {
+    if (profile) {
+      setInsurance(firstUrlToFile(profile.insurance?.documents));
+      setTickets(firstUrlToFile(profile.tickets?.documents));
+      setCertification(firstUrlToFile(profile.certification?.documents));
+    }
+  }, [profile]);
+
+  const handleDocChange = useCallback((setter, file) => {
+    setter(file ? { ...file, isNew: true } : null);
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    const hasNewFiles =
+      insurance?.isNew === true ||
+      tickets?.isNew   === true ||
+      certification?.isNew === true;
+
+    if (!hasNewFiles) {
+      showAlert({ title: 'No Changes', message: 'No new documents to upload.', type: 'info' });
+      return;
+    }
+
+    try {
+      const formData = buildSubcontractorProfileFormData({
+        insuranceDocuments:    insurance     ? [insurance]     : [],
+        ticketsDocuments:      tickets       ? [tickets]       : [],
+        certificationDocuments: certification ? [certification] : [],
+      });
+      await updateProfile(formData);
+      showAlert({ title: 'Success', message: 'Documents updated.', type: 'success' });
+    } catch (err) {
+      showAlert({ title: 'Error', message: err?.message ?? err ?? 'Update failed.', type: 'error' });
+    }
+  }, [insurance, tickets, certification, updateProfile]);
 
   return (
     <View style={styles.container}>
-      <UploadField
-        label="Insurance"
-        onPress={() => uploadDoc('insurance')}
-        file={docs.insurance}
-        onRemove={() => removeDoc('insurance')}
+
+      <DocumentPickerField
+        label="Insurance Document"
+        hint="JPG, PNG or WEBP up to 10MB"
+        value={insurance}
+        onChange={(file) => handleDocChange(setInsurance, file)}
       />
 
-      <UploadField
-        label="Tickets"
-        onPress={() => uploadDoc('tickets')}
-        file={docs.tickets}
-        onRemove={() => removeDoc('tickets')}
+      <DocumentPickerField
+        label="Tickets Document"
+        hint="JPG, PNG or WEBP up to 10MB"
+        value={tickets}
+        onChange={(file) => handleDocChange(setTickets, file)}
       />
 
-      <UploadField
-        label="Certification"
-        onPress={() => uploadDoc('certification')}
-        file={docs.certification}
-        onRemove={() => removeDoc('certification')}
+      <DocumentPickerField
+        label="Certification Document"
+        hint="JPG, PNG or WEBP up to 10MB"
+        value={certification}
+        onChange={(file) => handleDocChange(setCertification, file)}
       />
 
-      <Button title="Save Changes" variant="secondary" onPress={() => {}} />
+      <TouchableOpacity
+        style={[styles.saveButton, updatingProfile && styles.saveButtonDisabled]}
+        onPress={handleSave}
+        disabled={updatingProfile}
+        activeOpacity={0.8}
+      >
+        {updatingProfile ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Text style={styles.saveButtonText}>Save Changes</Text>
+        )}
+      </TouchableOpacity>
+
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { marginTop: 10 },
-  labelRow: {
-    marginBottom: 8,
-  },
-  labelText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: '#10375C',
-  },
-  fileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+  saveButton: {
+    backgroundColor: '#10375C',
     borderRadius: 8,
-    padding: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    minHeight: 48,
   },
-  fileInfo: {
-    flex: 1,
+  saveButtonDisabled: {
+    opacity: 0.6,
   },
-  fileName: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: 10.5,
-    color: '#10375C',
-    marginBottom: 2,
+  saveButtonText: {
+    fontFamily: FontFamily.bold,
+    fontSize: RFValue(12),
+    color: '#FFFFFF',
   },
-  fileSize: {
-    fontFamily: FontFamily.regular,
-    fontSize: 9,
-    color: '#64748B',
-  },
-  removeBtn: {
-    padding: 4,
-  }
 });
 
 export default DocumentsTab;

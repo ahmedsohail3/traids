@@ -11,3 +11,14 @@ export const getJobRatingsApi = (jobId) =>
 
 export const submitJobRatingApi = (jobId, subcontractorId, body) =>
   axiosInstance.post(`/jobs/${jobId}/rate/${subcontractorId}`, body).then((r) => r.data);
+
+export const createJobApi = (formData) =>
+  axiosInstance
+    .post('/jobs', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+    .then((r) => r.data);
+
+export const acceptJobApplicationApi = (applicationId) =>
+  axiosInstance.patch(`/job-applications/${applicationId}/accept`).then((r) => r.data);
+
+export const rejectJobApplicationApi = (applicationId) =>
+  axiosInstance.patch(`/job-applications/${applicationId}/reject`).then((r) => r.data);

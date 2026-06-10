@@ -128,6 +128,190 @@ export const buildCompanyProfileFormData = (fields = {}) => {
 };
 
 /**
+ * buildSubcontractorProfileFormData
+ *
+ * Builds a multipart/form-data payload for PUT /subcontractor/update-profile.
+ * Only appends non-null/non-empty text fields.
+ * For the profile image, only uploads when `file.isNew === true`.
+ * For document arrays, only uploads entries where `doc.isNew === true`.
+ *
+ * @param {Object} fields
+ * @param {string}  [fields.fullName]
+ * @param {string}  [fields.primaryTrade]
+ * @param {string|number} [fields.hourlyRate]
+ * @param {string}  [fields.professionalBio]
+ * @param {string}  [fields.availability]
+ * @param {boolean} [fields.jobAlerts]
+ * @param {boolean} [fields.timesheetReminders]
+ * @param {string}  [fields.password]
+ * @param {{uri, type, name, isNew}|null} [fields.profileImage]
+ * @param {Array<{uri, type, name, isNew}>} [fields.insuranceDocuments]
+ * @param {Array<{uri, type, name, isNew}>} [fields.ticketsDocuments]
+ * @param {Array<{uri, type, name, isNew}>} [fields.certificationDocuments]
+ * @returns {FormData}
+ */
+export const buildSubcontractorProfileFormData = (fields = {}) => {
+  const {
+    fullName,
+    primaryTrade,
+    hourlyRate,
+    professionalBio,
+    availability,
+    jobAlerts,
+    timesheetReminders,
+    password,
+    profileImage,
+    insuranceDocuments    = [],
+    ticketsDocuments      = [],
+    certificationDocuments = [],
+  } = fields;
+
+  const fd = new FormData();
+
+  // ── Text fields ──────────────────────────────────────────────────────────────
+
+  const textMap = { fullName, primaryTrade, professionalBio, password };
+  for (const [key, value] of Object.entries(textMap)) {
+    if (value !== null && value !== undefined && value !== '') {
+      fd.append(key, String(value));
+    }
+  }
+  if (hourlyRate !== null && hourlyRate !== undefined && hourlyRate !== '') {
+    fd.append('hourlyRate', String(hourlyRate));
+  }
+  // Boolean fields — must use explicit null/undefined guard so `false` is sent correctly
+  if (availability      !== null && availability      !== undefined) fd.append('availability',      String(availability));
+  if (jobAlerts         !== null && jobAlerts         !== undefined) fd.append('jobAlerts',         String(jobAlerts));
+  if (timesheetReminders !== null && timesheetReminders !== undefined) fd.append('timesheetReminders', String(timesheetReminders));
+
+  // ── Profile image (single) ───────────────────────────────────────────────────
+
+  if (profileImage?.isNew === true && profileImage?.uri) {
+    fd.append('profileImage', {
+      uri:  profileImage.uri,
+      type: profileImage.type ?? 'image/jpeg',
+      name: profileImage.name ?? 'profileImage.jpg',
+    });
+  }
+
+  // ── Document arrays — only new files ─────────────────────────────────────────
+
+  const appendDocs = (key, docs) => {
+    docs.forEach((doc) => {
+      if (doc?.isNew === true && doc?.uri) {
+        fd.append(key, {
+          uri:  doc.uri,
+          type: doc.type ?? 'application/octet-stream',
+          name: doc.name ?? `${key}.pdf`,
+        });
+      }
+    });
+  };
+
+  appendDocs('insuranceDocuments',    insuranceDocuments);
+  appendDocs('ticketsDocuments',      ticketsDocuments);
+  appendDocs('certificationDocuments', certificationDocuments);
+
+  return fd;
+};
+
+// ── Date helper ───────────────────────────────────────────────────────────────
+// Converts DD/MM/YYYY → YYYY-MM-DD. Returns null if format is unrecognised.
+const parseDDMMYYYY = (str) => {
+  if (!str) return null;
+  const [dd, mm, yyyy] = str.split('/');
+  if (!dd || !mm || !yyyy || yyyy.length < 4) return null;
+  return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+};
+
+/**
+ * buildSubcontractorSignupFormData
+ *
+ * Builds a multipart/form-data payload for POST /subcontractor/signup.
+ * - Strips `confirmPassword` (validation-only).
+ * - Automatically appends `utr: "5775734565"` (temporary placeholder).
+ * - Converts expiry strings from DD/MM/YYYY to YYYY-MM-DD before sending.
+ * - Bracket-notation keys (insurance[expiresAt]) are appended as string literals.
+ *
+ * @param {Object} fields — raw formData from subcontractorSignupSlice
+ * @returns {FormData}
+ */
+export const buildSubcontractorSignupFormData = ({
+  confirmPassword:        _,   // strip — validation only
+  profileImage,
+  insuranceDocuments,
+  insuranceExpiresAt,
+  ticketDocuments,
+  ticketExpiresAt,
+  certificationDocuments,
+  certificationExpiresAt,
+  workExamples,
+  ...textFields
+}) => {
+  const fd = new FormData();
+
+  // ── Text fields ──────────────────────────────────────────────────────────────
+  for (const [key, value] of Object.entries(textFields)) {
+    if (value !== null && value !== undefined && value !== '') {
+      fd.append(key, String(value));
+    }
+  }
+
+  // ── Profile image ────────────────────────────────────────────────────────────
+  if (profileImage?.uri) {
+    fd.append('profileImage', {
+      uri:  profileImage.uri,
+      type: profileImage.type ?? 'image/jpeg',
+      name: profileImage.name ?? 'profileImage.jpg',
+    });
+  }
+
+  // ── Insurance document + expiry ───────────────────────────────────────────────
+  if (insuranceDocuments?.uri) {
+    fd.append('insuranceDocuments', {
+      uri:  insuranceDocuments.uri,
+      type: insuranceDocuments.type ?? 'application/octet-stream',
+      name: insuranceDocuments.name ?? 'insuranceDocuments',
+    });
+  }
+  const insuranceISO = parseDDMMYYYY(insuranceExpiresAt);
+  if (insuranceISO) fd.append('insurance[expiresAt]', insuranceISO);
+
+  // ── Tickets document + expiry ─────────────────────────────────────────────────
+  if (ticketDocuments?.uri) {
+    fd.append('ticketDocuments', {
+      uri:  ticketDocuments.uri,
+      type: ticketDocuments.type ?? 'application/octet-stream',
+      name: ticketDocuments.name ?? 'ticketDocuments',
+    });
+  }
+  const ticketsISO = parseDDMMYYYY(ticketExpiresAt);
+  if (ticketsISO) fd.append('tickets[expiresAt]', ticketsISO);
+
+  // ── Certification document + expiry ──────────────────────────────────────────
+  if (certificationDocuments?.uri) {
+    fd.append('certificationDocuments', {
+      uri:  certificationDocuments.uri,
+      type: certificationDocuments.type ?? 'application/octet-stream',
+      name: certificationDocuments.name ?? 'certificationDocuments',
+    });
+  }
+  const certISO = parseDDMMYYYY(certificationExpiresAt);
+  if (certISO) fd.append('certification[expiresAt]', certISO);
+
+  // ── Work examples ─────────────────────────────────────────────────────────────
+  if (workExamples?.uri) {
+    fd.append('workExamples', {
+      uri:  workExamples.uri,
+      type: workExamples.type ?? 'application/octet-stream',
+      name: workExamples.name ?? 'workExamples',
+    });
+  }
+
+  return fd;
+};
+
+/**
  * buildChatMessageFormData
  *
  * Builds a multipart/form-data payload for POST /chat/send.
@@ -151,6 +335,148 @@ export const buildChatMessageFormData = ({ conversationId, content, attachments 
         uri:  file.uri,
         type: file.type  ?? 'application/octet-stream',
         name: file.name  ?? 'attachment',
+      });
+    }
+  });
+
+  return fd;
+};
+
+/**
+ * buildCreateJobFormData
+ *
+ * Builds a multipart/form-data payload for POST /jobs.
+ * Reusable for a future PUT /jobs/:id (edit) flow.
+ *
+ * @param {Object} fields
+ * @param {string} fields.jobTitle
+ * @param {string} fields.trade
+ * @param {string} fields.description
+ * @param {string} fields.siteAddress
+ * @param {string} fields.timelineStartDate  — "YYYY-MM-DD" (ISO 8601)
+ * @param {string} fields.timelineEndDate    — "YYYY-MM-DD" (ISO 8601)
+ * @param {string|number} fields.hourlyRate
+ * @param {string|number} fields.workersRequired
+ * @param {Array<{uri, type, name}>} [fields.documents]
+ * @returns {FormData}
+ */
+export const buildCreateJobFormData = ({
+  jobTitle,
+  trade,
+  description,
+  siteAddress,
+  timelineStartDate,
+  timelineEndDate,
+  hourlyRate,
+  workersRequired,
+  documents = [],
+}) => {
+  const fd = new FormData();
+
+  const textFields = {
+    jobTitle,
+    trade,
+    description,
+    siteAddress,
+    timelineStartDate,
+    timelineEndDate,
+  };
+
+  for (const [key, value] of Object.entries(textFields)) {
+    if (value !== null && value !== undefined && value !== '') {
+      fd.append(key, String(value));
+    }
+  }
+
+  if (hourlyRate !== null && hourlyRate !== undefined && hourlyRate !== '') {
+    fd.append('hourlyRate', String(hourlyRate));
+  }
+
+  if (workersRequired !== null && workersRequired !== undefined && workersRequired !== '') {
+    fd.append('workersRequired', String(workersRequired));
+  }
+
+  documents.forEach((doc) => {
+    if (doc?.uri) {
+      fd.append('documents', {
+        uri:  doc.uri,
+        type: doc.type ?? 'application/octet-stream',
+        name: doc.name ?? 'document',
+      });
+    }
+  });
+
+  return fd;
+};
+
+/**
+ * buildFirstMessageFormData
+ *
+ * Builds a multipart/form-data payload for POST /chat/send-first.
+ * Only company users call this endpoint — subcontractorId identifies the recipient.
+ *
+ * @param {Object} fields
+ * @param {string} fields.subcontractorId
+ * @param {string} [fields.content]
+ * @param {Array<{uri, type, name}>} [fields.attachments]
+ * @returns {FormData}
+ */
+export const buildFirstMessageFormData = ({ subcontractorId, companyId, content, attachments = [] }) => {
+  const fd = new FormData();
+
+  if (companyId)       fd.append('companyId',       companyId);
+  if (subcontractorId) fd.append('subcontractorId', subcontractorId);
+  if (content?.trim()) fd.append('content',         content.trim());
+
+  attachments.forEach((file) => {
+    if (file?.uri) {
+      fd.append('attachments', {
+        uri:  file.uri,
+        type: file.type ?? 'application/octet-stream',
+        name: file.name ?? 'attachment',
+      });
+    }
+  });
+
+  return fd;
+};
+
+/**
+ * buildJobApplicationFormData
+ *
+ * Builds a multipart/form-data payload for POST /job-applications.
+ * Reusable for future PUT /job-applications/:id (update) flow.
+ *
+ * @param {Object} fields
+ * @param {string} fields.jobId
+ * @param {string} fields.fullName
+ * @param {string|number} fields.proposedDailyRate
+ * @param {string} fields.message
+ * @param {Array<{uri, type, name}>} [fields.documents]
+ * @returns {FormData}
+ */
+export const buildJobApplicationFormData = ({
+  jobId,
+  fullName,
+  proposedDailyRate,
+  message,
+  documents = [],
+}) => {
+  const fd = new FormData();
+
+  if (jobId)                fd.append('jobId',            String(jobId));
+  if (fullName?.trim())     fd.append('fullName',         fullName.trim());
+  if (message?.trim())      fd.append('message',          message.trim());
+  if (proposedDailyRate !== null && proposedDailyRate !== undefined && proposedDailyRate !== '') {
+    fd.append('proposedDailyRate', String(proposedDailyRate));
+  }
+
+  documents.forEach((doc) => {
+    if (doc?.uri) {
+      fd.append('documents', {
+        uri:  doc.uri,
+        type: doc.type ?? 'application/octet-stream',
+        name: doc.name ?? 'document',
       });
     }
   });

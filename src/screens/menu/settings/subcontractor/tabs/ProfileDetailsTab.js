@@ -1,9 +1,22 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, TextInput as RNTextInput, Image } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput as RNTextInput,
+  ActivityIndicator,
+  Image,
+} from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { Text, Button } from '~components/Common';
+import { Camera } from 'lucide-react-native';
+import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import TradeDropdown from '~components/Job/TradeDropdown';
+import { buildSubcontractorProfileFormData } from '~utils/buildFormData';
+import { pickImageFromLibrary } from '~utils/filePicker';
+import useAlert from '~hooks/useAlert';
+
+// ── Shared sub-components (mirrors BusinessDetailsTab style) ───────────────────
 
 const FormLabel = ({ text, required }) => (
   <View style={styles.labelRow}>
@@ -12,64 +25,156 @@ const FormLabel = ({ text, required }) => (
   </View>
 );
 
-const Input = ({ placeholder, val, onChange, multiline, keyboardType }) => (
-  <RNTextInput
-    placeholder={placeholder}
-    placeholderTextColor="#94A3B8"
-    value={val}
-    onChangeText={onChange}
-    multiline={multiline}
-    keyboardType={keyboardType}
-    style={[styles.input, multiline && styles.inputMultiline]}
-  />
+const Input = ({ placeholder, val, onChange, multiline, keyboardType, error }) => (
+  <>
+    <RNTextInput
+      placeholder={placeholder}
+      placeholderTextColor="#94A3B8"
+      value={val}
+      onChangeText={onChange}
+      multiline={multiline}
+      keyboardType={keyboardType}
+      style={[styles.input, multiline && styles.inputMultiline, error && styles.inputError]}
+    />
+    {error ? <Text style={styles.errorText}>{error}</Text> : null}
+  </>
 );
 
-const ProfileDetailsTab = () => {
-  const [form, setForm] = useState({
-    name: 'Michael Chen',
-    trade: 'Electrician',
-    rate: '45.00',
-    about: 'BuildRight Construction is a premier construction and infrastructure contractor dedicated to delivering excellence in every project. With over 15 years of industry experience, we specialize in commercial fit-outs, residential developments, and large-scale renovation projects.'
-  });
+// ── Tab ────────────────────────────────────────────────────────────────────────
 
-  const setItem = (k, v) => setForm(p => ({ ...p, [k]: v }));
+const ProfileDetailsTab = ({ profile, updateProfile, updatingProfile }) => {
+  const { showAlert } = useAlert();
+
+  const [form, setForm] = useState({
+    fullName:       '',
+    primaryTrade:   '',
+    hourlyRate:     '',
+    professionalBio: '',
+  });
+  const [errors, setErrors]       = useState({});
+  const [avatarFile, setAvatarFile] = useState(null);
+
+  // Seed form from fetched profile
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        fullName:        profile.fullName        ?? '',
+        primaryTrade:    profile.primaryTrade     ?? '',
+        hourlyRate:      profile.hourlyRate != null ? String(profile.hourlyRate) : '',
+        professionalBio: profile.professionalBio  ?? '',
+      });
+      setAvatarFile(
+        profile.profileImage
+          ? { uri: profile.profileImage, isNew: false }
+          : null,
+      );
+    }
+  }, [profile]);
+
+  const setItem = (k, v) => {
+    setForm((p) => ({ ...p, [k]: v }));
+    setErrors((p) => ({ ...p, [k]: '' }));
+  };
+
+  const handlePickAvatar = useCallback(async () => {
+    const file = await pickImageFromLibrary();
+    if (file) setAvatarFile({ ...file, isNew: true });
+  }, []);
+
+  const validate = () => {
+    const e = {};
+    if (!form.fullName.trim())     e.fullName     = 'Full name is required';
+    if (!form.primaryTrade.trim()) e.primaryTrade = 'Trade type is required';
+    if (!form.hourlyRate.trim())   e.hourlyRate   = 'Hourly rate is required';
+    else if (isNaN(Number(form.hourlyRate))) e.hourlyRate = 'Enter a valid number';
+    return e;
+  };
+
+  const handleSave = useCallback(async () => {
+    const e = validate();
+    if (Object.keys(e).length > 0) { setErrors(e); return; }
+
+    try {
+      const formData = buildSubcontractorProfileFormData({
+        fullName:        form.fullName,
+        primaryTrade:    form.primaryTrade,
+        hourlyRate:      form.hourlyRate,
+        professionalBio: form.professionalBio,
+        profileImage:    avatarFile,
+      });
+      await updateProfile(formData);
+      showAlert({ title: 'Success', message: 'Profile details updated.', type: 'success' });
+    } catch (err) {
+      showAlert({ title: 'Error', message: err?.message ?? err ?? 'Update failed.', type: 'error' });
+    }
+  }, [form, avatarFile, updateProfile]);
 
   return (
     <View style={styles.container}>
-      
-      {/* Profile Image Row */}
+
+      {/* Avatar row */}
       <View style={styles.logoRow}>
-        <TouchableOpacity style={styles.logoPicker}>
-          <Image 
-            source={{ uri: 'https://i.pravatar.cc/150?u=michael' }}
-            style={styles.profileImg}
-          />
+        <TouchableOpacity style={styles.logoPicker} onPress={handlePickAvatar} activeOpacity={0.8}>
+          {avatarFile?.uri ? (
+            <Image source={{ uri: avatarFile.uri }} style={styles.logoImage} />
+          ) : (
+            <Camera size={RFValue(18)} color="#10375C" strokeWidth={1.5} />
+          )}
+          <View style={styles.logoEditBadge}>
+            <Camera size={RFValue(8)} color="#FFFFFF" strokeWidth={2} />
+          </View>
         </TouchableOpacity>
         <Text style={styles.logoHint}>
-          JPG, PNG, or WEBP up to 5MB. Square image recommended.
+          Tap to update your profile photo.{'\n'}JPG, PNG, or WEBP up to 5MB.
         </Text>
       </View>
 
       <FormLabel text="Full Name" required />
-      <Input placeholder="Enter your full name" val={form.name} onChange={v => setItem('name', v)} />
+      <Input
+        placeholder="Enter your full name"
+        val={form.fullName}
+        onChange={(v) => setItem('fullName', v)}
+        error={errors.fullName}
+      />
 
       <FormLabel text="Trade Type" required />
-      <TradeDropdown value={form.trade} onSelect={v => setItem('trade', v)} />
+      <TradeDropdown
+        value={form.primaryTrade}
+        onSelect={(v) => setItem('primaryTrade', v)}
+      />
+      {errors.primaryTrade ? <Text style={styles.errorText}>{errors.primaryTrade}</Text> : null}
 
       <FormLabel text="Hourly Rate (£)" required />
-      <Input 
-        placeholder="Enter your hourly rate" 
-        val={form.rate} 
-        onChange={v => setItem('rate', v)} 
-        keyboardType="numeric" 
+      <Input
+        placeholder="Enter your hourly rate"
+        val={form.hourlyRate}
+        onChange={(v) => setItem('hourlyRate', v)}
+        keyboardType="numeric"
+        error={errors.hourlyRate}
       />
 
       <View style={{ marginTop: 2 }}>
-        <FormLabel text="About Us" />
-        <Input placeholder="Describe your experience" val={form.about} onChange={v => setItem('about', v)} multiline />
+        <FormLabel text="Professional Bio" />
+        <Input
+          placeholder="Describe your experience and skills"
+          val={form.professionalBio}
+          onChange={(v) => setItem('professionalBio', v)}
+          multiline
+        />
       </View>
 
-      <Button title="Save Changes" variant="secondary" onPress={() => {}} />
+      <TouchableOpacity
+        style={[styles.saveButton, updatingProfile && styles.saveButtonDisabled]}
+        onPress={handleSave}
+        disabled={updatingProfile}
+        activeOpacity={0.8}
+      >
+        {updatingProfile ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Text style={styles.saveButtonText}>Save Changes</Text>
+        )}
+      </TouchableOpacity>
 
     </View>
   );
@@ -84,17 +189,33 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   logoPicker: {
-    width: RFValue(44),
-    height: RFValue(44),
-    borderRadius: RFValue(22),
+    width: RFValue(56),
+    height: RFValue(56),
+    borderRadius: RFValue(28),
     borderWidth: 1,
     borderColor: '#E2E8F0',
     backgroundColor: '#F8FAFC',
-    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
   },
-  profileImg: {
-    width: '100%',
-    height: '100%',
+  logoImage: {
+    width: RFValue(56),
+    height: RFValue(56),
+    borderRadius: RFValue(28),
+  },
+  logoEditBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: RFValue(18),
+    height: RFValue(18),
+    borderRadius: RFValue(9),
+    backgroundColor: '#10375C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
   logoHint: {
     flex: 1,
@@ -108,7 +229,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   labelText: {
-    fontFamily: FontFamily.medium,
+    fontFamily: FontFamily.bold,
     fontSize: RFValue(11),
     color: '#10375C',
   },
@@ -127,10 +248,37 @@ const styles = StyleSheet.create({
     color: '#334155',
     marginBottom: 16,
   },
+  inputError: {
+    borderColor: '#EF4444',
+    marginBottom: 4,
+  },
   inputMultiline: {
     minHeight: 100,
     textAlignVertical: 'top',
-  }
+  },
+  errorText: {
+    fontSize: RFValue(10),
+    fontFamily: FontFamily.regular,
+    color: '#EF4444',
+    marginBottom: 12,
+  },
+  saveButton: {
+    backgroundColor: '#10375C',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    minHeight: 48,
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    fontFamily: FontFamily.bold,
+    fontSize: RFValue(12),
+    color: '#FFFFFF',
+  },
 });
 
 export default ProfileDetailsTab;

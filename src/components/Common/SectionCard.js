@@ -9,18 +9,18 @@ import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
 
-const SectionCard = ({ title, rightLabel, onRightPress, children, style }) => {
+const SectionCard = ({ title, rightLabel, onRightPress, rightAction, children, style }) => {
   const { colors } = useTheme();
 
   return (
     <View style={[styles.card, { backgroundColor: colors.surface }, style]}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
-        {rightLabel ? (
+        {rightAction ?? (rightLabel ? (
           <TouchableOpacity onPress={onRightPress} activeOpacity={0.7} style={styles.rightBtn}>
             <Text style={[styles.rightLabel, { color: colors.primary }]}>{rightLabel}</Text>
           </TouchableOpacity>
-        ) : null}
+        ) : null)}
       </View>
       {children}
     </View>

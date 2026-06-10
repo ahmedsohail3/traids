@@ -1,20 +1,19 @@
 import React, { useState, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { CheckCircle } from 'lucide-react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Text, Button, TextInput } from '~components/Common';
 import { useTheme } from '~context/ThemeContext';
-import { FontFamily } from '~theme/fonts';
+import { useSelector } from 'react-redux';
 import RegisterContainer from '../RegisterContainer';
 
 // ─── Success Banner ────────────────────────────────────────────────────────
-const SuccessBanner = ({ colors }) => (
+const SuccessBanner = ({ colors, companyName }) => (
   <View style={[styles.banner, { backgroundColor: '#EDFBF1', borderColor: colors.success }]}>
     <Text style={[styles.bannerIcon, { color: '#15803D' }]}>✅</Text>
     <View style={{ flex: 1 }}>
       <Text variant='sectionTitle' style={{ color: '#15803D', fontSize: RFValue(12) }}>Account Created</Text>
       <Text style={[styles.bannerSub, { color: '#166534' }]}>
-        Welcome James! Now add your card to pay invoices.
+        Welcome {companyName}! Now add your card to pay invoices.
       </Text>
     </View>
   </View>
@@ -23,6 +22,7 @@ const SuccessBanner = ({ colors }) => (
 // ─── Screen ───────────────────────────────────────────────────────────────
 const CardDetailsScreen = ({ navigation, route }) => {
   const { colors } = useTheme();
+  const companyName = useSelector((s) => s.companySignup?.formData?.companyName ?? '');
 
   const [cardNumber, setCardNumber] = useState('');
   const [expiry, setExpiry] = useState('');
@@ -69,7 +69,7 @@ const CardDetailsScreen = ({ navigation, route }) => {
       currentStep={2}
       totalSteps={4}>
 
-      <SuccessBanner colors={colors} />
+      <SuccessBanner colors={colors} companyName={companyName} />
 
       <TextInput
         label="Card Number"

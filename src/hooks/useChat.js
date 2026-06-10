@@ -5,6 +5,7 @@ import {
   fetchMessages,
   markConversationAsRead as markConversationAsReadThunk,
   sendMessage as sendMessageThunk,
+  sendFirstMessage as sendFirstMessageThunk,
   clearConversations,
   clearMessages,
 } from '~redux/reducers/chatSlice';
@@ -61,7 +62,18 @@ export const formatMessageTime = (dateStr) => {
  * userType: 'company' | 'subcontractor'
  */
 export const adaptConversation = (conv, userType) => {
-  const sub   = conv.subcontractor ?? {};
+  const isSubcontractor = userType === 'subcontractor';
+  const sub     = typeof conv.subcontractor === 'object' ? (conv.subcontractor ?? {}) : {};
+  const company = typeof conv.company       === 'object' ? (conv.company       ?? {}) : {};
+
+  const name      = isSubcontractor
+    ? (company.companyName ?? 'Unknown')
+    : (sub.fullName        ?? 'Unknown');
+  const trade     = isSubcontractor ? '' : (sub.primaryTrade ?? '');
+  const avatarUri = isSubcontractor
+    ? (company.profileImage ?? null)
+    : (sub.profileImage     ?? null);
+
   const unread =
     userType === 'company'
       ? conv.unreadCountCompany ?? 0
@@ -69,9 +81,9 @@ export const adaptConversation = (conv, userType) => {
 
   return {
     id:                  conv._id,
-    name:                sub.fullName     ?? 'Unknown',
-    trade:               sub.primaryTrade ?? '',
-    avatarUri:           sub.profileImage ?? null,
+    name,
+    trade,
+    avatarUri,
     lastMessage:         conv.lastMessage ?? '',
     lastAttachmentCount: conv.lastAttachmentCount ?? conv.lastMessageAttachmentCount ?? 0,
     time:                formatChatTime(conv.lastMessageAt),
@@ -87,17 +99,27 @@ export const adaptConversation = (conv, userType) => {
  * conversationData: raw conversation object (for avatar/name of the other party)
  */
 export const adaptMessage = (msg, userType, conversationData, myAvatarUri = null) => {
-  const isSent = msg.senderType === userType;
-  const sub    = conversationData?.subcontractor ?? {};
+  const isSent      = msg.senderType === userType;
+  const sub         = typeof conversationData?.subcontractor === 'object'
+    ? (conversationData.subcontractor ?? {}) : {};
+  const company     = typeof conversationData?.company === 'object'
+    ? (conversationData.company ?? {}) : {};
+
+  const otherName   = userType === 'subcontractor'
+    ? (company.companyName ?? 'Unknown')
+    : (sub.fullName        ?? 'Unknown');
+  const otherAvatar = userType === 'subcontractor'
+    ? (company.profileImage ?? null)
+    : (sub.profileImage     ?? null);
 
   return {
     id:          msg._id,
     senderId:    msg.sender,
     senderType:  msg.senderType,
-    senderName:  isSent ? 'You' : sub.fullName ?? 'Unknown',
+    senderName:  isSent ? 'You' : otherName,
     text:        msg.content ?? '',
     time:        formatMessageTime(msg.createdAt),
-    avatarUri:   isSent ? myAvatarUri : sub.profileImage ?? null,
+    avatarUri:   isSent ? myAvatarUri : otherAvatar,
     attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
     isSent,
     _raw:        msg,
@@ -114,8 +136,10 @@ const selectLoadingMessages   = (s) => s.chat.loadingMessages;
 const selectMessagesError     = (s) => s.chat.messagesError;
 const selectUserType          = (s) => s.auth?.user?.type ?? 'subcontractor';
 const selectMyAvatarUri       = (s) => s.profile?.data?.profileImage ?? null;
-const selectSendingMessage    = (s) => s.chat.sendingMessage;
-const selectSendMessageError  = (s) => s.chat.sendMessageError;
+const selectSendingMessage        = (s) => s.chat.sendingMessage;
+const selectSendMessageError      = (s) => s.chat.sendMessageError;
+const selectSendingFirstMessage   = (s) => s.chat.sendingFirstMessage;
+const selectSendFirstMessageError = (s) => s.chat.sendFirstMessageError;
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
@@ -129,8 +153,10 @@ const useChat = () => {
   const messagesError    = useSelector(selectMessagesError);
   const userType         = useSelector(selectUserType);
   const myAvatarUri      = useSelector(selectMyAvatarUri);
-  const sendingMessage   = useSelector(selectSendingMessage);
-  const sendMessageError = useSelector(selectSendMessageError);
+  const sendingMessage        = useSelector(selectSendingMessage);
+  const sendMessageError      = useSelector(selectSendMessageError);
+  const sendingFirstMessage   = useSelector(selectSendingFirstMessage);
+  const sendFirstMessageError = useSelector(selectSendFirstMessageError);
 
   // ── Conversations ────────────────────────────────────────────────────────────
 
@@ -208,6 +234,12 @@ const useChat = () => {
     [dispatch],
   );
 
+  const sendFirstMessage = useCallback(
+    ({ subcontractorId, content, attachments = [] }) =>
+      dispatch(sendFirstMessageThunk({ subcontractorId, content, attachments })).unwrap(),
+    [dispatch],
+  );
+
   return {
     // Conversations
     conversations,
@@ -232,6 +264,12 @@ const useChat = () => {
     sendMessage,
     sendingMessage,
     sendMessageError,
+    // Send first message (new conversation)
+    sendFirstMessage,
+    sendingFirstMessage,
+    sendFirstMessageError,
+    // Raw conversations for subcontractor lookup
+    rawConversations: rawConvs,
   };
 };
 

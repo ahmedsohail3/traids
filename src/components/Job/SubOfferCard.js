@@ -15,12 +15,17 @@
  *   onPress            function
  */
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { FileText, Eye, CheckCircle } from 'lucide-react-native';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
+
+const STATUS_BADGE = {
+  accepted: { label: 'Accepted', color: '#077a09' },
+  rejected: { label: 'Rejected', color: '#DC2626' },
+};
 
 const AVATAR_COLORS = ['#10375C', '#F2A154', '#3BB273', '#6366F1', '#EC4899'];
 
@@ -32,6 +37,8 @@ const SubOfferCard = ({
   rate,
   message,
   documents = [],
+  status = 'pending',
+  loading = false,
   onReject,
   onAccept,
   onViewDoc,
@@ -40,6 +47,7 @@ const SubOfferCard = ({
   const { colors } = useTheme();
   const avatarColor = AVATAR_COLORS[companyColorIndex % AVATAR_COLORS.length];
   const allVerified = documents.length > 0 && documents.every(d => d.verified);
+  const badge = STATUS_BADGE[status];
 
   return (
     <TouchableOpacity
@@ -77,9 +85,11 @@ const SubOfferCard = ({
         </Text>
 
         {/* Compliance Documents */}
-        <Text style={[styles.sectionLabel, { color: colors.textPrimary, marginTop: 12 }]}>
-          Compliance &amp; Safety Documents
-        </Text>
+        {documents.length > 0 && (
+          <Text style={[styles.sectionLabel, { color: colors.textPrimary, marginTop: 12 }]}>
+            Compliance &amp; Safety Documents
+          </Text>
+        )}
 
         {documents.map((doc, i) => (
           <View
@@ -119,27 +129,34 @@ const SubOfferCard = ({
 
       {/* ── Footer actions ── */}
       <View style={[styles.footer, { borderTopColor: colors.border }]}>
-        <TouchableOpacity
-          style={[styles.rejectBtn, { borderColor: colors.primary }]}
-          onPress={onReject}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.rejectBtnText, { color: colors.textPrimary }]}>Reject</Text>
-        </TouchableOpacity>
+        {badge ? (
+          <View style={[styles.statusBadge, { backgroundColor: badge.color }]}>
+            <Text style={styles.statusBadgeText}>{badge.label}</Text>
+          </View>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={[styles.rejectBtn, { borderColor: colors.primary }]}
+              onPress={onReject}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.rejectBtnText, { color: colors.textPrimary }]}>Reject</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.acceptBtn,
-            // { borderColor: allVerified ? '#F2A154' : colors.border },
-            allVerified && styles.acceptBtnFilled,
-          ]}
-          onPress={onAccept}
-          activeOpacity={0.85}
-        >
-          <Text style={[styles.acceptBtnText, { color: allVerified ? '#FFFFFF' : '#CBD5E1' }]}>
-            Accept
-          </Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.acceptBtn, allVerified && styles.acceptBtnFilled]}
+              onPress={onAccept}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              {loading
+                ? <ActivityIndicator size="small" color="#FFFFFF" />
+                : <Text style={[styles.acceptBtnText, { color: allVerified ? '#FFFFFF' : '#CBD5E1' }]}>Accept</Text>
+              }
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -274,6 +291,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2A154',
   },
   acceptBtnText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: RFValue(12),
+  },
+  statusBadge: {
+    flex: 1,
+    height: RFValue(40),
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusBadgeText: {
+    color: '#FFFFFF',
     fontFamily: FontFamily.semiBold,
     fontSize: RFValue(12),
   },

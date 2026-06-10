@@ -6,13 +6,9 @@ import RegisterContainer from '../RegisterContainer';
 import useCompanySignup from '~hooks/useCompanySignup';
 
 const INDUSTRY_OPTIONS = [
-  { label: 'Construction',   value: 'construction' },
-  { label: 'Engineering',    value: 'engineering' },
-  { label: 'Architecture',   value: 'architecture' },
-  { label: 'Real Estate',    value: 'real_estate' },
-  { label: 'Infrastructure', value: 'infrastructure' },
-  { label: 'Mining',         value: 'mining' },
-  { label: 'Other',          value: 'other' },
+  { label: 'Construction',          value: 'construction' },
+  { label: 'Facilities Management', value: 'facilities_management' },
+  { label: 'Recruitment',           value: 'recruitment' },
 ];
 
 const BusinessDetailsScreen = ({ navigation }) => {

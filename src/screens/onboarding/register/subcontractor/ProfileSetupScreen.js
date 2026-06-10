@@ -1,50 +1,57 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Button, TextInput, UploadField } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import RegisterContainer from '../RegisterContainer';
+import useSubcontractorSignup from '~hooks/useSubcontractorSignup';
+import { pickImageFromLibrary, pickDocument } from '~utils/filePicker';
+import useAlert from '~hooks/useAlert';
 
 const ProfileSetupScreen = ({ navigation }) => {
-  const [photoFile, setPhotoFile] = useState(null);
-  const [hourlyRate, setHourlyRate] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [email, setEmail] = useState('');
-  const [about, setAbout] = useState('');
-  const [workExamples, setWorkExamples] = useState(null);
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
+  const {
+    formData,
+    errors,
+    loading,
+    error,
+    submitted,
+    updateField,
+    clearError,
+    validateStep,
+    submit,
+    reset,
+  } = useSubcontractorSignup();
 
-  const clearError = useCallback(
-    field => setErrors(prev => ({ ...prev, [field]: '' })),
-    [],
-  );
+  const { showAlert } = useAlert();
 
-  const handlePickFile = useCallback(setter => {
-    // TODO: integrate @react-native-documents/picker / image picker
-    setter({ name: 'photo.jpg', uri: '' });
-  }, []);
+  // Navigate to PaymentSetup once signup API succeeds
+  useEffect(() => {
+    if (submitted) {
+      reset();
+      navigation.navigate('SubPaymentSetup');
+    }
+  }, [submitted]);
 
-  const validate = useCallback(() => {
-    const e = {};
-    if (!hourlyRate.trim()) e.hourlyRate = 'Hourly rate is required';
-    if (!password) e.password = 'Password is required';
-    else if (password.length < 8) e.password = 'Minimum 8 characters';
-    if (password !== confirmPassword) e.confirmPassword = 'Passwords do not match';
-    if (!email.trim()) e.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(email)) e.email = 'Enter a valid email';
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  }, [hourlyRate, password, confirmPassword, email]);
+  // Show API-level error via alert
+  useEffect(() => {
+    if (error) {
+      showAlert({ title: 'Signup Failed', message: error, type: 'error' });
+    }
+  }, [error]);
+
+  const handlePickPhoto = useCallback(async () => {
+    const file = await pickImageFromLibrary();
+    if (file) updateField('profileImage', file);
+  }, [updateField]);
+
+  const handlePickWorkExamples = useCallback(async () => {
+    const file = await pickDocument();
+    if (file) updateField('workExamples', file);
+  }, [updateField]);
 
   const handleContinue = useCallback(() => {
-    if (!validate()) return;
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      navigation.navigate('SubPaymentSetup');
-    }, 500);
-  }, [validate, navigation]);
+    if (!validateStep(3)) return;
+    submit();
+  }, [validateStep, submit]);
 
   return (
     <RegisterContainer
@@ -61,14 +68,15 @@ const ProfileSetupScreen = ({ navigation }) => {
       <UploadField
         label="Upload Photo"
         hint="JPG, PNG or WEBP up to 5MB. Square image recommended."
-        file={photoFile}
-        onPress={() => handlePickFile(setPhotoFile)}
+        file={formData.profileImage}
+        onPress={handlePickPhoto}
+        onRemove={() => updateField('profileImage', null)}
       />
 
       <TextInput
         label="Hourly Rate (£) *"
-        value={hourlyRate}
-        onChangeText={v => { setHourlyRate(v.replace(/[^0-9.]/g, '')); clearError('hourlyRate'); }}
+        value={formData.hourlyRate}
+        onChangeText={(v) => { updateField('hourlyRate', v.replace(/[^0-9.]/g, '')); clearError('hourlyRate'); }}
         placeholder="£12"
         keyboardType="decimal-pad"
         error={errors.hourlyRate}
@@ -76,8 +84,8 @@ const ProfileSetupScreen = ({ navigation }) => {
 
       <TextInput
         label="Enter Password *"
-        value={password}
-        onChangeText={v => { setPassword(v); clearError('password'); }}
+        value={formData.password}
+        onChangeText={(v) => { updateField('password', v); clearError('password'); }}
         placeholder="••••••••"
         secureTextEntry
         error={errors.password}
@@ -85,8 +93,8 @@ const ProfileSetupScreen = ({ navigation }) => {
 
       <TextInput
         label="Confirm Password *"
-        value={confirmPassword}
-        onChangeText={v => { setConfirmPassword(v); clearError('confirmPassword'); }}
+        value={formData.confirmPassword}
+        onChangeText={(v) => { updateField('confirmPassword', v); clearError('confirmPassword'); }}
         placeholder="••••••••"
         secureTextEntry
         error={errors.confirmPassword}
@@ -94,8 +102,8 @@ const ProfileSetupScreen = ({ navigation }) => {
 
       <TextInput
         label="Email *"
-        value={email}
-        onChangeText={v => { setEmail(v); clearError('email'); }}
+        value={formData.email}
+        onChangeText={(v) => { updateField('email', v); clearError('email'); }}
         placeholder="Your email"
         keyboardType="email-address"
         autoCapitalize="none"
@@ -104,8 +112,8 @@ const ProfileSetupScreen = ({ navigation }) => {
 
       <TextInput
         label="About / Description"
-        value={about}
-        onChangeText={setAbout}
+        value={formData.professionalBio}
+        onChangeText={(v) => updateField('professionalBio', v)}
         placeholder="Tell companies about your experience, specialities, and what makes you stand out..."
         multiline
         numberOfLines={4}
@@ -116,8 +124,9 @@ const ProfileSetupScreen = ({ navigation }) => {
       <UploadField
         label="Work Examples (optional)"
         hint="PDF, JPG or PNG (max. 5MB)"
-        file={workExamples}
-        onPress={() => handlePickFile(setWorkExamples)}
+        file={formData.workExamples}
+        onPress={handlePickWorkExamples}
+        onRemove={() => updateField('workExamples', null)}
       />
 
       <View style={styles.actionRow}>
@@ -148,7 +157,7 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 8,
   },
-  cancelBtn: { flex: 1 },
+  cancelBtn:   { flex: 1 },
   continueBtn: { flex: 2 },
 });
 

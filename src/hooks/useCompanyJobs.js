@@ -5,6 +5,9 @@ import {
   fetchCompanyJobById,
   fetchJobRatings,
   postJobRating,
+  createJob as createJobThunk,
+  acceptJobApplication as acceptJobApplicationThunk,
+  rejectJobApplication as rejectJobApplicationThunk,
   clearCompanyJobs,
   clearSelectedJob,
   clearRatings,
@@ -50,6 +53,29 @@ const useCompanyJobs = () => {
   );
   const resetRatings = useCallback(() => dispatch(clearRatings()), [dispatch]);
 
+  // ── Create ───────────────────────────────────────────────────────────────────
+  const creatingJob    = useSelector((s) => s.companyJobs.creatingJob);
+  const createJobError = useSelector((s) => s.companyJobs.createJobError);
+
+  const createJob = useCallback(
+    (formValues) => dispatch(createJobThunk(formValues)).unwrap(),
+    [dispatch],
+  );
+
+  // ── Application Actions ───────────────────────────────────────────────────────
+  const processingApplication  = useSelector((s) => s.companyJobs.processingApplication);
+  const applicationActionError = useSelector((s) => s.companyJobs.applicationActionError);
+
+  const acceptJobApplication = useCallback(
+    (applicationId) => dispatch(acceptJobApplicationThunk(applicationId)).unwrap(),
+    [dispatch],
+  );
+
+  const rejectJobApplication = useCallback(
+    (applicationId) => dispatch(rejectJobApplicationThunk(applicationId)).unwrap(),
+    [dispatch],
+  );
+
   return {
     // List
     jobs, jobCount, loading, error, getJobs, reset,
@@ -58,6 +84,11 @@ const useCompanyJobs = () => {
     // Ratings
     ratingsData, loadingRatings, submittingRating,
     getJobRatings, refetchRatings, submitJobRating, resetRatings,
+    // Create
+    createJob, creatingJob, createJobError,
+    // Application actions
+    acceptJobApplication, rejectJobApplication,
+    processingApplication, applicationActionError,
   };
 };
 

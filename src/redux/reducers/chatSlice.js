@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getConversationsApi, getMessagesApi, markConversationAsReadApi, sendMessageApi } from '~services/chatService';
-import { buildChatMessageFormData } from '~utils/buildFormData';
+import { getConversationsApi, getMessagesApi, markConversationAsReadApi, sendMessageApi, sendFirstMessageApi } from '~services/chatService';
+import { buildChatMessageFormData, buildFirstMessageFormData } from '~utils/buildFormData';
 import { getErrorMessage } from '~utils';
 
 const DEFAULT_LIMIT = 50;
@@ -61,6 +61,27 @@ export const sendMessage = createAsyncThunk(
   },
 );
 
+export const sendFirstMessage = createAsyncThunk(
+  'chat/sendFirstMessage',
+  async ({ subcontractorId, content, attachments = [] }, { rejectWithValue, getState }) => {
+    try {
+      const companyId = getState().profile?.data?._id ?? null;
+      console.log('companyId', companyId);
+      console.log('subcontractorId', subcontractorId);
+      const formData  = buildFirstMessageFormData({ subcontractorId, companyId, content, attachments });
+      const res      = await sendFirstMessageApi(formData);
+      // Normalise: API may return { data: { conversation, message } } or { conversation, message }
+      const body     = res.data ?? res;
+      return {
+        conversation: body.conversation ?? body,
+        message:      body.message      ?? null,
+      };
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
 // ── Slice ─────────────────────────────────────────────────────────────────────
 
 const chatSlice = createSlice({
@@ -80,6 +101,9 @@ const chatSlice = createSlice({
     // Send
     sendingMessage:   false,
     sendMessageError: null,
+    // Send first message (new conversation)
+    sendingFirstMessage:   false,
+    sendFirstMessageError: null,
   },
   reducers: {
     // ── Conversations ──────────────────────────────────────────────────────────
@@ -217,6 +241,33 @@ const chatSlice = createSlice({
       .addCase(sendMessage.rejected, (state, { payload }) => {
         state.sendingMessage   = false;
         state.sendMessageError = payload ?? 'Failed to send message.';
+      })
+
+      // ── sendFirstMessage ───────────────────────────────────────────────────
+      .addCase(sendFirstMessage.pending, (state) => {
+        state.sendingFirstMessage   = true;
+        state.sendFirstMessageError = null;
+      })
+      .addCase(sendFirstMessage.fulfilled, (state, { payload }) => {
+        state.sendingFirstMessage = false;
+        const { conversation, message } = payload;
+        if (!conversation?._id) return;
+
+        // Prepend new conversation unless it already exists (idempotent)
+        const exists = state.conversations.some((c) => c._id === conversation._id);
+        if (!exists) state.conversations.unshift(conversation);
+
+        // Seed the message cache so the chat screen shows the first message immediately
+        if (message) {
+          state.messagesByChatId[conversation._id] = {
+            messages:   [message],
+            pagination: { limit: 50, skip: 1, hasMore: false },
+          };
+        }
+      })
+      .addCase(sendFirstMessage.rejected, (state, { payload }) => {
+        state.sendingFirstMessage   = false;
+        state.sendFirstMessageError = payload ?? 'Failed to send message.';
       });
   },
 });

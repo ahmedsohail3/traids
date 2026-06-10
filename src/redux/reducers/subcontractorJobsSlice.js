@@ -1,5 +1,12 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getRecommendedJobsApi, getAvailableJobsApi } from '~services/subcontractorJobsService';
+import {
+  getRecommendedJobsApi,
+  getAvailableJobsApi,
+  getJobDetailsApi,
+  applyForJobApi,
+  acceptJobOfferApi,
+  rejectJobOfferApi,
+} from '~services/subcontractorJobsService';
 import { getErrorMessage } from '~utils';
 
 // ── Shared thunk factory ───────────────────────────────────────────────────────
@@ -21,8 +28,12 @@ export const fetchRecommendedJobs = makeJobThunk(
   getRecommendedJobsApi,
 );
 
+export const fetchJobDetails = makeJobThunk(
+  'subcontractorJobs/fetchJobDetails',
+  getJobDetailsApi,
+);
+
 // Available jobs — custom thunk to extract pagination metadata alongside the list.
-// Response shape: { message, count, total, page, totalPages, data: [] }
 export const fetchAvailableJobs = createAsyncThunk(
   'subcontractorJobs/fetchAvailable',
   async (filters, { rejectWithValue }) => {
@@ -40,10 +51,38 @@ export const fetchAvailableJobs = createAsyncThunk(
   },
 );
 
+// Offer actions — accept / reject a company-sent offer.
+const makeOfferActionThunk = (typePrefix, apiFn) =>
+  createAsyncThunk(typePrefix, async (offerId, { rejectWithValue }) => {
+    try {
+      const res = await apiFn(offerId);
+      return { offerId, data: res?.data ?? res };
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  });
+
+export const acceptJobOffer = makeOfferActionThunk('subcontractorJobs/acceptJobOffer', acceptJobOfferApi);
+export const rejectJobOffer = makeOfferActionThunk('subcontractorJobs/rejectJobOffer', rejectJobOfferApi);
+
+// Apply for job — sends multipart/form-data to POST /job-applications.
+export const applyForJob = createAsyncThunk(
+  'subcontractorJobs/applyForJob',
+  async (formData, { rejectWithValue }) => {
+    try {
+      const res = await applyForJobApi(formData);
+      return res?.data ?? res;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
 // ── State factories ────────────────────────────────────────────────────────────
 
 const listState      = () => ({ data: [], loading: false, error: null });
 const pagedListState = () => ({ data: [], loading: false, error: null, page: 1, totalPages: 1, totalCount: 0 });
+const detailState    = () => ({ data: null, loading: false, error: null });
 
 // ── Shared case builder ────────────────────────────────────────────────────────
 
@@ -68,20 +107,51 @@ const addJobCases = (builder, thunk, key) => {
 const subcontractorJobsSlice = createSlice({
   name: 'subcontractorJobs',
   initialState: {
-    recommendedJobs: listState(),
-    availableJobs:   pagedListState(),
+    recommendedJobs:  listState(),
+    availableJobs:    pagedListState(),
+    jobDetails:       detailState(),
+    // Apply for job
+    applyingForJob:   false,
+    applyForJobError: null,
+    // Offer actions (accept / reject / future: withdraw, counter)
+    processingOfferAction: false,
+    offerActionError:      null,
   },
   reducers: {
     clearRecommendedJobs: (state) => { state.recommendedJobs = listState(); },
     clearAvailableJobs:   (state) => { state.availableJobs   = pagedListState(); },
+    clearJobDetails:      (state) => { state.jobDetails       = detailState(); },
+    clearApplyForJob:     (state) => { state.applyingForJob = false; state.applyForJobError = null; },
+    clearOfferAction:     (state) => { state.processingOfferAction = false; state.offerActionError = null; },
     clearAllJobs: () => ({
-      recommendedJobs: listState(),
-      availableJobs:   pagedListState(),
+      recommendedJobs:       listState(),
+      availableJobs:         pagedListState(),
+      jobDetails:            detailState(),
+      applyingForJob:        false,
+      applyForJobError:      null,
+      processingOfferAction: false,
+      offerActionError:      null,
     }),
   },
   extraReducers: (builder) => {
     addJobCases(builder, fetchRecommendedJobs, 'recommendedJobs');
 
+    // Job details
+    builder
+      .addCase(fetchJobDetails.pending, (state) => {
+        state.jobDetails.loading = true;
+        state.jobDetails.error   = null;
+      })
+      .addCase(fetchJobDetails.fulfilled, (state, { payload }) => {
+        state.jobDetails.loading = false;
+        state.jobDetails.data    = payload;
+      })
+      .addCase(fetchJobDetails.rejected, (state, { payload }) => {
+        state.jobDetails.loading = false;
+        state.jobDetails.error   = payload ?? 'Failed to load job details.';
+      });
+
+    // Available jobs
     builder
       .addCase(fetchAvailableJobs.pending, (state) => {
         state.availableJobs.loading = true;
@@ -98,12 +168,45 @@ const subcontractorJobsSlice = createSlice({
         state.availableJobs.loading = false;
         state.availableJobs.error   = payload ?? 'Failed to load available jobs.';
       });
+
+    // Offer actions — shared pending/rejected handler, fulfilled is stateless (caller refreshes)
+    [acceptJobOffer, rejectJobOffer].forEach((thunk) => {
+      builder
+        .addCase(thunk.pending, (state) => {
+          state.processingOfferAction = true;
+          state.offerActionError      = null;
+        })
+        .addCase(thunk.fulfilled, (state) => {
+          state.processingOfferAction = false;
+        })
+        .addCase(thunk.rejected, (state, { payload }) => {
+          state.processingOfferAction = false;
+          state.offerActionError      = payload ?? 'Failed to process offer.';
+        });
+    });
+
+    // Apply for job
+    builder
+      .addCase(applyForJob.pending, (state) => {
+        state.applyingForJob   = true;
+        state.applyForJobError = null;
+      })
+      .addCase(applyForJob.fulfilled, (state) => {
+        state.applyingForJob = false;
+      })
+      .addCase(applyForJob.rejected, (state, { payload }) => {
+        state.applyingForJob   = false;
+        state.applyForJobError = payload ?? 'Failed to submit application.';
+      });
   },
 });
 
 export const {
   clearRecommendedJobs,
   clearAvailableJobs,
+  clearJobDetails,
+  clearApplyForJob,
+  clearOfferAction,
   clearAllJobs,
 } = subcontractorJobsSlice.actions;
 

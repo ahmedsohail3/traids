@@ -18,6 +18,7 @@ import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
 import SendOfferModal from '~components/Subcontractors/SendOfferModal';
 import useCompanySubcontractors from '~hooks/useCompanySubcontractors';
+import useChat from '~hooks/useChat';
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
 const StatusIcon = ({ status }) => {
@@ -52,8 +53,10 @@ const SubcontractorProfileScreen = ({ route, navigation }) => {
   const subcontractorId = routeSub._id ?? routeSub.id;
 
   const { profile, profileLoading: loading, getProfile } = useCompanySubcontractors();
-  console.log('profile', profile);
+  const { rawConversations, getConversations } = useChat();
   const [offerVisible, setOfferVisible] = useState(false);
+
+  useEffect(() => { getConversations(); }, []);
 
   useEffect(() => {
     if (subcontractorId) getProfile(subcontractorId);
@@ -61,6 +64,21 @@ const SubcontractorProfileScreen = ({ route, navigation }) => {
 
   // Fall back to route params while the API loads so the screen isn't blank
   const sub = profile ?? routeSub;
+
+  const handleMessage = () => {
+    const existing = rawConversations.find(
+      (c) => c.subcontractor?._id === subcontractorId || c.subcontractor === subcontractorId,
+    );
+    if (existing) {
+      navigation.navigate('CompanyChat', { conversation: existing });
+    } else {
+      navigation.navigate('CompanyChat', {
+        subcontractorId,
+        subName:      sub.name ?? sub.fullName,
+        subAvatarUri: sub.avatarUri ?? sub.profileImage ?? null,
+      });
+    }
+  };
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -104,7 +122,7 @@ const SubcontractorProfileScreen = ({ route, navigation }) => {
             title="Message"
             variant="outline"
             style={{ flex: 1 }}
-            onPress={() => {}}
+            onPress={handleMessage}
           />
           <Button
             title="Book Now"

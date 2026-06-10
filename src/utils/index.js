@@ -66,6 +66,11 @@ export const getUserType = async () => {
   }
 };
 
+
+export const stripHtml = (str) =>
+  str ? str.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
+
+
 /**
  * Clear all session data — tokens + user type.
  * Called on logout and by the 401 interceptor on session expiry.

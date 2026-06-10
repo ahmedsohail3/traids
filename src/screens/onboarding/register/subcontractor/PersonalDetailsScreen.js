@@ -1,54 +1,24 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Button, TextInput, SelectDropdown } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import RegisterContainer from '../RegisterContainer';
+import useSubcontractorSignup from '~hooks/useSubcontractorSignup';
 
 const TRADE_OPTIONS = [
-  { label: 'Bricklayer', value: 'bricklayer' },
-  { label: 'Carpenter', value: 'carpenter' },
   { label: 'Electrician', value: 'electrician' },
-  { label: 'Plumber', value: 'plumber' },
-  { label: 'Painter & Decorator', value: 'painter' },
-  { label: 'Plasterer', value: 'plasterer' },
-  { label: 'Roofer', value: 'roofer' },
-  { label: 'Steel Fixer', value: 'steel_fixer' },
-  { label: 'General Labourer', value: 'labourer' },
-  { label: 'Other', value: 'other' },
+  { label: 'Plumber',     value: 'plumber' },
+  { label: 'Carpenter',   value: 'carpenter' },
+  { label: 'Masonry',     value: 'masonry' },
 ];
 
 const PersonalDetailsScreen = ({ navigation }) => {
-  const [fullName, setFullName] = useState('');
-  const [primaryTrade, setPrimaryTrade] = useState('');
-  const [yearsExperience, setYearsExperience] = useState('');
-  const [postcode, setPostcode] = useState('');
-  const [city, setCity] = useState('');
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
-
-  const clearError = useCallback(
-    field => setErrors(prev => ({ ...prev, [field]: '' })),
-    [],
-  );
-
-  const validate = useCallback(() => {
-    const e = {};
-    if (!fullName.trim()) e.fullName = 'Full name is required';
-    if (!primaryTrade) e.primaryTrade = 'Please select a primary trade';
-    if (!postcode.trim()) e.postcode = 'Postcode / Location is required';
-    if (!city.trim()) e.city = 'City / Location is required';
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  }, [fullName, primaryTrade, postcode, city]);
+  const { formData, errors, updateField, clearError, validateStep } = useSubcontractorSignup();
 
   const handleContinue = useCallback(() => {
-    if (!validate()) return;
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      navigation.navigate('SubQualification');
-    }, 500);
-  }, [validate, navigation]);
+    if (!validateStep(1)) return;
+    navigation.navigate('SubQualification');
+  }, [validateStep, navigation]);
 
   return (
     <RegisterContainer
@@ -63,8 +33,8 @@ const PersonalDetailsScreen = ({ navigation }) => {
 
       <TextInput
         label="Full Name *"
-        value={fullName}
-        onChangeText={v => { setFullName(v); clearError('fullName'); }}
+        value={formData.fullName}
+        onChangeText={(v) => { updateField('fullName', v); clearError('fullName'); }}
         placeholder="Your Name"
         autoCapitalize="words"
         error={errors.fullName}
@@ -73,36 +43,36 @@ const PersonalDetailsScreen = ({ navigation }) => {
       <SelectDropdown
         label="Primary Trade *"
         options={TRADE_OPTIONS}
-        value={primaryTrade}
-        onSelect={v => { setPrimaryTrade(v); clearError('primaryTrade'); }}
+        value={formData.primaryTrade}
+        onSelect={(v) => { updateField('primaryTrade', v); clearError('primaryTrade'); }}
         placeholder="Select an option"
         error={errors.primaryTrade}
       />
 
       <TextInput
         label="Years Experience"
-        value={yearsExperience}
-        onChangeText={setYearsExperience}
+        value={formData.yearsOfExperience}
+        onChangeText={(v) => updateField('yearsOfExperience', v)}
         placeholder="e.g. 5"
         keyboardType="number-pad"
       />
 
       <TextInput
         label="Postcode / Location *"
-        value={postcode}
-        onChangeText={v => { setPostcode(v); clearError('postcode'); }}
+        value={formData.postcode}
+        onChangeText={(v) => { updateField('postcode', v); clearError('postcode'); }}
         placeholder="SW1A 1AA"
         autoCapitalize="characters"
         error={errors.postcode}
       />
 
       <TextInput
-        label="City/Location *"
-        value={city}
-        onChangeText={v => { setCity(v); clearError('city'); }}
+        label="City / Location *"
+        value={formData.cityLocation}
+        onChangeText={(v) => { updateField('cityLocation', v); clearError('cityLocation'); }}
         placeholder="London"
         autoCapitalize="words"
-        error={errors.city}
+        error={errors.cityLocation}
       />
 
       <View style={styles.actionRow}>
@@ -116,7 +86,6 @@ const PersonalDetailsScreen = ({ navigation }) => {
           title="Save & Continue"
           style={styles.continueBtn}
           onPress={handleContinue}
-          loading={loading}
         />
       </View>
     </RegisterContainer>
@@ -133,8 +102,8 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 8,
   },
-  cancelBtn: { flex: 1 },
-  continueBtn: { flex: 2 },
+  cancelBtn:    { flex: 1 },
+  continueBtn:  { flex: 2 },
 });
 
 export default PersonalDetailsScreen;

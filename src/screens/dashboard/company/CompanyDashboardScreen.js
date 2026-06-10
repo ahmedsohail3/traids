@@ -106,7 +106,7 @@ const CompanyDashboardScreen = ({ navigation }) => {
   const { dashboard, loading, hasData, getDashboard } = useDashboard();
   const { jobs, getJobs } = useCompanyJobs();
 
-  const [hasUnpaidInvoice, setHasUnpaidInvoice] = useState(true);
+  const [hasUnpaidInvoice, setHasUnpaidInvoice] = useState(false);
   const [showBlockedModal, setShowBlockedModal]  = useState(false);
 
   useEffect(() => { getDashboard(); getJobs(); }, []);
@@ -218,7 +218,7 @@ const CompanyDashboardScreen = ({ navigation }) => {
           <View style={styles.sectionMargin}>
             <View style={styles.recentHeader}>
               <Text style={[styles.recentTitle, { color: colors.textPrimary }]}>Recent Jobs</Text>
-              <TouchableOpacity onPress={() => navigation.navigate?.('AllJobs')}>
+              <TouchableOpacity onPress={() => navigation.getParent()?.navigate('Jobs')}>
                 <Text style={[styles.viewAll, { color: colors.secondary }]}>View All Jobs</Text>
               </TouchableOpacity>
             </View>

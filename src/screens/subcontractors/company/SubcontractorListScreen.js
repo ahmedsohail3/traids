@@ -26,7 +26,7 @@ const SubcontractorListScreen = ({ navigation }) => {
 
   console.log('subcontractors', subcontractors);
 
-  const [selectedTrades, setSelectedTrades] = useState([]);
+  const [selectedTrade, setSelectedTrade] = useState(null);
   const [maxRate, setMaxRate] = useState(600);
   const [locationInput, setLocationInput] = useState('');
   const [search, setSearch] = useState('');
@@ -35,9 +35,9 @@ const SubcontractorListScreen = ({ navigation }) => {
   useEffect(() => {
     fetch({
       maxHourlyRate: maxRate,
-      primaryTrade: selectedTrades.map(t => t.key).join(',') || undefined,
+      primaryTrade: selectedTrade?.key || undefined,
     });
-  }, [selectedTrades, maxRate]);
+  }, [selectedTrade, maxRate]);
 
   const handleLocationChange = (text) => {
     setLocationInput(text);
@@ -46,15 +46,13 @@ const SubcontractorListScreen = ({ navigation }) => {
       fetch({
         maxHourlyRate: maxRate,
         location: text || undefined,
-        primaryTrade: selectedTrades.map(t => t.key).join(',') || undefined,
+        primaryTrade: selectedTrade?.key || undefined,
       });
     }, 2000);
   };
 
   const toggleTrade = (trade) => {
-    setSelectedTrades(prev =>
-      prev.includes(trade) ? prev.filter(t => t.key !== trade.key) : [...prev, trade]
-    );
+    setSelectedTrade(prev => prev?.key === trade.key ? null : trade);
   };
 
   const filtered = subcontractors.filter(s =>
@@ -87,7 +85,7 @@ const SubcontractorListScreen = ({ navigation }) => {
             <Checkbox
               key={trade.id}
               label={trade.name}
-              checked={selectedTrades.some(t => t.id === trade.id)}
+              checked={selectedTrade?.id === trade.id}
               onPress={() => toggleTrade(trade)}
               style={styles.tradeCheckbox}
             />
@@ -100,14 +98,14 @@ const SubcontractorListScreen = ({ navigation }) => {
         <PriceSlider
           icon={DollarSign}
           title="Max Hourly Rate"
-          min={10}
-          max={100}
+          min={100}
+          max={1000}
           step={10}
           value={maxRate}
           onChange={setMaxRate}
           prefix="£"
-          minLabel="£10"
-          maxLabel="£100+"
+          minLabel="£100"
+          maxLabel="£1000+"
         />
         <View style={styles.divider} />
         <View style={styles.filterTitleRow}>

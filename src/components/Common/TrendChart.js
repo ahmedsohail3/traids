@@ -1,5 +1,5 @@
 /**
- * TrendChart — simple SVG line chart using react-native-svg (no heavy lib required).
+ * TrendChart — SVG line chart with Y-axis labels.
  * Props:
  *   data   number[]   — y-values (e.g. [2,4,3,8,6,9,7])
  *   labels string[]   — x-axis labels (optional)
@@ -13,66 +13,93 @@ import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
 
-const WIDTH = 300;
-const HEIGHT = 80;
-const PADDING_X = 0;
-const PADDING_Y = 8;
+const SVG_W       = 300;
+const SVG_H       = 80;
+const PAD_Y       = 8;
+const Y_AXIS_W    = 28;
 
-const buildPath = (data, w, h) => {
-  if (!data || data.length < 2) return '';
-  const min = Math.min(...data);
-  const max = Math.max(...data) || 1;
-  const range = max - min || 1;
-  const step = (w - PADDING_X * 2) / (data.length - 1);
+const formatVal = (n) => {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000)    return `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K`;
+  return String(Math.round(n));
+};
 
-  const points = data.map((v, i) => ({
-    x: PADDING_X + i * step,
-    y: PADDING_Y + (1 - (v - min) / range) * (h - PADDING_Y * 2),
-  }));
+const buildPath = (data) => {
+  if (!data || data.length < 2) return null;
+  const min   = Math.min(...data);
+  const max   = Math.max(...data);
+  const range = max - min;
+  const step  = SVG_W / (data.length - 1);
 
-  // Smooth cubic bezier
+  const toY = (v) => {
+    if (range === 0) return SVG_H / 2; // flat → centre
+    return PAD_Y + (1 - (v - min) / range) * (SVG_H - PAD_Y * 2);
+  };
+
+  const points = data.map((v, i) => ({ x: i * step, y: toY(v) }));
+
   let d = `M ${points[0].x} ${points[0].y}`;
   for (let i = 1; i < points.length; i++) {
-    const cp1x = (points[i - 1].x + points[i].x) / 2;
-    const cp1y = points[i - 1].y;
-    const cp2x = (points[i - 1].x + points[i].x) / 2;
-    const cp2y = points[i].y;
-    d += ` C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${points[i].x} ${points[i].y}`;
+    const cpx = (points[i - 1].x + points[i].x) / 2;
+    d += ` C ${cpx} ${points[i - 1].y} ${cpx} ${points[i].y} ${points[i].x} ${points[i].y}`;
   }
-  return { linePath: d, points };
+  return { linePath: d, points, min, max };
 };
 
 const TrendChart = ({ data = [], labels = [], color = '#10375C' }) => {
+
   const { colors } = useTheme();
-  const result = buildPath(data, WIDTH, HEIGHT);
+  const result = buildPath(data);
 
-  if (!result || !result.linePath) return null;
-  const { linePath, points } = result;
+  if (!result) return null;
+  const { linePath, points, min, max } = result;
 
-  // Fill area under curve
-  const lastPt = points[points.length - 1];
-  const firstPt = points[0];
-  const fillPath = `${linePath} L ${lastPt.x} ${HEIGHT} L ${firstPt.x} ${HEIGHT} Z`;
+  const mid      = (min + max) / 2;
+  const lastPt   = points[points.length - 1];
+  const fillPath = `${linePath} L ${lastPt.x} ${SVG_H} L ${points[0].x} ${SVG_H} Z`;
 
   return (
-    <View style={styles.container}>
-      <Svg width="100%" height={HEIGHT} viewBox={`0 0 ${WIDTH} ${HEIGHT}`} preserveAspectRatio="none">
-        <Defs>
-          <LinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor={color} stopOpacity="0.25" />
-            <Stop offset="100%" stopColor={color} stopOpacity="0" />
-          </LinearGradient>
-        </Defs>
-        {/* Fill */}
-        <Path d={fillPath} fill="url(#grad)" />
-        {/* Line */}
-        <Path d={linePath} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-      </Svg>
-      {/* X-axis labels */}
+    <View style={styles.outer}>
+      {/* SVG row: Y-axis labels + chart */}
+      <View style={styles.svgRow}>
+        <View style={styles.yAxis}>
+          <Text style={[styles.yLabel, { color: colors.textSecondary }]}>{formatVal(max)}</Text>
+          <Text style={[styles.yLabel, { color: colors.textSecondary }]}>{formatVal(mid)}</Text>
+          <Text style={[styles.yLabel, { color: colors.textSecondary }]}>{formatVal(min)}</Text>
+        </View>
+
+        <View style={styles.chartArea}>
+          <Svg
+            width="100%"
+            height={SVG_H}
+            viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+            preserveAspectRatio="none">
+            <Defs>
+              <LinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0%" stopColor={color} stopOpacity="0.25" />
+                <Stop offset="100%" stopColor={color} stopOpacity="0" />
+              </LinearGradient>
+            </Defs>
+            <Path d={fillPath} fill="url(#grad)" />
+            <Path
+              d={linePath}
+              fill="none"
+              stroke={color}
+              strokeWidth="2.5"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          </Svg>
+        </View>
+      </View>
+
+      {/* X-axis labels — offset to align with chart area, not Y-axis */}
       {labels.length > 0 && (
-        <View style={styles.labelsRow}>
+        <View style={[styles.xAxis, { paddingLeft: Y_AXIS_W }]}>
           {labels.map((l, i) => (
-            <Text key={i} style={[styles.axisLabel, { color: colors.textSecondary }]}>{l}</Text>
+            <Text key={i} style={[styles.xLabel, { color: colors.textSecondary }]}>
+              {l}
+            </Text>
           ))}
         </View>
       )}
@@ -81,13 +108,32 @@ const TrendChart = ({ data = [], labels = [], color = '#10375C' }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { width: '100%' },
-  labelsRow: {
+  outer: { width: '100%' },
+
+  svgRow: { flexDirection: 'row', alignItems: 'flex-start' },
+
+  yAxis: {
+    width: Y_AXIS_W,
+    height: SVG_H,           // locked to SVG height so space-between aligns correctly
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    paddingRight: 4,
+    paddingVertical: PAD_Y,  // mirrors the SVG's internal top/bottom padding
+  },
+  yLabel: {
+    fontSize: RFValue(8),
+    fontFamily: FontFamily.regular,
+    lineHeight: RFValue(10),
+  },
+
+  chartArea: { flex: 1 },
+
+  xAxis: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 4,
   },
-  axisLabel: {
+  xLabel: {
     fontSize: RFValue(9),
     fontFamily: FontFamily.regular,
   },

@@ -1,31 +1,30 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Button, TextInput, UploadField } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import RegisterContainer from '../RegisterContainer';
+import useSubcontractorSignup from '~hooks/useSubcontractorSignup';
+import { pickDocument } from '~utils/filePicker';
 
-// ─── Date Input row ──────────────────────────────────────────────────────────
+// ─── Expiry date row ──────────────────────────────────────────────────────────
+
 const ExpiryRow = ({ value, onChangeText }) => (
   <TextInput
     label="Expiry Date"
     value={value}
     onChangeText={onChangeText}
-    placeholder="00/00/0000"
+    placeholder="DD/MM/YYYY"
     keyboardType="number-pad"
     maxLength={10}
   />
 );
 
-const QualificationScreen = ({ navigation }) => {
-  const [insuranceFile, setInsuranceFile] = useState(null);
-  const [insuranceExpiry, setInsuranceExpiry] = useState('');
-  const [ticketsFile, setTicketsFile] = useState(null);
-  const [ticketsExpiry, setTicketsExpiry] = useState('');
-  const [certFile, setCertFile] = useState(null);
-  const [certExpiry, setCertExpiry] = useState('');
-  const [loading, setLoading] = useState(false);
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
-  const formatDate = useCallback(text => {
+const QualificationScreen = ({ navigation }) => {
+  const { formData, updateField } = useSubcontractorSignup();
+
+  const formatDate = useCallback((text) => {
     const cleaned = text.replace(/\D/g, '').slice(0, 8);
     if (cleaned.length > 4) {
       return `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4)}`;
@@ -36,17 +35,13 @@ const QualificationScreen = ({ navigation }) => {
     return cleaned;
   }, []);
 
-  const handlePickFile = useCallback(setter => {
-    // TODO: integrate @react-native-documents/picker
-    setter({ name: 'document.pdf', uri: '' });
-  }, []);
+  const handlePickFile = useCallback(async (field) => {
+    const file = await pickDocument();
+    if (file) updateField(field, file);
+  }, [updateField]);
 
   const handleContinue = useCallback(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      navigation.navigate('SubProfileSetup');
-    }, 500);
+    navigation.navigate('SubProfileSetup');
   }, [navigation]);
 
   return (
@@ -57,43 +52,46 @@ const QualificationScreen = ({ navigation }) => {
       totalSteps={4}>
 
       <Text variant="sectionTitle" style={styles.heading}>
-        Qualification & CIS
+        Qualification &amp; CIS
       </Text>
 
       {/* Insurance */}
       <UploadField
         label="Insurance"
-        hint="PDF, JPG or PNG (max. 5MB)"
-        file={insuranceFile}
-        onPress={() => handlePickFile(setInsuranceFile)}
+        hint="JPG, PNG or WEBP (max. 5MB)"
+        file={formData.insuranceDocuments}
+        onPress={() => handlePickFile('insuranceDocuments')}
+        onRemove={() => updateField('insuranceDocuments', null)}
       />
       <ExpiryRow
-        value={insuranceExpiry}
-        onChangeText={t => setInsuranceExpiry(formatDate(t))}
+        value={formData.insuranceExpiresAt}
+        onChangeText={(t) => updateField('insuranceExpiresAt', formatDate(t))}
       />
 
       {/* Tickets */}
       <UploadField
         label="Tickets"
-        hint="PDF, JPG or PNG (max. 5MB)"
-        file={ticketsFile}
-        onPress={() => handlePickFile(setTicketsFile)}
+        hint="JPG, PNG or WEBP (max. 5MB)"
+        file={formData.ticketDocuments}
+        onPress={() => handlePickFile('ticketDocuments')}
+        onRemove={() => updateField('ticketDocuments', null)}
       />
       <ExpiryRow
-        value={ticketsExpiry}
-        onChangeText={t => setTicketsExpiry(formatDate(t))}
+        value={formData.ticketExpiresAt}
+        onChangeText={(t) => updateField('ticketExpiresAt', formatDate(t))}
       />
 
       {/* Certification */}
       <UploadField
         label="Certification"
-        hint="PDF, JPG or PNG (max. 5MB)"
-        file={certFile}
-        onPress={() => handlePickFile(setCertFile)}
+        hint="JPG, PNG or WEBP (max. 5MB)"
+        file={formData.certificationDocuments}
+        onPress={() => handlePickFile('certificationDocuments')}
+        onRemove={() => updateField('certificationDocuments', null)}
       />
       <ExpiryRow
-        value={certExpiry}
-        onChangeText={t => setCertExpiry(formatDate(t))}
+        value={formData.certificationExpiresAt}
+        onChangeText={(t) => updateField('certificationExpiresAt', formatDate(t))}
       />
 
       <View style={styles.actionRow}>
@@ -107,7 +105,6 @@ const QualificationScreen = ({ navigation }) => {
           title="Save & Continue"
           style={styles.continueBtn}
           onPress={handleContinue}
-          loading={loading}
         />
       </View>
     </RegisterContainer>
@@ -124,7 +121,7 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 8,
   },
-  cancelBtn: { flex: 1 },
+  cancelBtn:   { flex: 1 },
   continueBtn: { flex: 2 },
 });
 

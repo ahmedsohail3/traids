@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getJobsApi, getJobByIdApi, getJobRatingsApi, submitJobRatingApi } from '~services/companyJobsService';
+import { getJobsApi, getJobByIdApi, getJobRatingsApi, submitJobRatingApi, createJobApi, acceptJobApplicationApi, rejectJobApplicationApi } from '~services/companyJobsService';
+import { buildCreateJobFormData } from '~utils/buildFormData';
 import { getErrorMessage } from '~utils';
 
 // ── Async Thunks ───────────────────────────────────────────────────────────────
@@ -47,6 +48,43 @@ export const fetchJobRatings = createAsyncThunk(
   },
 );
 
+export const createJob = createAsyncThunk(
+  'companyJobs/createJob',
+  async (formValues, { rejectWithValue }) => {
+    try {
+      const formData = buildCreateJobFormData(formValues);
+      const res      = await createJobApi(formData);
+      return res.data ?? res;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
+export const acceptJobApplication = createAsyncThunk(
+  'companyJobs/acceptJobApplication',
+  async (applicationId, { rejectWithValue }) => {
+    try {
+      const res = await acceptJobApplicationApi(applicationId);
+      return res?.data ?? res;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
+export const rejectJobApplication = createAsyncThunk(
+  'companyJobs/rejectJobApplication',
+  async (applicationId, { rejectWithValue }) => {
+    try {
+      const res = await rejectJobApplicationApi(applicationId);
+      return res?.data ?? res;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
 export const postJobRating = createAsyncThunk(
   'companyJobs/postJobRating',
   async ({ jobId, subcontractorId, rating, comment }, { rejectWithValue }) => {
@@ -72,11 +110,17 @@ const companyJobsSlice = createSlice({
     selectedJob:    null,
     detailLoading:  false,
     detailError:    null,
+    // Create
+    creatingJob:    false,
+    createJobError: null,
     // Ratings
     ratingsData: { totalRatings: 0, averageRating: 0, ratings: [] },
     loadingRatings:   false,
     submittingRating: false,
     ratingsError:     null,
+    // Application actions
+    processingApplication:  false,
+    applicationActionError: null,
   },
   reducers: {
     clearCompanyJobs: (state) => {
@@ -95,6 +139,22 @@ const companyJobsSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // Create
+      .addCase(createJob.pending, (state) => {
+        state.creatingJob    = true;
+        state.createJobError = null;
+      })
+      .addCase(createJob.fulfilled, (state, { payload }) => {
+        state.creatingJob = false;
+        if (payload) {
+          state.jobs.unshift(payload);
+          state.jobCount += 1;
+        }
+      })
+      .addCase(createJob.rejected, (state, { payload }) => {
+        state.creatingJob    = false;
+        state.createJobError = payload ?? 'Failed to create job.';
+      })
       // List
       .addCase(fetchCompanyJobs.pending, (state) => {
         state.listLoading = true;
@@ -133,6 +193,30 @@ const companyJobsSlice = createSlice({
       .addCase(postJobRating.rejected, (state, { payload }) => {
         state.submittingRating = false;
         state.ratingsError     = payload ?? 'Failed to submit rating.';
+      })
+      // Accept application
+      .addCase(acceptJobApplication.pending, (state) => {
+        state.processingApplication  = true;
+        state.applicationActionError = null;
+      })
+      .addCase(acceptJobApplication.fulfilled, (state) => {
+        state.processingApplication = false;
+      })
+      .addCase(acceptJobApplication.rejected, (state, { payload }) => {
+        state.processingApplication  = false;
+        state.applicationActionError = payload ?? 'Failed to accept application.';
+      })
+      // Reject application
+      .addCase(rejectJobApplication.pending, (state) => {
+        state.processingApplication  = true;
+        state.applicationActionError = null;
+      })
+      .addCase(rejectJobApplication.fulfilled, (state) => {
+        state.processingApplication = false;
+      })
+      .addCase(rejectJobApplication.rejected, (state, { payload }) => {
+        state.processingApplication  = false;
+        state.applicationActionError = payload ?? 'Failed to reject application.';
       })
       // Detail
       .addCase(fetchCompanyJobById.pending, (state) => {

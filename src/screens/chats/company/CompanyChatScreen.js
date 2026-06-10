@@ -20,16 +20,24 @@ import MessageBubble from '~components/Chat/MessageBubble';
 import MessageInput from '~components/Chat/MessageInput';
 import ViewProfileModal from '~components/Chat/ViewProfileModal';
 import useChat from '~hooks/useChat';
+import useAlert from '~hooks/useAlert';
 
 const CompanyChatScreen = ({ route }) => {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const { conversation } = route?.params ?? {};
+  const insets     = useSafeAreaInsets();
+  const { showAlert } = useAlert();
 
-  // conversation is the raw API object: { _id, subcontractor: { fullName, profileImage, ... }, ... }
-  const chatId    = conversation?._id;
-  const subData   = conversation?.subcontractor ?? {};
-  const chatName  = subData.fullName ?? conversation?.name ?? 'Chat';
+  // Two modes:
+  //   Existing: route.params.conversation  → raw conversation object with _id
+  //   New:      route.params.subcontractorId + subName + subAvatarUri
+  const { conversation, subcontractorId: paramSubId, subName: paramSubName, subAvatarUri: paramSubAvatar } = route?.params ?? {};
+
+  // Active conversation — may start null in new-conversation mode and get set after first message
+  const [activeConversation, setActiveConversation] = useState(conversation ?? null);
+  const activeChatId = activeConversation?._id ?? null;
+
+  const subData  = activeConversation?.subcontractor ?? {};
+  const chatName = subData.fullName ?? activeConversation?.name ?? paramSubName ?? 'Chat';
 
   const {
     getMessagesForChat,
@@ -41,70 +49,84 @@ const CompanyChatScreen = ({ route }) => {
     markConversationAsRead,
     sendMessage,
     sendingMessage,
+    sendFirstMessage,
+    sendingFirstMessage,
   } = useChat();
 
-  const [profileVisible,  setProfileVisible]  = useState(false);
-  const [kbOffset,        setKbOffset]        = useState(0);
-  const listRef       = useRef(null);
-  const loadGuardRef  = useRef(false);
+  const isSending = sendingMessage || sendingFirstMessage;
 
-  // Fetch on mount, clear cache on unmount
+  const [profileVisible, setProfileVisible] = useState(false);
+  const [kbOffset,       setKbOffset]       = useState(0);
+  const listRef      = useRef(null);
+  const loadGuardRef = useRef(false);
+
+  // Fetch on mount when an existing chatId is available; clear cache on unmount
   useEffect(() => {
-    if (chatId) {
-      getMessages(chatId);
-      markConversationAsRead(chatId);
+    if (activeChatId) {
+      getMessages(activeChatId);
+      markConversationAsRead(activeChatId);
     }
-    return () => { if (chatId) resetMessages(chatId); };
-  }, [chatId]); // intentionally omit stable callbacks
+    return () => { if (activeChatId) resetMessages(activeChatId); };
+  }, [activeChatId]); // intentionally omit stable callbacks
 
   const apiMessages = useMemo(
-    () => getMessagesForChat(chatId, conversation),
-    [getMessagesForChat, chatId, conversation],
+    () => getMessagesForChat(activeChatId, activeConversation),
+    [getMessagesForChat, activeChatId, activeConversation],
   );
 
-  const allMessages = apiMessages;
-
-  const pagination = getPaginationForChat(chatId);
+  const pagination = getPaginationForChat(activeChatId);
 
   // Auto-scroll to bottom when messages first load
   useEffect(() => {
-    if (allMessages.length > 0) {
+    if (apiMessages.length > 0) {
       setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 50);
     }
-  }, [apiMessages.length]); // only on API messages change, not every local send
+  }, [apiMessages.length]);
 
   // Android: manual keyboard tracking (adjustResize unreliable with edge-to-edge)
   useEffect(() => {
     if (Platform.OS !== 'android') return;
-    const show = Keyboard.addListener('keyboardDidShow', (e) => {
-      setKbOffset(e.endCoordinates.height);
-    });
-    const hide = Keyboard.addListener('keyboardDidHide', () => {
-      setKbOffset(0);
-    });
+    const show = Keyboard.addListener('keyboardDidShow', (e) => setKbOffset(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKbOffset(0));
     return () => { show.remove(); hide.remove(); };
   }, []);
 
-  // ── Pagination: detect scroll near top ──────────────────────────────────────
+  // ── Pagination ───────────────────────────────────────────────────────────────
   const handleScroll = useCallback(
     ({ nativeEvent }) => {
       const y = nativeEvent.contentOffset.y;
       if (y < 80 && pagination.hasMore && !loadingMessages && !loadGuardRef.current) {
         loadGuardRef.current = true;
-        loadMoreMessages(chatId);
-        // Release guard after a tick so the thunk settles
+        loadMoreMessages(activeChatId);
         setTimeout(() => { loadGuardRef.current = false; }, 1500);
       }
     },
-    [chatId, loadMoreMessages, pagination.hasMore, loadingMessages],
+    [activeChatId, loadMoreMessages, pagination.hasMore, loadingMessages],
   );
 
+  // ── Send ─────────────────────────────────────────────────────────────────────
   const handleSend = useCallback(({ text, attachments = [] }) => {
-    if ((!text && attachments.length === 0) || sendingMessage) return;
-    sendMessage({ conversationId: chatId, content: text, attachments }).then(() => {
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
-    });
-  }, [sendingMessage, sendMessage, chatId]);
+    if ((!text && attachments.length === 0) || isSending) return;
+
+    if (activeChatId) {
+      // Existing conversation — normal send
+      sendMessage({ conversationId: activeChatId, content: text, attachments }).then(() => {
+        setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+      });
+    } else {
+      // New conversation — send first message, then transition into normal mode
+      sendFirstMessage({ subcontractorId: paramSubId, content: text, attachments })
+        .then(({ conversation: newConv }) => {
+          if (newConv?._id) {
+            setActiveConversation(newConv);
+            setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+          }
+        })
+        .catch((err) => {
+          showAlert({ title: 'Error', message: err ?? 'Failed to send message.', type: 'error' });
+        });
+    }
+  }, [isSending, activeChatId, sendMessage, sendFirstMessage, paramSubId, showAlert]);
 
   const handleDelete = useCallback((_msgId) => {
     // deletion is not yet supported by the API
@@ -131,7 +153,7 @@ const CompanyChatScreen = ({ route }) => {
           <ActivityIndicator size="small" color="#10375C" />
         ) : (
           <TouchableOpacity
-            onPress={() => loadMoreMessages(chatId)}
+            onPress={() => loadMoreMessages(activeChatId)}
             style={styles.loadMoreBtn}
             activeOpacity={0.7}>
             <Text style={styles.loadMoreText}>Load earlier messages</Text>
@@ -139,7 +161,7 @@ const CompanyChatScreen = ({ route }) => {
         )}
       </View>
     );
-  }, [pagination.hasMore, loadingMessages, chatId, loadMoreMessages]);
+  }, [pagination.hasMore, loadingMessages, activeChatId, loadMoreMessages]);
 
   const EmptyState = () => (
     <View style={styles.emptyWrap}>
@@ -150,12 +172,12 @@ const CompanyChatScreen = ({ route }) => {
   );
 
   const profile = useMemo(() => ({
-    name:       chatName,
-    role:       subData.primaryTrade ?? 'Subcontractor',
-    logoEmoji:  '👷',
-    about:      subData.about ?? '',
-    avatarUri:  subData.profileImage ?? null,
-  }), [chatName, subData]);
+    name:      chatName,
+    role:      subData.primaryTrade ?? 'Subcontractor',
+    logoEmoji: '👷',
+    about:     subData.about ?? '',
+    avatarUri: subData.profileImage ?? paramSubAvatar ?? null,
+  }), [chatName, subData, paramSubAvatar]);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -175,17 +197,17 @@ const CompanyChatScreen = ({ route }) => {
           </TouchableOpacity>
 
           {/* Initial loading */}
-          {loadingMessages && allMessages.length === 0 && (
+          {loadingMessages && apiMessages.length === 0 && (
             <View style={styles.centerLoader}>
               <ActivityIndicator size="small" color="#10375C" />
             </View>
           )}
 
           {/* Message list */}
-          {(!loadingMessages || allMessages.length > 0) && (
+          {(!loadingMessages || apiMessages.length > 0) && (
             <FlatList
               ref={listRef}
-              data={allMessages}
+              data={apiMessages}
               keyExtractor={keyExtractor}
               renderItem={renderItem}
               ListHeaderComponent={ListHeader}
@@ -202,7 +224,7 @@ const CompanyChatScreen = ({ route }) => {
 
           <MessageInput
             onSend={handleSend}
-            sendingMessage={sendingMessage}
+            sendingMessage={isSending}
           />
         </View>
       </KeyboardAvoidingView>

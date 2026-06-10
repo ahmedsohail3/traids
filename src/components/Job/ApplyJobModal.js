@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -8,61 +8,163 @@ import {
   ScrollView,
   Platform,
   KeyboardAvoidingView,
-  Dimensions,
   Image,
+  ActivityIndicator,
 } from 'react-native';
-import { X, ShieldCheck, UploadCloud, CheckCircle2 } from 'lucide-react-native';
+import { X, ShieldCheck, FileText, File, Trash2 } from 'lucide-react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
 import { Images } from '~assets';
+import useSubcontractorJobs from '~hooks/useSubcontractorJobs';
+import useProfile from '~hooks/useProfile';
+import useAlert from '~hooks/useAlert';
+import { buildJobApplicationFormData } from '~utils/buildFormData';
+import { pickDocument, pickImageFromLibrary } from '~utils/filePicker';
 
-const { width, height } = Dimensions.get('window');
+// ─── Form config ─────────────────────────────────────────────────────────────
 
-const ApplyJobModal = ({ visible, onClose, onSeeMyJobs, jobTitle }) => {
-  const { colors } = useTheme();
+const INITIAL_FORM = {
+  fullName:          '',
+  proposedDailyRate: '',
+  message:           '',
+  documents:         [],
+};
 
-  const [fullName, setFullName] = useState('');
-  const [proposedRate, setProposedRate] = useState('');
-  const [message, setMessage] = useState('');
+const validateForm = (values) => {
+  const errors = {};
+
+  if (!values.fullName.trim())
+    errors.fullName = 'Full name is required';
+
+  const rate = Number(values.proposedDailyRate);
+  if (!values.proposedDailyRate.trim())
+    errors.proposedDailyRate = 'Proposed daily rate is required';
+  else if (isNaN(rate) || rate <= 0)
+    errors.proposedDailyRate = 'Rate must be greater than 0';
+
+  if (!values.message.trim())
+    errors.message = 'Message is required';
+
+  return errors;
+};
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+const FieldError = ({ message }) =>
+  message ? <Text style={styles.errorText}>{message}</Text> : null;
+
+const DocumentChip = ({ doc, onRemove }) => {
+  const isImg = doc.type?.startsWith('image/');
+  const Icon  = isImg ? FileText : File;
+  return (
+    <View style={styles.docChip}>
+      <Icon size={RFValue(12)} color="#10375C" strokeWidth={2} />
+      <Text style={styles.docChipName} numberOfLines={1}>{doc.name ?? 'document'}</Text>
+      <TouchableOpacity onPress={onRemove} hitSlop={8}>
+        <Trash2 size={RFValue(12)} color="#94A3B8" strokeWidth={2} />
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
+
+const ApplyJobModal = ({ visible, onClose, onSeeMyJobs, jobTitle, jobId }) => {
+  const { colors }    = useTheme();
+  const insets        = useSafeAreaInsets();
+  const { showAlert } = useAlert();
+  const { applyForJob, applyingForJob } = useSubcontractorJobs();
+  const { profile } = useProfile();
+
+  const [form,      setForm]      = useState({ ...INITIAL_FORM });
+  const [errors,    setErrors]    = useState({});
   const [offerSent, setOfferSent] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
-  const [errors, setErrors] = useState({});
+  useEffect(() => {
+    if (visible) {
+      const name = profile?.fullName ?? profile?.name ?? '';
+      setForm((p) => ({ ...p, fullName: name }));
+    }
+  }, [visible, profile]);
 
-  const validate = () => {
-    const e = {};
-    if (!fullName.trim()) e.fullName = 'Full name is required';
-    if (!proposedRate.trim()) e.proposedRate = 'Proposed rate is required';
-    if (!message.trim()) e.message = 'Message is required';
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
+  const set = useCallback((key, val) => {
+    setForm((p) => ({ ...p, [key]: val }));
+    setErrors((p) => ({ ...p, [key]: '' }));
+  }, []);
 
-  const handleSendOffer = () => {
-    if (!validate()) return;
-    setSubmitting(true);
-    // Simulate async submission
-    setTimeout(() => {
-      setSubmitting(false);
-      setOfferSent(true);
-    }, 800);
-  };
+  // ── Documents ────────────────────────────────────────────────────────────────
 
-  const handleClose = () => {
-    setOfferSent(false);
-    setFullName('');
-    setProposedRate('');
-    setMessage('');
+  const addDoc = useCallback((doc) => {
+    if (!doc) return;
+    setForm((p) => ({ ...p, documents: [...p.documents, doc] }));
+  }, []);
+
+  const removeDoc = useCallback((idx) => {
+    setForm((p) => ({ ...p, documents: p.documents.filter((_, i) => i !== idx) }));
+  }, []);
+
+  const handlePickDocument = useCallback(async () => {
+    const doc = await pickDocument();
+    addDoc(doc);
+  }, [addDoc]);
+
+  const handlePickImage = useCallback(async () => {
+    const img = await pickImageFromLibrary({ selectionLimit: 1 });
+    addDoc(img);
+  }, [addDoc]);
+
+  // ── Reset / close ─────────────────────────────────────────────────────────────
+
+  const resetForm = useCallback(() => {
+    const name = profile?.fullName ?? profile?.name ?? '';
+    setForm({ ...INITIAL_FORM, fullName: name });
     setErrors({});
-    onClose();
-  };
+    setOfferSent(false);
+  }, [profile]);
 
-  const handleSeeMyJobs = () => {
+  const handleClose = useCallback(() => {
+    resetForm();
+    onClose();
+  }, [resetForm, onClose]);
+
+  const handleSeeMyJobs = useCallback(() => {
     handleClose();
     onSeeMyJobs?.();
-  };
+  }, [handleClose, onSeeMyJobs]);
+
+  // ── Submit ───────────────────────────────────────────────────────────────────
+
+  const handleSubmit = useCallback(async () => {
+    const validationErrors = validateForm(form);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    const formData = buildJobApplicationFormData({
+      jobId,
+      fullName:          form.fullName,
+      proposedDailyRate: form.proposedDailyRate,
+      message:           form.message,
+      documents:         form.documents,
+    });
+
+    try {
+      await applyForJob(formData);
+      setOfferSent(true);
+    } catch (err) {
+      showAlert({
+        title:   'Unable to Submit Application',
+        message: typeof err === 'string' ? err : 'Something went wrong. Please try again.',
+        type:    'error',
+      });
+    }
+  }, [form, jobId, applyForJob, showAlert]);
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   return (
     <Modal
@@ -71,207 +173,183 @@ const ApplyJobModal = ({ visible, onClose, onSeeMyJobs, jobTitle }) => {
       animationType="slide"
       onRequestClose={handleClose}
     >
-      <View style={styles.overlay}>
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleClose} />
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        {/* Backdrop */}
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={handleClose} />
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.sheetWrapper}
-        >
-          <View style={[styles.sheet, { backgroundColor: colors.modalBackground }]}>
-            <View style={styles.dragHandle} />
+        {/* Sheet */}
+        <View style={[
+          styles.sheet,
+          { backgroundColor: colors.modalBackground, paddingBottom: Math.max(insets.bottom, 16) },
+        ]}>
+          <View style={styles.dragHandle} />
 
-            {offerSent ? (
-              /* ── Success State ── */
-              <View style={styles.successContent}>
-                <Image source={Images.checkmarkIcon} style={styles.successIcon} />
-                <Text style={[styles.successTitle, { color: colors.textPrimary }]}>
-                  Offer Sent Successfully
-                </Text>
-                <Text style={[styles.successSub, { color: colors.textSecondary }]}>
-                  Your offer has been sent successfully. Wait for the Company to accept.
-                </Text>
-                <TouchableOpacity
-                  style={styles.seeJobsBtn}
-                  onPress={handleSeeMyJobs}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.seeJobsBtnText}>See My Jobs</Text>
+          {offerSent ? (
+            /* ── Success ── */
+            <View style={styles.successContent}>
+              <Image source={Images.checkmarkIcon} style={styles.successIcon} />
+              <Text style={[styles.successTitle, { color: colors.textPrimary }]}>
+                Application Submitted
+              </Text>
+              <Text style={[styles.successSub, { color: colors.textSecondary }]}>
+                Your application has been submitted successfully. Wait for the company to respond.
+              </Text>
+              <TouchableOpacity style={styles.seeJobsBtn} onPress={handleSeeMyJobs} activeOpacity={0.85}>
+                <Text style={styles.seeJobsBtnText}>See My Jobs</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* ── Form ── */
+            <>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Apply For Job</Text>
+                <TouchableOpacity onPress={handleClose} hitSlop={10}>
+                  <X size={RFValue(18)} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
-            ) : (
-              /* ── Apply Form ── */
-              <>
-                <View style={styles.modalHeader}>
-                  <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Apply For Job</Text>
-                  <TouchableOpacity onPress={handleClose} hitSlop={10}>
-                    <X size={RFValue(18)} color={colors.textSecondary} />
+
+              {/* Scrollable form — submit button lives inside so keyboard never hides it */}
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={styles.formContent}
+              >
+                {/* Verified banner */}
+                <View style={styles.verifiedBanner}>
+                  <ShieldCheck size={RFValue(16)} color="#92400E" strokeWidth={2} />
+                  <View style={styles.verifiedTextWrap}>
+                    <Text style={styles.verifiedTitle}>Profile Verified</Text>
+                    <Text style={styles.verifiedSub}>
+                      Your trade credentials, qualifications, and insurance certificates will be
+                      automatically attached to this application from your verified profile.
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Full Name */}
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Full Name</Text>
+                <View style={[
+                  styles.inputWrap,
+                  styles.inputDisabled,
+                  { borderColor: colors.border, backgroundColor: colors.surfaceSecondary },
+                ]}>
+                  <TextInput
+                    style={[styles.input, { color: colors.textPrimary }]}
+                    value={form.fullName}
+                    editable={false}
+                    selectTextOnFocus={false}
+                  />
+                </View>
+
+                {/* Proposed Hourly Rate */}
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                  Proposed Hourly Rate
+                </Text>
+                <View style={[
+                  styles.inputWrap,
+                  styles.inputRow,
+                  { borderColor: errors.proposedDailyRate ? '#EF4444' : colors.border, backgroundColor: colors.surfaceSecondary },
+                ]}>
+                  <Text style={[styles.prefix, { color: colors.textSecondary }]}>£</Text>
+                  <TextInput
+                    style={[styles.input, { color: colors.textPrimary }]}
+                    placeholder="0.00"
+                    placeholderTextColor={colors.inputPlaceholder}
+                    keyboardType="decimal-pad"
+                    value={form.proposedDailyRate}
+                    onChangeText={(v) => set('proposedDailyRate', v.replace(/[^0-9.]/g, ''))}
+                  />
+                </View>
+                <FieldError message={errors.proposedDailyRate} />
+
+                {/* Message */}
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Message</Text>
+                <View style={[
+                  styles.inputWrap,
+                  styles.textAreaWrap,
+                  { borderColor: errors.message ? '#EF4444' : colors.border, backgroundColor: colors.surfaceSecondary },
+                ]}>
+                  <TextInput
+                    style={[styles.input, styles.textArea, { color: colors.textPrimary }]}
+                    placeholder="Introduce yourself and explain why you're a great fit..."
+                    placeholderTextColor={colors.inputPlaceholder}
+                    multiline
+                    textAlignVertical="top"
+                    value={form.message}
+                    onChangeText={(v) => set('message', v)}
+                  />
+                </View>
+                <FieldError message={errors.message} />
+
+                {/* Documents */}
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+                  Supporting Documents{' '}
+                  <Text style={styles.optional}>(optional)</Text>
+                </Text>
+
+                {form.documents.length > 0 && (
+                  <View style={styles.docList}>
+                    {form.documents.map((doc, i) => (
+                      <DocumentChip key={i} doc={doc} onRemove={() => removeDoc(i)} />
+                    ))}
+                  </View>
+                )}
+
+                <View style={styles.docBtnRow}>
+                  <TouchableOpacity
+                    style={[styles.docPickBtn, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}
+                    onPress={handlePickImage}
+                    activeOpacity={0.8}
+                  >
+                    <FileText size={RFValue(13)} color="#3B82F6" strokeWidth={2} />
+                    <Text style={[styles.docPickBtnText, { color: colors.textPrimary }]}>Photo</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.docPickBtn, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}
+                    onPress={handlePickDocument}
+                    activeOpacity={0.8}
+                  >
+                    <File size={RFValue(13)} color="#22C55E" strokeWidth={2} />
+                    <Text style={[styles.docPickBtnText, { color: colors.textPrimary }]}>Document</Text>
                   </TouchableOpacity>
                 </View>
 
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                  contentContainerStyle={styles.formContent}
+                {/* Submit inside scroll so keyboard never hides it */}
+                <TouchableOpacity
+                  style={[styles.sendBtn, applyingForJob && styles.sendBtnDisabled]}
+                  onPress={handleSubmit}
+                  activeOpacity={0.85}
+                  disabled={applyingForJob}
                 >
-                  {/* Profile Verified Banner */}
-                  <View style={styles.verifiedBanner}>
-                    <ShieldCheck size={RFValue(16)} color="#15803D" strokeWidth={2} />
-                    <View style={styles.verifiedTextWrap}>
-                      <Text style={styles.verifiedTitle}>Profile Verified</Text>
-                      <Text style={styles.verifiedSub}>
-                        Your trade credentials, qualifications, and insurance certificates will be
-                        automatically attached to this application from your verified profile.
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Full Name */}
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Full Name</Text>
-                  <View
-                    style={[
-                      styles.inputWrap,
-                      {
-                        borderColor: errors.fullName ? '#EF4444' : colors.border,
-                        backgroundColor: colors.surfaceSecondary,
-                      },
-                    ]}
-                  >
-                    <TextInput
-                      style={[styles.input, { color: colors.textPrimary }]}
-                      placeholder="Enter your name"
-                      placeholderTextColor={colors.inputPlaceholder}
-                      value={fullName}
-                      onChangeText={v => {
-                        setFullName(v);
-                        if (errors.fullName) setErrors(p => ({ ...p, fullName: undefined }));
-                      }}
-                    />
-                  </View>
-                  {errors.fullName ? <Text style={styles.errorText}>{errors.fullName}</Text> : null}
-
-                  {/* Proposed Daily Rate */}
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
-                    Proposed Daily Rate
-                  </Text>
-                  <View
-                    style={[
-                      styles.inputWrap,
-                      styles.inputRow,
-                      {
-                        borderColor: errors.proposedRate ? '#EF4444' : colors.border,
-                        backgroundColor: colors.surfaceSecondary,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.prefix, { color: colors.textSecondary }]}>£</Text>
-                    <TextInput
-                      style={[styles.input, { color: colors.textPrimary }]}
-                      placeholder="£00/hour"
-                      placeholderTextColor={colors.inputPlaceholder}
-                      keyboardType="numeric"
-                      value={proposedRate}
-                      onChangeText={v => {
-                        setProposedRate(v);
-                        if (errors.proposedRate) setErrors(p => ({ ...p, proposedRate: undefined }));
-                      }}
-                    />
-                  </View>
-                  {errors.proposedRate ? (
-                    <Text style={styles.errorText}>{errors.proposedRate}</Text>
-                  ) : null}
-
-                  {/* Message */}
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Message</Text>
-                  <View
-                    style={[
-                      styles.inputWrap,
-                      styles.textAreaWrap,
-                      {
-                        borderColor: errors.message ? '#EF4444' : colors.border,
-                        backgroundColor: colors.surfaceSecondary,
-                      },
-                    ]}
-                  >
-                    <TextInput
-                      style={[styles.input, styles.textArea, { color: colors.textPrimary }]}
-                      placeholder="Enter message for the job"
-                      placeholderTextColor={colors.inputPlaceholder}
-                      multiline
-                      numberOfLines={4}
-                      textAlignVertical="top"
-                      value={message}
-                      onChangeText={v => {
-                        setMessage(v);
-                        if (errors.message) setErrors(p => ({ ...p, message: undefined }));
-                      }}
-                    />
-                  </View>
-                  {errors.message ? <Text style={styles.errorText}>{errors.message}</Text> : null}
-
-                  {/* Project Documents */}
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
-                    Project Documents
-                  </Text>
-                  <TouchableOpacity
-                    style={[styles.uploadBox, { borderColor: colors.border }]}
-                    activeOpacity={0.75}
-                  >
-                    <UploadCloud size={RFValue(22)} color="#94A3B8" strokeWidth={1.5} />
-                    <Text style={[styles.uploadText, { color: colors.textSecondary }]}>
-                      Click to upload or drag and drop
-                    </Text>
-                    <Text style={[styles.uploadHint, { color: '#94A3B8' }]}>
-                      PDF, JPG or PNG (max. 10mb)
-                    </Text>
-                  </TouchableOpacity>
-                </ScrollView>
-
-                {/* Footer */}
-                <View style={styles.footer}>
-                  <TouchableOpacity
-                    style={[styles.sendBtn, submitting && styles.sendBtnDisabled]}
-                    onPress={handleSendOffer}
-                    activeOpacity={0.85}
-                    disabled={submitting}
-                  >
-                    <Text style={styles.sendBtnText}>
-                      {submitting ? 'Sending...' : 'Send Offer'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-          </View>
-        </KeyboardAvoidingView>
-      </View>
+                  {applyingForJob
+                    ? <ActivityIndicator color="#fff" />
+                    : <Text style={styles.sendBtnText}>Submit Application</Text>}
+                </TouchableOpacity>
+              </ScrollView>
+            </>
+          )}
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(16,55,92,0.4)',
   },
-  backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  sheetWrapper: {
-    width: '100%',
-  },
   sheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 36 : 20,
-    maxHeight: height * 0.88,
+    maxHeight: '90%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
@@ -279,9 +357,7 @@ const styles = StyleSheet.create({
     elevation: 20,
   },
   dragHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
+    width: 40, height: 4, borderRadius: 2,
     backgroundColor: '#E2E8F0',
     alignSelf: 'center',
     marginBottom: 16,
@@ -290,50 +366,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   modalTitle: {
     fontFamily: FontFamily.bold,
     fontSize: RFValue(15),
   },
-  formContent: {
-    paddingBottom: 8,
-  },
+  formContent: { paddingBottom: 8 },
 
-  // Verified Banner
+  // Verified banner
   verifiedBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#FFFBEB',
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: '#FEF3C7',
     borderRadius: 10,
     padding: 12,
     gap: 10,
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  verifiedTextWrap: {
-    flex: 1,
-  },
+  verifiedTextWrap: { flex: 1 },
   verifiedTitle: {
     fontFamily: FontFamily.semiBold,
     fontSize: RFValue(11),
-    color: '#15803D',
+    color: '#92400E',
     marginBottom: 2,
   },
   verifiedSub: {
     fontFamily: FontFamily.regular,
     fontSize: RFValue(9),
-    color: '#16A34A',
+    color: '#92400E',
     lineHeight: RFValue(14),
   },
 
-  // Form fields
+  // Inputs
   inputLabel: {
     fontFamily: FontFamily.medium,
     fontSize: RFValue(10),
     marginBottom: 6,
-    marginTop: 4,
+    marginTop: 10,
+  },
+  optional: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(9),
+    color: '#94A3B8',
   },
   inputWrap: {
     borderWidth: 1,
@@ -341,12 +418,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 46,
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  inputDisabled: { opacity: 0.65 },
+  inputRow:    { flexDirection: 'row', alignItems: 'center' },
   prefix: {
     fontFamily: FontFamily.medium,
     fontSize: RFValue(12),
@@ -358,71 +433,77 @@ const styles = StyleSheet.create({
     fontSize: RFValue(11),
     padding: 0,
   },
-  textAreaWrap: {
-    height: 90,
-    alignItems: 'flex-start',
-    paddingVertical: 10,
-  },
-  textArea: {
-    height: 70,
-  },
+  textAreaWrap: { height: 100, alignItems: 'flex-start', paddingVertical: 10 },
+  textArea:     { height: 80 },
   errorText: {
     fontFamily: FontFamily.regular,
-    fontSize: RFValue(10),
+    fontSize: RFValue(9.5),
     color: '#EF4444',
-    marginBottom: 8,
+    marginBottom: 4,
     marginLeft: 2,
   },
 
-  // Upload box
-  uploadBox: {
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderRadius: 10,
-    paddingVertical: 20,
+  // Documents
+  docList:    { gap: 8, marginBottom: 10 },
+  docChip: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: '#F8FAFC',
   },
-  uploadText: {
+  docChipName: {
+    flex: 1,
     fontFamily: FontFamily.medium,
     fontSize: RFValue(10),
+    color: '#10375C',
   },
-  uploadHint: {
-    fontFamily: FontFamily.regular,
-    fontSize: RFValue(9),
+  docBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+  },
+  docPickBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
+  docPickBtnText: {
+    fontFamily: FontFamily.medium,
+    fontSize: RFValue(11),
   },
 
-  // Footer
-  footer: {
-    marginTop: 12,
-  },
+  // Submit
   sendBtn: {
     backgroundColor: '#10375C',
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
+    marginBottom: 4,
   },
-  sendBtnDisabled: {
-    opacity: 0.6,
-  },
+  sendBtnDisabled: { opacity: 0.6 },
   sendBtnText: {
     color: '#FFFFFF',
     fontFamily: FontFamily.bold,
     fontSize: RFValue(13),
   },
 
-  // Success state
+  // Success
   successContent: {
     alignItems: 'center',
     paddingVertical: 24,
     paddingHorizontal: 16,
   },
-  successIcon: {
-    width: RFValue(64),
-    height: RFValue(64),
-    marginBottom: 16,
-  },
+  successIcon:  { width: RFValue(64), height: RFValue(64), marginBottom: 16 },
   successTitle: {
     fontFamily: FontFamily.bold,
     fontSize: RFValue(17),

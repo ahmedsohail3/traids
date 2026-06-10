@@ -11,6 +11,7 @@ module.exports = {
           "~components": "./src/components",
           "~constants": "./src/constants",
           "~containers": "./src/containers",
+          "~config": "./src/config",
           "~redux": "./src/redux",
           "~context": "./src/context",
           "~hooks": "./src/hooks",

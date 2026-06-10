@@ -15,3 +15,8 @@ export const sendMessageApi = (formData) =>
   axiosInstance
     .post('/chat/send', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
     .then((r) => r.data);
+
+export const sendFirstMessageApi = (formData) =>
+  axiosInstance
+    .post('/chat/send-first', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+    .then((r) => r.data);
