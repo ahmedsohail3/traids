@@ -39,6 +39,12 @@ const SubcontractorListScreen = ({ navigation }) => {
     });
   }, [selectedTrade, maxRate]);
 
+  // Clear any pending debounced fetch if the screen unmounts mid-delay
+  useEffect(() => () => {
+    if (locationTimer.current) clearTimeout(locationTimer.current);
+  }, []);
+  
+
   const handleLocationChange = (text) => {
     setLocationInput(text);
     if (locationTimer.current) clearTimeout(locationTimer.current);
@@ -48,7 +54,7 @@ const SubcontractorListScreen = ({ navigation }) => {
         location: text || undefined,
         primaryTrade: selectedTrade?.key || undefined,
       });
-    }, 2000);
+    }, 500);
   };
 
   const toggleTrade = (trade) => {
@@ -150,7 +156,7 @@ const SubcontractorListScreen = ({ navigation }) => {
         keyExtractor={item => item._id}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={renderHeader()}
         renderItem={({ item }) => (
           <SubcontractorCard
           key={item._id}

@@ -11,12 +11,15 @@ export const INITIAL_FORM_DATA = {
   yearsOfExperience:      '',
   postcode:               '',
   cityLocation:           '',
-  // Step 2 — Qualifications (files: { uri, type, name })
-  insuranceDocuments:     null,
-  insuranceExpiresAt:     '',   // DD/MM/YYYY, converted to ISO in form builder
+  // Step 2 — Qualifications (files: { uri, type, name } for UI; URLs sent to signup API)
+  insuranceDocuments:     null,   // file object — display only
+  insuranceDocumentUrl:   null,   // S3 URL from upload-document API
+  insuranceExpiresAt:     '',     // DD/MM/YYYY, converted to ISO in form builder
   ticketDocuments:        null,
+  ticketDocumentUrl:      null,
   ticketExpiresAt:        '',
   certificationDocuments: null,
+  certificationDocumentUrl: null,
   certificationExpiresAt: '',
   // Step 3 — Profile Setup
   profileImage:           null,

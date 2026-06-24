@@ -9,22 +9,19 @@
  *     Android → react-native-date-picker (modal)
  *     iOS     → @react-native-community/datetimepicker (spinner in modal)
  */
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
   TextInput as RNTextInput,
-  Modal,
-  Platform,
   ActivityIndicator,
 } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MapPin, Info, Eye, FileText, File, X, Plus, Users } from 'lucide-react-native';
+import { MapPin, Info, Eye, Plus, Users } from 'lucide-react-native';
 import { StackActions } from '@react-navigation/native';
-import dayjs from 'dayjs';
 
 import { Text } from '~components/Common';
 import Header from '~components/Header';
@@ -39,6 +36,9 @@ import {
   TradeDropdown,
   TimelineRow,
   SuccessOverlay,
+  DateModal,
+  DocumentChip,
+  DocumentPickerSheet,
 } from '~components/Job';
 
 import {
@@ -47,15 +47,6 @@ import {
   formatDateForDisplay,
 } from '~config/createJobFormConfig';
 import { pickDocument, pickImageFromLibrary } from '~utils/filePicker';
-
-// Platform-specific date picker imports
-let DatePicker;
-let DateTimePicker;
-if (Platform.OS === 'android') {
-  DatePicker = require('react-native-date-picker').default;
-} else {
-  DateTimePicker = require('@react-native-community/datetimepicker').default;
-}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const NAVY   = '#10375C';
@@ -70,91 +61,6 @@ const FormLabel = ({ text, style }) => (
 
 const FieldError = ({ message }) =>
   message ? <Text style={styles.fieldError}>{message}</Text> : null;
-
-const DocumentChip = ({ doc, onRemove }) => {
-  const isPdf   = doc.type === 'application/pdf' || doc.name?.endsWith('.pdf');
-  const isImage = doc.type?.startsWith('image/');
-  const Icon    = isPdf || isImage ? FileText : File;
-
-  return (
-    <View style={styles.docChip}>
-      <Icon size={RFValue(13)} color={NAVY} strokeWidth={1.8} />
-      <Text style={styles.docChipName} numberOfLines={1}>{doc.name ?? 'document'}</Text>
-      <TouchableOpacity onPress={onRemove} hitSlop={8} style={styles.docChipRemove}>
-        <X size={RFValue(12)} color="#94A3B8" strokeWidth={2.5} />
-      </TouchableOpacity>
-    </View>
-  );
-};
-
-/**
- * DateModal
- * Android: react-native-date-picker modal mode.
- * iOS:     @react-native-community/datetimepicker spinner inside a bottom sheet modal.
- */
-const DateModal = ({ visible, title, value, minimumDate, onConfirm, onClose }) => {
-  const clamp  = (d) => minimumDate && d < minimumDate ? minimumDate : d;
-  const dateObj = clamp(value ? new Date(value) : new Date());
-  const [tempDate, setTempDate] = useState(dateObj);
-
-  // Sync tempDate when modal opens
-  const wasVisible = useRef(false);
-  if (visible && !wasVisible.current) {
-    wasVisible.current = true;
-    const next = clamp(value ? new Date(value) : new Date());
-    if (next.getTime() !== tempDate.getTime()) setTempDate(next);
-  }
-  if (!visible) wasVisible.current = false;
-
-  const handleConfirm = useCallback((date) => {
-    onConfirm(dayjs(date).format('YYYY-MM-DD'));
-    onClose();
-  }, [onConfirm, onClose]);
-
-  if (Platform.OS === 'android') {
-    return (
-      <DatePicker
-        modal
-        open={visible}
-        date={tempDate}
-        mode="date"
-        title={title}
-        minimumDate={minimumDate}
-        onConfirm={(date) => handleConfirm(date)}
-        onCancel={onClose}
-      />
-    );
-  }
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.dateModal}>
-          <Text style={styles.dateModalTitle}>{title}</Text>
-          <DateTimePicker
-            value={tempDate}
-            mode="date"
-            display="spinner"
-            minimumDate={minimumDate}
-            onChange={(_, date) => { if (date) setTempDate(date); }}
-            style={styles.iosDatePicker}
-            textColor={NAVY}
-          />
-          <View style={styles.dateModalActions}>
-            <TouchableOpacity style={styles.dateModalCancel} onPress={onClose}>
-              <Text style={styles.dateModalCancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.dateModalConfirm}
-              onPress={() => handleConfirm(tempDate)}>
-              <Text style={styles.dateModalConfirmText}>Confirm</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-};
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 const PostJobScreen = ({ navigation }) => {
@@ -444,46 +350,12 @@ const PostJobScreen = ({ navigation }) => {
       />
 
       {/* ── Document type picker sheet ── */}
-      <Modal
+      <DocumentPickerSheet
         visible={docSheetVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setDocSheetVisible(false)}>
-        <TouchableOpacity
-          style={styles.sheetOverlay}
-          activeOpacity={1}
-          onPress={() => setDocSheetVisible(false)}>
-          <View style={styles.sheet}>
-            <View style={styles.sheetHandle} />
-
-            <TouchableOpacity style={styles.sheetOption} onPress={handlePickImage}>
-              <View style={[styles.sheetIcon, { backgroundColor: '#EFF6FF' }]}>
-                <FileText size={RFValue(18)} color="#3B82F6" strokeWidth={1.8} />
-              </View>
-              <View>
-                <Text style={styles.sheetLabel}>Photo / Image</Text>
-                <Text style={styles.sheetSub}>Choose from gallery</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.sheetOption} onPress={handlePickDocument}>
-              <View style={[styles.sheetIcon, { backgroundColor: '#F0FDF4' }]}>
-                <File size={RFValue(18)} color="#22C55E" strokeWidth={1.8} />
-              </View>
-              <View>
-                <Text style={styles.sheetLabel}>Document</Text>
-                <Text style={styles.sheetSub}>PDF, DOC, DOCX and more</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.sheetCancel}
-              onPress={() => setDocSheetVisible(false)}>
-              <Text style={styles.sheetCancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        onClose={() => setDocSheetVisible(false)}
+        onPickImage={handlePickImage}
+        onPickDocument={handlePickDocument}
+      />
     </View>
   );
 };
@@ -566,19 +438,6 @@ const styles = StyleSheet.create({
 
   // Documents
   docList: { gap: 8, marginBottom: 12 },
-  docChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#F8FAFC',
-  },
-  docChipName: { flex: 1, fontFamily: FontFamily.medium, fontSize: RFValue(10), color: NAVY },
-  docChipRemove: { padding: 2 },
 
   addDocBtn: {
     flexDirection: 'row',
@@ -609,61 +468,6 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   publishBtnText: { fontFamily: FontFamily.bold, fontSize: RFValue(14), color: '#fff' },
-
-  // Date modal (iOS bottom sheet)
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.4)',
-    justifyContent: 'flex-end',
-  },
-  dateModal: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 20,
-    paddingBottom: 36,
-    paddingHorizontal: 20,
-  },
-  dateModalTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: RFValue(14),
-    color: NAVY,
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  iosDatePicker: { width: '100%', marginBottom: 8 },
-  dateModalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  dateModalCancel: {
-    flex: 1, paddingVertical: 12, borderRadius: 10,
-    borderWidth: 1, borderColor: BORDER, alignItems: 'center',
-  },
-  dateModalCancelText: { fontFamily: FontFamily.semiBold, fontSize: RFValue(12), color: '#64748B' },
-  dateModalConfirm: {
-    flex: 1, paddingVertical: 12, borderRadius: 10,
-    backgroundColor: NAVY, alignItems: 'center',
-  },
-  dateModalConfirmText: { fontFamily: FontFamily.semiBold, fontSize: RFValue(12), color: '#FFFFFF' },
-
-  // Document type picker sheet
-  sheetOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.4)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    paddingTop: 12, paddingBottom: 32, paddingHorizontal: 20,
-  },
-  sheetHandle: {
-    width: 36, height: 4, borderRadius: 2,
-    backgroundColor: '#CBD5E1', alignSelf: 'center', marginBottom: 20,
-  },
-  sheetOption: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
-  },
-  sheetIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  sheetLabel: { fontFamily: FontFamily.semiBold, fontSize: RFValue(12), color: NAVY, marginBottom: 2 },
-  sheetSub:   { fontFamily: FontFamily.regular,  fontSize: RFValue(9.5), color: '#94A3B8' },
-  sheetCancel: { marginTop: 16, paddingVertical: 14, alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 12 },
-  sheetCancelText: { fontFamily: FontFamily.semiBold, fontSize: RFValue(11), color: '#64748B' },
 });
 
 export default PostJobScreen;

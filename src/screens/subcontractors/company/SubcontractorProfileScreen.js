@@ -4,19 +4,18 @@
  * Full-screen subcontractor profile for Company role.
  * Shows bio, compliance center, work history, and a "Book Now" / offer flow.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   View, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator,
 } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import {
-  Star, Download, CheckCircle2, XCircle,
+  Star, Download, CheckCircle2, XCircle, MapPin,
 } from 'lucide-react-native';
 import { Text, Button } from '~components/Common';
 import Header from '~components/Header';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
-import SendOfferModal from '~components/Subcontractors/SendOfferModal';
 import useCompanySubcontractors from '~hooks/useCompanySubcontractors';
 import useChat from '~hooks/useChat';
 
@@ -54,7 +53,6 @@ const SubcontractorProfileScreen = ({ route, navigation }) => {
 
   const { profile, profileLoading: loading, getProfile } = useCompanySubcontractors();
   const { rawConversations, getConversations } = useChat();
-  const [offerVisible, setOfferVisible] = useState(false);
 
   useEffect(() => { getConversations(); }, []);
 
@@ -64,6 +62,16 @@ const SubcontractorProfileScreen = ({ route, navigation }) => {
 
   // Fall back to route params while the API loads so the screen isn't blank
   const sub = profile ?? routeSub;
+
+  const handleBookNow = () => {
+    navigation.navigate('SendOffer', {
+      subcontractorId,
+      subName:      sub.name ?? sub.fullName,
+      subTrade:     sub.trade,
+      subAvatarUri: sub.avatarUri ?? sub.profileImage ?? null,
+      subAbout:     sub.about,
+    });
+  };
 
   const handleMessage = () => {
     const existing = rawConversations.find(
@@ -102,13 +110,35 @@ const SubcontractorProfileScreen = ({ route, navigation }) => {
               <View style={styles.tradePill}>
                 <Text style={styles.tradePillText}>{sub.trade}</Text>
               </View>
+              {sub.availability != null && (
+                <View style={[styles.availabilityPill, sub.availability ? styles.availabilityOn : styles.availabilityOff]}>
+                  <View style={[styles.availabilityDot, { backgroundColor: sub.availability ? '#22C55E' : '#94A3B8' }]} />
+                  <Text style={[styles.availabilityText, { color: sub.availability ? '#16A34A' : '#64748B' }]}>
+                    {sub.availability ? 'Available' : 'Unavailable'}
+                  </Text>
+                </View>
+              )}
             </View>
             <View style={styles.metaRow}>
               <Star size={RFValue(11)} color="#F2A154" fill="#F2A154" />
               <Text style={styles.rating}>{sub.rating}</Text>
-              <Text style={styles.reviews}>{sub.reviews}k Reviews</Text>
-              <Text style={styles.stat}>90% Success</Text>
+              <Text style={styles.reviews}>{sub.reviews} Reviews</Text>
             </View>
+            {(sub.location || sub.yearsOfExperience != null) && (
+              <View style={styles.metaRow}>
+                {sub.location && (
+                  <View style={styles.metaInline}>
+                    <MapPin size={RFValue(11)} color="#94A3B8" />
+                    <Text style={styles.stat}>{sub.location}</Text>
+                  </View>
+                )}
+                {sub.yearsOfExperience != null && (
+                  <Text style={styles.stat}>
+                    {sub.yearsOfExperience} {sub.yearsOfExperience === 1 ? 'year' : 'years'} experience
+                  </Text>
+                )}
+              </View>
+            )}
             <View style={styles.metaRow}>
               <Text style={styles.rateLabel}>Hourly Rate</Text>
               <Text style={styles.rateValue}>{sub.hourlyRate}</Text>
@@ -128,7 +158,7 @@ const SubcontractorProfileScreen = ({ route, navigation }) => {
             title="Book Now"
             variant="primary"
             style={{ flex: 1, backgroundColor: '#F2A154' }}
-            onPress={() => setOfferVisible(true)}
+            onPress={handleBookNow}
           />
         </View>
 
@@ -149,10 +179,12 @@ const SubcontractorProfileScreen = ({ route, navigation }) => {
                 <Text style={styles.complianceLabel}>{item.label}</Text>
                 {item.date && <Text style={styles.complianceDate}>{item.date}</Text>}
               </View>
-              <TouchableOpacity style={styles.downloadBtn} activeOpacity={0.7}>
-                <Download size={RFValue(12)} color="#64748B" />
-                <Text style={styles.downloadText}>Download Copy</Text>
-              </TouchableOpacity>
+              {item.hasDocument && (
+                <TouchableOpacity style={styles.downloadBtn} activeOpacity={0.7}>
+                  <Download size={RFValue(12)} color="#64748B" />
+                  <Text style={styles.downloadText}>Download Copy</Text>
+                </TouchableOpacity>
+              )}
             </View>
           ))}
         </View>
@@ -163,31 +195,28 @@ const SubcontractorProfileScreen = ({ route, navigation }) => {
             <Text style={styles.sectionTitle}>Work History</Text>
             <TouchableOpacity><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
           </View>
-          {(sub.workHistory ?? []).map((item, i) => (
-            <View key={i} style={styles.historyCard}>
-              <View style={styles.historyHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.historyTitle}>{item.title}</Text>
-                  <Text style={styles.historyDate}>{item.date}</Text>
+          {(sub.workHistory ?? []).length > 0 ? (
+            sub.workHistory.map((item, i) => (
+              <View key={i} style={styles.historyCard}>
+                <View style={styles.historyHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.historyTitle}>{item.title}</Text>
+                    <Text style={styles.historyDate}>{item.date}</Text>
+                  </View>
+                  <StarRow rating={item.rating} />
                 </View>
-                <StarRow rating={item.rating} />
+                <Text style={styles.historyReview}>{item.review}</Text>
+                <View style={styles.reviewerRow}>
+                  <ReviewerAvatar name={item.reviewer} />
+                  <Text style={styles.historyReviewer}>Review by {item.reviewer}</Text>
+                </View>
               </View>
-              <Text style={styles.historyReview}>{item.review}</Text>
-              <View style={styles.reviewerRow}>
-                <ReviewerAvatar name={item.reviewer} />
-                <Text style={styles.historyReviewer}>Review by {item.reviewer}</Text>
-              </View>
-            </View>
-          ))}
+            ))
+          ) : (
+            <Text style={styles.emptyHistoryText}>There is no work history for this subcontractor.</Text>
+          )}
         </View>
       </ScrollView>
-
-      <SendOfferModal
-        visible={offerVisible}
-        onClose={() => setOfferVisible(false)}
-        onSent={() => navigation.navigate('Jobs')}
-        subName={sub.name}
-      />
     </View>
   );
 };
@@ -217,16 +246,27 @@ const styles = StyleSheet.create({
     borderRadius: RFValue(26),
     backgroundColor: '#F1F5F9',
   },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  name: { fontFamily: FontFamily.bold, fontSize: RFValue(14), color: '#10375C' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  name: { fontFamily: FontFamily.bold, fontSize: RFValue(14), color: '#10375C', flexShrink: 1 },
   tradePill: {
     backgroundColor: '#EEF2FF',
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 2,
+    flexShrink: 0,
   },
   tradePillText: { fontFamily: FontFamily.semiBold, fontSize: RFValue(9), color: '#10375C', textTransform: 'capitalize' },
+  availabilityPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 2,
+    flexShrink: 0,
+  },
+  availabilityOn:  { backgroundColor: '#F0FDF4' },
+  availabilityOff: { backgroundColor: '#F1F5F9' },
+  availabilityDot: { width: 6, height: 6, borderRadius: 3 },
+  availabilityText: { fontFamily: FontFamily.semiBold, fontSize: RFValue(9) },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
+  metaInline: { flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 10 },
   rating: { fontFamily: FontFamily.semiBold, fontSize: RFValue(11), color: '#10375C' },
   reviews: { fontFamily: FontFamily.regular, fontSize: RFValue(10), color: '#94A3B8' },
   dot: { color: '#CBD5E1', fontSize: RFValue(10) },
@@ -269,6 +309,13 @@ const styles = StyleSheet.create({
   reviewerAvatar: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
   reviewerInitial: { fontFamily: FontFamily.semiBold, fontSize: RFValue(9), color: '#64748B' },
   historyReviewer: { fontFamily: FontFamily.medium, fontSize: RFValue(10), color: '#64748B' },
+  emptyHistoryText: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10.5),
+    color: '#94A3B8',
+    textAlign: 'center',
+    paddingVertical: 16,
+  },
 });
 
 export default SubcontractorProfileScreen;

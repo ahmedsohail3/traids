@@ -21,6 +21,8 @@ import MessageInput from '~components/Chat/MessageInput';
 import ViewProfileModal from '~components/Chat/ViewProfileModal';
 import useChat from '~hooks/useChat';
 import useAlert from '~hooks/useAlert';
+import useConversationSocket from '~hooks/useConversationSocket';
+import useSocket from '~hooks/useSocket';
 
 const CompanyChatScreen = ({ route }) => {
   const { colors } = useTheme();
@@ -54,6 +56,22 @@ const CompanyChatScreen = ({ route }) => {
   } = useChat();
 
   const isSending = sendingMessage || sendingFirstMessage;
+
+  const { connected, connectionStatus } = useSocket();
+
+  // Join/leave conversation room + receive message:new in real time
+  useConversationSocket(activeChatId, {
+    onNewMessage: (msg) => {
+      if (__DEV__) console.log('[Socket ✓] message:new received in room', activeChatId, msg);
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+    },
+  });
+
+  // DEV: log socket + room state on every relevant change
+  useEffect(() => {
+    if (!__DEV__) return;
+    console.log('[Socket] status:', connectionStatus, '| connected:', connected, '| room:', activeChatId ?? 'none');
+  }, [connected, connectionStatus, activeChatId]);
 
   const [profileVisible, setProfileVisible] = useState(false);
   const [kbOffset,       setKbOffset]       = useState(0);
@@ -193,7 +211,16 @@ const CompanyChatScreen = ({ route }) => {
             onPress={() => setProfileVisible(true)}
             activeOpacity={0.8}>
             <Text style={styles.contactName}>{chatName}</Text>
-            <Text style={[styles.contactStatus, { color: colors.success }]}>Active Now</Text>
+            {__DEV__ ? (
+              <View style={styles.socketDebugRow}>
+                <View style={[styles.socketDot, { backgroundColor: connected ? '#22C55E' : connectionStatus === 'connecting' ? '#F59E0B' : '#EF4444' }]} />
+                <Text style={[styles.socketDebugLabel, { color: connected ? '#22C55E' : connectionStatus === 'connecting' ? '#F59E0B' : '#EF4444' }]}>
+                  {connected ? `Socket connected · room ${activeChatId ? 'joined' : 'pending'}` : connectionStatus}
+                </Text>
+              </View>
+            ) : (
+              <Text style={[styles.contactStatus, { color: colors.success }]}>Active Now</Text>
+            )}
           </TouchableOpacity>
 
           {/* Initial loading */}
@@ -269,6 +296,21 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: RFValue(10),
     color: '#22C55E',
+  },
+  socketDebugRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 2,
+  },
+  socketDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  socketDebugLabel: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(9),
   },
   listContent: { paddingTop: 12, paddingBottom: 8, flexGrow: 1 },
   centerLoader: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },

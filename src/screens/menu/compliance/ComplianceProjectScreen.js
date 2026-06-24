@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { Text } from '~components/Common';
 import Header from '~components/Header';
@@ -9,6 +9,8 @@ import { Folder, Settings, Share2, MapPin, File, Eye, Trash2, Calendar } from 'l
 import UploadField from '~components/Common/UploadField';
 import ShareComplianceModal from './components/ShareComplianceModal';
 import useCompanyCompliance from '~hooks/useCompanyCompliance';
+import { pickDocument } from '~utils/filePicker';
+import useAlert from '~hooks/useAlert';
 
 const TABS = ['RAMS', 'Permits', 'Reports', 'Incidents', 'Drawings'];
 
@@ -39,17 +41,76 @@ const ComplianceProjectScreen = ({ route }) => {
   const { colors } = useTheme();
   const { record } = route.params ?? {};
 
+  const { showAlert, showConfirm } = useAlert();
+
   const {
     selectedCompliance,
     loadingDetails,
     getComplianceByProjectId,
     resetSelectedCompliance,
+    uploading,
+    uploadDocument,
+    deleting,
+    deleteDocument,
+    sharing,
+    shareDocument,
   } = useCompanyCompliance();
 
   const [activeTab,    setActiveTab]    = useState(TABS[0]);
   const [modalVisible, setModalVisible] = useState(false);
+  const [pendingFile,  setPendingFile]  = useState(null);
 
-  const projectId = record?.project?._id;
+  const projectId    = record?.project?._id;
+  const complianceId = selectedCompliance?._id ?? record?._id;
+
+  // Clear pending file when user switches tabs
+  useEffect(() => { setPendingFile(null); }, [activeTab]);
+
+  const handleDelete = useCallback((fileUrl) => {
+    if (!fileUrl || deleting) return;
+    showConfirm({
+      title:       'Delete Document',
+      message:     'Are you sure you want to delete this document? This cannot be undone.',
+      type:        'error',
+      confirmText: 'Delete',
+      cancelText:  'Cancel',
+      onConfirm:   () => {
+        deleteDocument({ projectId: complianceId, tab: TAB_KEY[activeTab], fileUrl })
+          .unwrap()
+          .then(() => {
+            showAlert({ title: 'Deleted', message: 'Document removed successfully.', type: 'success' });
+            getComplianceByProjectId(projectId);
+          })
+          .catch((err) => {
+            showAlert({
+              title:   'Delete Failed',
+              message: typeof err === 'string' ? err : 'Failed to delete document. Please try again.',
+              type:    'error',
+            });
+          });
+      },
+    });
+  }, [deleting, complianceId, projectId, activeTab, deleteDocument, getComplianceByProjectId, showAlert, showConfirm]);
+
+  const handlePickAndUpload = useCallback(async () => {
+    if (uploading || !complianceId) return;
+    try {
+      const file = await pickDocument();
+      if (!file) return;
+      setPendingFile(file);
+      await uploadDocument({ projectId: complianceId, tab: TAB_KEY[activeTab], document: file }).unwrap();
+      setPendingFile(null);
+      showAlert({ title: 'Success', message: `Document uploaded to ${activeTab}.`, type: 'success' });
+      getComplianceByProjectId(projectId);
+    } catch (err) {
+      setPendingFile(null);
+      showAlert({
+        title:   'Upload Failed',
+        message: typeof err === 'string' ? err : 'Failed to upload document. Please try again.',
+        type:    'error',
+      });
+    }
+  }, [uploading, complianceId, projectId, activeTab, uploadDocument, getComplianceByProjectId, showAlert]);
 
   useEffect(() => {
     if (projectId) getComplianceByProjectId(projectId);
@@ -174,8 +235,11 @@ const ComplianceProjectScreen = ({ route }) => {
 
         <View style={styles.uploadSection}>
           <UploadField
-            instructions="Upload Document"
-            hint="Drag and drop your RAMS, Permits or Safety Plans here"
+            instructions={uploading ? 'Uploading…' : `+ Upload ${activeTab} Document`}
+            hint="PDF, DOC, DOCX, JPG or PNG (max. 5MB)"
+            onPress={handlePickAndUpload}
+            onRemove={() => { if (!uploading) setPendingFile(null); }}
+            file={pendingFile}
             style={styles.uploadFieldCustom}
           />
         </View>
@@ -212,13 +276,20 @@ const ComplianceProjectScreen = ({ route }) => {
                       </View>
                     </View>
                   </View>
-
+                  
                   <View style={styles.fileActions}>
                     <TouchableOpacity style={styles.iconBtn}>
                       <Eye size={RFValue(14)} color="#94A3B8" />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconBtn}>
-                      <Trash2 size={RFValue(14)} color="#EF4444" />
+                    <TouchableOpacity
+                      style={styles.iconBtn}
+                      onPress={() => handleDelete(f.url ?? f.fileUrl ?? f.path ?? f)}
+                      disabled={deleting}
+                    >
+                      {deleting
+                        ? <ActivityIndicator size="small" color="#EF4444" />
+                        : <Trash2 size={RFValue(14)} color="#EF4444" />
+                      }
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -228,7 +299,13 @@ const ComplianceProjectScreen = ({ route }) => {
         </View>
       </ScrollView>
 
-      <ShareComplianceModal visible={modalVisible} onClose={() => setModalVisible(false)} />
+      <ShareComplianceModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        complianceId={complianceId}
+        onShare={shareDocument}
+        sharing={sharing}
+      />
     </View>
   );
 };
@@ -318,6 +395,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: RFValue(9),
     color: '#3B82F6',
+    textTransform: 'capitalize'
   },
   statusBadge: {
     borderRadius: 6,

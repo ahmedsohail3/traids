@@ -10,16 +10,20 @@ import ComplianceStack from './ComplianceStack';
 import FinancialStack from './FinancialStack';
 import PaymentsScreen from '~screens/menu/payments/PaymentsScreen';
 
-const MoreStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    
-    <Stack.Screen name="Timesheets" component={TimesheetStack} />
-    <Stack.Screen name="Payments" component={PaymentsScreen} />
-    <Stack.Screen name="Compliance" component={ComplianceStack} />
-    <Stack.Screen name="Financial" component={FinancialStack} />
-    <Stack.Screen name="Reports" component={ReportsScreen} />
-    <Stack.Screen name="Settings" component={SettingsScreen} />
-  </Stack.Navigator>
-);
+const MoreStack = ({ route }) => {
+  const userType = route?.params?.userType ?? 'company';
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Timesheets">
+        {() => <TimesheetStack userType={userType} />}
+      </Stack.Screen>
+      <Stack.Screen name="Payments" component={PaymentsScreen} />
+      <Stack.Screen name="Compliance" component={ComplianceStack} />
+      <Stack.Screen name="Financial" component={FinancialStack} />
+      <Stack.Screen name="Reports" component={ReportsScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+    </Stack.Navigator>
+  );
+};
 
 export default MoreStack;

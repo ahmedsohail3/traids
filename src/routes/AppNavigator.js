@@ -26,6 +26,7 @@ import MenuDrawerOverlay from '~components/Navigation/MenuDrawerOverlay';
 import SubChatScreen from '~screens/chats/subcontractor/SubChatScreen';
 import CompanyChatScreen from '~screens/chats/company/CompanyChatScreen';
 import CompanyJobDetailScreen from '~screens/jobs/company/CompanyJobDetailScreen';
+import NotificationsScreen from '~screens/notifications/NotificationsScreen';
 
 const Tab = createBottomTabNavigator();
 const AppStack = createNativeStackNavigator();
@@ -94,6 +95,11 @@ const AppNavigator = () => (
     <AppStack.Screen
       name="CompanyJobDetail"
       component={CompanyJobDetailScreen}
+      options={{ animation: 'slide_from_right' }}
+    />
+    <AppStack.Screen
+      name="Notifications"
+      component={NotificationsScreen}
       options={{ animation: 'slide_from_right' }}
     />
   </AppStack.Navigator>

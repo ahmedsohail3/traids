@@ -1,29 +1,32 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Modal, Image } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { CheckCircle2 } from 'lucide-react-native';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { Images } from '~assets';
 
 const NAVY = '#10375C';
 
-const SuccessOverlay = ({ visible, onViewJobs }) => (
+const SuccessOverlay = ({
+  visible,
+  onViewJobs,
+  title = 'Job Posted Successfully',
+  message = 'Your job has been created and is now visible to potential subcontractors.',
+  buttonText = 'See My Jobs',
+}) => (
   <Modal visible={visible} transparent animationType="slide">
     <View style={styles.modalBg}>
       <View style={styles.bottomSheet}>
         <View style={styles.dragHandle} />
-        
+
         <View style={styles.successIconWrap}>
           <Image source={Images.checkmarkIcon} style={styles.successIcon}/>
         </View>
-        <Text style={styles.successTitle}>Job Posted Successfully</Text>
-        <Text style={styles.successSub}>
-          Your job has been created and is now visible to potential subcontractors.
-        </Text>
-        
+        <Text style={styles.successTitle}>{title}</Text>
+        <Text style={styles.successSub}>{message}</Text>
+
         <TouchableOpacity style={styles.successBtn} onPress={onViewJobs} activeOpacity={0.85}>
-          <Text style={styles.successBtnText}>See My Jobs</Text>
+          <Text style={styles.successBtnText}>{buttonText}</Text>
         </TouchableOpacity>
       </View>
     </View>

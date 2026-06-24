@@ -16,7 +16,16 @@ const SummaryRow = ({ label, value, labelStyle, valueStyle }) => (
 
 // ─── SubmitInvoiceModal ────────────────────────────────────────────────────────
 // Two states: 'confirm' and 'success'
-const SubmitInvoiceModal = ({ visible, onClose, onConfirm, submitted }) => (
+const SubmitInvoiceModal = ({
+  visible, onClose, onConfirm, submitted,
+  submitting = false,
+  submitMessage = null,
+  totalHours = 0,
+  totalPayable = 0,
+  grossAmount = 0,
+  jobTitle = 'this project',
+  companyName = 'the company',
+}) => (
   <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
     <View style={styles.overlay}>
       <View style={styles.sheet}>
@@ -28,22 +37,27 @@ const SubmitInvoiceModal = ({ visible, onClose, onConfirm, submitted }) => (
             <View style={styles.iconCircle}>
               <FileText size={RFValue(32)} color="#10375C" />
             </View>
-            <Text style={styles.modalTitle}>Submit Invoice</Text>
-            <Text style={styles.modalSubtitle}>Are you sure want to submit invoice?</Text>
+            <Text style={styles.modalTitle}>Submit Timesheet</Text>
+            <Text style={styles.modalSubtitle}>Are you sure you want to submit this week's timesheet?</Text>
 
             <View style={styles.modalSummaryBlock}>
-              <SummaryRow label="Total Hours Worked" value="23 hrs" />
+              <SummaryRow label="Total Hours Worked" value={`${totalHours} hrs`} />
               <View style={styles.modalDivider} />
               <View style={styles.totalPayable}>
-                <SummaryRow label="Total Payable" value="£ 621.00" labelStyle={styles.semiBoldText} /></View>
+                <SummaryRow label="Total Payable" value={`£ ${totalPayable.toFixed(2)}`} labelStyle={styles.semiBoldText} /></View>
             </View>
 
             <View style={styles.modalBtnRow}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={onClose} disabled={submitting}>
                 <Text style={styles.cancelBtnText}>No, Close</Text>
               </TouchableOpacity>
               <View style={{ flex: 1 }}>
-                <Button title="Yes, Sure" variant="primary" onPress={onConfirm} />
+                <Button
+                  title={submitting ? 'Submitting…' : 'Yes, Sure'}
+                  variant="primary"
+                  onPress={onConfirm}
+                  disabled={submitting}
+                />
               </View>
             </View>
           </>
@@ -53,16 +67,21 @@ const SubmitInvoiceModal = ({ visible, onClose, onConfirm, submitted }) => (
             <View style={styles.successIconCircle}>
               <CheckCircle size={RFValue(40)} color="#22C55E" />
             </View>
-            <Text style={styles.modalTitle}>Timesheet & Invoice Sent</Text>
+            <Text style={styles.modalTitle}>Timesheet Submitted</Text>
             <Text style={styles.modalSubtitle}>
-              Your hours for Riverside Apt Complex have been logged. An invoice for £690.00 has been generated for Buildright Construction.
+              Your timesheet for {jobTitle} has been submitted to {companyName} for approval. Gross amount: £{grossAmount.toFixed(2)}.
             </Text>
+            {submitMessage ? (
+              <View style={styles.statusNoteBox}>
+                <Text style={styles.statusNoteText}>{submitMessage}</Text>
+              </View>
+            ) : null}
 
             <View style={styles.modalSummaryBlock}>
-              <SummaryRow label="Total Hours Worked" value="23 hrs" />
+              <SummaryRow label="Total Hours Worked" value={`${totalHours} hrs`} />
               <View style={styles.modalDivider} />
               <View style={styles.totalPayable}>
-                <SummaryRow label="Total Payable" value="£ 621.00" labelStyle={styles.semiBoldText} />
+                <SummaryRow label="Total Payable" value={`£ ${totalPayable.toFixed(2)}`} labelStyle={styles.semiBoldText} />
               </View>
             </View>
 
@@ -116,6 +135,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: RFValue(16),
+  },
+  statusNoteBox: {
+    width: '100%',
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 16,
+  },
+  statusNoteText: {
+    fontFamily: FontFamily.medium,
+    fontSize: RFValue(10.5),
+    color: '#C2410C',
+    textAlign: 'center',
+    lineHeight: RFValue(15),
   },
   modalSummaryBlock: {
     width: '100%',

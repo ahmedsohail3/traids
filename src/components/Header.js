@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, Image, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/Ionicons";
@@ -8,6 +8,8 @@ import { FontFamily } from "~theme/fonts";
 import { useNavigation } from "@react-navigation/native";
 import { Images } from "~assets";
 import useProfile from "~hooks/useProfile";
+import useNotifications from "~hooks/useNotifications";
+import NotificationDropdownModal from "~components/Notifications/NotificationDropdownModal";
 
 const Header = ({
   title,
@@ -18,9 +20,11 @@ const Header = ({
 }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-
-
   const { profile } = useProfile();
+  const { unreadCount, getNotifications } = useNotifications();
+  const [notifVisible, setNotifVisible] = useState(false);
+
+  useEffect(() => { getNotifications(); }, []);
 
   return (
     <View
@@ -49,10 +53,9 @@ const Header = ({
           <TouchableOpacity
             style={styles.iconCircle}
             activeOpacity={0.7}
-            onPress={() => navigation.navigate?.('Notifications')}>
+            onPress={() => setNotifVisible(true)}>
             <Icon name="notifications-outline" size={RFValue(17)} color="#FFFFFF" />
-            {/* Red badge */}
-            <View style={styles.notifBadge} />
+            {unreadCount > 0 && <View style={styles.notifBadge} />}
           </TouchableOpacity>
 
           {/* Profile / avatar icon */}
@@ -69,6 +72,12 @@ const Header = ({
           </TouchableOpacity>
         </View>
       </View>
+
+      <NotificationDropdownModal
+        visible={notifVisible}
+        onClose={() => setNotifVisible(false)}
+        navigation={navigation}
+      />
 
       {/* Title + subtitle + optional FAB */}
       <View style={styles.titleRowExt}>

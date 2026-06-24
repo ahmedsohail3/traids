@@ -27,7 +27,7 @@ const STATUS_COLORS = {
   Pending:       { bg: '#F0A05B', text: '#FFFFFF' },
   Active:        { bg: '#077a09ff', text: '#FFFFFF' },
   Accepted:      { bg: '#E2E8F0', text: '#64748B' }, // Light gray / slate
-  'In progress': { bg: '#1E3A8A', text: '#FFFFFF' },
+  'In Progress': { bg: '#1E3A8A', text: '#FFFFFF' },
   Completed:     { bg: '#3BB273', text: '#FFFFFF' },
 };
 
@@ -43,12 +43,13 @@ const JobCard = ({
   onEdit,
   onDelete,
   onShare,
-  onStart // optional action replacing start date styling
+  onStart,    // 'Start Job' action — shown when status is Pending
+  onComplete, // 'Complete Job' action — shown when status is In Progress
 }) => {
   const { colors } = useTheme();
   // We use lowercase match just in case "In Progress" vs "In progress"
   const getStatusColor = () => {
-    if (status.toLowerCase().includes('progress')) return STATUS_COLORS['In progress'];
+    if (status.toLowerCase().includes('progress')) return STATUS_COLORS['In Progress'];
     return STATUS_COLORS[status] ?? STATUS_COLORS.Pending;
   };
   const statusStyle = getStatusColor();
@@ -64,30 +65,34 @@ const JobCard = ({
       </View>
 
       {/* Title */}
-      <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
-      <Text style={[styles.trade, { color: colors.textSecondary }]}>{trade}</Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2} ellipsizeMode="tail">{title}</Text>
+      <Text style={[styles.trade, { color: colors.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">{trade}</Text>
 
       {/* Meta: location + assignee */}
-      <View style={styles.metaRow}>
+      <View style={styles.metaCol}>
         <View style={styles.metaItem}>
           <MapPin size={RFValue(11)} color={colors.textSecondary} strokeWidth={2} />
-          <Text style={[styles.meta, { color: colors.textSecondary }]}>{location}</Text>
+          <Text style={[styles.meta, { color: colors.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">{location}</Text>
         </View>
         <View style={styles.metaItem}>
           <User size={RFValue(11)} color={colors.textSecondary} strokeWidth={2} />
-          <Text style={[styles.meta, { color: colors.textSecondary }]}>{assignee}</Text>
+          <Text style={[styles.meta, { color: colors.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">{assignee}</Text>
         </View>
       </View>
 
       {/* Bottom: actions + start date */}
       <View style={styles.bottomRow}>
         <View style={styles.actions}>
-          <TouchableOpacity onPress={onEdit} activeOpacity={0.7} style={styles.actionBtn}>
-            <Pencil size={RFValue(13)} color="#64748B" strokeWidth={2.5} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onDelete} activeOpacity={0.7} style={styles.actionBtn}>
-            <Trash2 size={RFValue(13)} color="#EF4444" strokeWidth={2.5} />
-          </TouchableOpacity>
+          {status?.toLowerCase() !== 'completed' && (
+            <TouchableOpacity onPress={onEdit} activeOpacity={0.7} style={styles.actionBtn}>
+              <Pencil size={RFValue(13)} color="#64748B" strokeWidth={2.5} />
+            </TouchableOpacity>
+          )}
+          {!status?.toLowerCase().includes('progress') && status?.toLowerCase() !== 'completed' && (
+            <TouchableOpacity onPress={onDelete} activeOpacity={0.7} style={styles.actionBtn}>
+              <Trash2 size={RFValue(13)} color="#EF4444" strokeWidth={2.5} />
+            </TouchableOpacity>
+          )}
           {onShare && (
             <TouchableOpacity onPress={onShare} activeOpacity={0.7} style={styles.actionBtn}>
               <Share2 size={RFValue(13)} color="#64748B" strokeWidth={2.5} />
@@ -95,14 +100,18 @@ const JobCard = ({
           )}
         </View>
 
-        {onStart ? (
+        {status?.toLowerCase() === 'pending' && onStart ? (
            <TouchableOpacity onPress={onStart} style={styles.startBtn} activeOpacity={0.7}>
-             <Text style={styles.startBtnText}>Starts Project</Text>
+             <Text style={styles.startBtnText}>Start Job</Text>
+           </TouchableOpacity>
+        ) : status?.toLowerCase().includes('progress') && onComplete ? (
+           <TouchableOpacity onPress={onComplete} style={styles.startBtn} activeOpacity={0.7}>
+             <Text style={styles.startBtnText}>Complete Job</Text>
            </TouchableOpacity>
         ) : (
-          <View style={[styles.metaItem, { borderWidth: 0.95, borderColor: '#E2E8F0', padding: 5, borderRadius: 6 }]}>
+          <View style={[styles.metaItem, { borderWidth: 0.95, borderColor: '#E2E8F0', padding: 5, borderRadius: 6, }]}>
             <Calendar size={RFValue(11)} color={colors.textSecondary} strokeWidth={2} />
-            <Text style={[styles.meta, { color: colors.textSecondary }]}>{startDate}</Text>
+            <Text style={[styles.meta, { color: colors.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">{startDate}</Text>
           </View>
         )}
       </View>
@@ -161,9 +170,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textTransform: 'capitalize',
   },
-  metaRow: {
-    flexDirection: 'row',
-    gap: 14,
+  metaCol: {
+    flexDirection: 'column',
+    gap: 5,
     marginBottom: 10,
   },
   metaItem: {

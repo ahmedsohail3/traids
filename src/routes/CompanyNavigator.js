@@ -10,6 +10,11 @@
  */
 import React, { useState } from 'react';
 import { View } from 'react-native';
+import useSocketConnection from '~hooks/useSocketConnection';
+import RealtimeToast from '~components/Socket/RealtimeToast';
+
+// Mounts the socket lifecycle + toast banner once for the company session
+const SocketManager = () => { useSocketConnection(); return null; };
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -24,10 +29,12 @@ import CompanyChatListScreen from '~screens/chats/company/CompanyChatListScreen'
 import MoreStack from './MoreStack';
 import SubcontractorListScreen from '~screens/subcontractors/company/SubcontractorListScreen';
 import SubcontractorProfileScreen from '~screens/subcontractors/company/SubcontractorProfileScreen';
+import SendOfferScreen from '~screens/subcontractors/company/SendOfferScreen';
 
 // Full-screen screens (hide tab bar)
 import CompanyChatScreen from '~screens/chats/company/CompanyChatScreen';
 import CompanyJobDetailScreen from '~screens/jobs/company/CompanyJobDetailScreen';
+import NotificationsScreen from '~screens/notifications/NotificationsScreen';
 
 // ─── Stack navigators for each tab ───────────────────────────────────────────
 
@@ -86,7 +93,7 @@ const CompanyTabs = () => {
         <Tab.Screen name="Subcontractors" component={CompanySubcontractorsStack} />
         <Tab.Screen name="Jobs" component={CompanyJobsStack} />
         <Tab.Screen name="Chats" component={CompanyChatStack} />
-        <Tab.Screen name="More" component={MoreStack} />
+        <Tab.Screen name="More" component={MoreStack} initialParams={{ userType: 'company' }} />
       </Tab.Navigator>
       <MenuDrawerOverlay visible={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
     </View>
@@ -96,12 +103,18 @@ const CompanyTabs = () => {
 // ─── Root stack: tabs + full-screen (no tab bar) ──────────────────────────────
 const RootStack = createNativeStackNavigator();
 const CompanyNavigator = () => (
-  <RootStack.Navigator screenOptions={{ headerShown: false }}>
-    <RootStack.Screen name="CompanyTabs" component={CompanyTabs} />
-    <RootStack.Screen name="CompanyChat" component={CompanyChatScreen} options={{ animation: 'slide_from_right' }} />
-    <RootStack.Screen name="CompanyJobDetail" component={CompanyJobDetailScreen} options={{ animation: 'slide_from_right' }} />
-    <RootStack.Screen name="SubcontractorProfile" component={SubcontractorProfileScreen} options={{ animation: 'slide_from_right' }} />
-  </RootStack.Navigator>
+  <View style={{ flex: 1 }}>
+    <SocketManager />
+    <RealtimeToast />
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Screen name="CompanyTabs" component={CompanyTabs} />
+      <RootStack.Screen name="CompanyChat" component={CompanyChatScreen} options={{ animation: 'slide_from_right' }} />
+      <RootStack.Screen name="CompanyJobDetail" component={CompanyJobDetailScreen} options={{ animation: 'slide_from_right' }} />
+      <RootStack.Screen name="SubcontractorProfile" component={SubcontractorProfileScreen} options={{ animation: 'slide_from_right' }} />
+      <RootStack.Screen name="SendOffer" component={SendOfferScreen} options={{ animation: 'slide_from_right' }} />
+      <RootStack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: 'slide_from_right' }} />
+    </RootStack.Navigator>
+  </View>
 );
 
 export default CompanyNavigator;

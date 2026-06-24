@@ -7,6 +7,7 @@ import {
 } from '~redux/reducers/authSlice';
 import { fetchProfile, clearProfile } from '~redux/reducers/profileSlice';
 import { clearAllTokens } from '~utils';
+import { disconnectSocket } from '~services/socket/socketService';
 
 const useAuth = () => {
   const dispatch = useDispatch();
@@ -22,6 +23,7 @@ const useAuth = () => {
   );
 
   const handleLogout = useCallback(async () => {
+    disconnectSocket();
     await clearAllTokens();
     dispatch(clearProfile());
     dispatch(logout());

@@ -137,11 +137,17 @@ const chatSlice = createSlice({
       state.messagesByChatId = {};
       state.messagesError    = null;
     },
-    // Socket: prepend a newly received message to its chat
+    // Socket: append a realtime message to its chat (dedup by _id)
     prependMessage: (state, { payload: { chatId, message } }) => {
       const entry = state.messagesByChatId[chatId];
-      if (entry) {
+      if (!entry) return;
+      const id = message._id ?? message.id;
+      const alreadyExists = id
+        ? entry.messages.some((m) => (m._id ?? m.id) === id)
+        : false;
+      if (!alreadyExists) {
         entry.messages.push(message);
+        entry.pagination.skip = (entry.pagination.skip ?? 0) + 1;
       }
     },
   },

@@ -26,6 +26,11 @@ import companyFinancialsReducer from "../reducers/companyFinancialsSlice";
 import chatReducer from "../reducers/chatSlice";
 import subcontractorProfileReducer from "../reducers/subcontractorProfileSlice";
 import subcontractorSignupReducer from "../reducers/subcontractorSignupSlice";
+import subcontractorDocumentUploadReducer from "../reducers/subcontractorDocumentUploadSlice";
+import subcontractorTimesheetReducer from "../reducers/subcontractorTimesheetSlice";
+import notificationsReducer from "../reducers/notificationsSlice";
+import socketReducer from "../reducers/socketSlice";
+import { disconnectSocket } from "../../services/socket/socketService";
 // import settingsReducer from "../reducers/settingsReducer";
 
 // ─── Combined slice reducer ────────────────────────────────────────────────────
@@ -45,7 +50,11 @@ const combinedReducer = combineReducers({
   companyFinancials: companyFinancialsReducer,
   chat: chatReducer,
   subcontractorProfile: subcontractorProfileReducer,
-  subcontractorSignup:  subcontractorSignupReducer,
+  subcontractorSignup:           subcontractorSignupReducer,
+  subcontractorDocumentUpload:   subcontractorDocumentUploadReducer,
+  subcontractorTimesheet:        subcontractorTimesheetReducer,
+  notifications:        notificationsReducer,
+  socket:               socketReducer,
   theme: themeReducer,
 });
 
@@ -171,6 +180,7 @@ export const persistor = persistStore(store);
 // ─── forceLogoutAndPurge ───────────────────────────────────────────────────────
 // Bypass server — used by the 401 interceptor when the token is already expired.
 export const forceLogoutAndPurge = () => {
+  disconnectSocket();
   store.dispatch(logout());
   persistor.purge();
 };

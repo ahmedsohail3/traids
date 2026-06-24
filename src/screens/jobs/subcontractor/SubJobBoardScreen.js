@@ -351,8 +351,8 @@ const SubJobBoardScreen = ({ navigation }) => {
         renderItem={({ item }) => (
           <SubJobCard
             {...item}
-            onPress={() => navigation.navigate('SubJobDetail', { job: item })}
-            onApply={() => navigation.navigate('SubJobDetail', { job: item, openApply: true })}
+            onPress={() => navigation.navigate('SubJobDetail', { job: item, jobId: item.id })}
+            onApply={() => navigation.navigate('SubJobDetail', { job: item, openApply: true, jobId: item.id })}
           />
         )}
         ListEmptyComponent={

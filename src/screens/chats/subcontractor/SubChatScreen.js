@@ -20,6 +20,7 @@ import MessageBubble from '~components/Chat/MessageBubble';
 import MessageInput from '~components/Chat/MessageInput';
 import ViewProfileModal from '~components/Chat/ViewProfileModal';
 import useChat from '~hooks/useChat';
+import useConversationSocket from '~hooks/useConversationSocket';
 
 const SubChatScreen = ({ route }) => {
   const { colors } = useTheme();
@@ -41,6 +42,11 @@ const SubChatScreen = ({ route }) => {
     sendMessage,
     sendingMessage,
   } = useChat();
+
+  // Join/leave conversation room + receive message:new in real time
+  useConversationSocket(chatId, {
+    onNewMessage: () => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80),
+  });
 
   const [profileVisible, setProfileVisible] = useState(false);
   const [kbOffset,       setKbOffset]       = useState(0);

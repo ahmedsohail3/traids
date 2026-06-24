@@ -1,12 +1,34 @@
 import React, { useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text, Button, TextInput, UploadField } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
+import { RFValue } from 'react-native-responsive-fontsize';
+import { CheckCircle } from 'lucide-react-native';
 import RegisterContainer from '../RegisterContainer';
 import useSubcontractorSignup from '~hooks/useSubcontractorSignup';
+import useUploadSubcontractorDocument from '~hooks/useUploadSubcontractorDocument';
+import useAlert from '~hooks/useAlert';
 import { pickDocument } from '~utils/filePicker';
 
-// ─── Expiry date row ──────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const formatDate = (text) => {
+  const cleaned = text.replace(/\D/g, '').slice(0, 8);
+  if (cleaned.length > 4)
+    return `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4)}`;
+  if (cleaned.length > 2)
+    return `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+  return cleaned;
+};
+
+const isoToDDMMYYYY = (iso) => {
+  const d = new Date(iso);
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}/${d.getUTCFullYear()}`;
+};
+
+// ─── ExpiryRow — manual text entry ───────────────────────────────────────────
 
 const ExpiryRow = ({ value, onChangeText }) => (
   <TextInput
@@ -19,27 +41,98 @@ const ExpiryRow = ({ value, onChangeText }) => (
   />
 );
 
+// ─── ExtractedExpiryBadge — shows auto-detected date ─────────────────────────
+
+const ExtractedExpiryBadge = ({ date }) => (
+  <View style={styles.extractedBadge}>
+    <CheckCircle size={RFValue(13)} color="#16A34A" />
+    <View style={styles.extractedText}>
+      <Text style={styles.extractedLabel}>Expiry date extracted</Text>
+      <Text style={styles.extractedDate}>{date}</Text>
+    </View>
+  </View>
+);
+
+// ─── DocumentSection ──────────────────────────────────────────────────────────
+
+const DocumentSection = ({ label, documentType, fileField, urlField, expiryField }) => {
+  const { formData, updateField } = useSubcontractorSignup();
+  const { uploading, documentUrl, expiresAt, upload, clear } =
+    useUploadSubcontractorDocument(documentType);
+  const { showAlert } = useAlert();
+
+  const handlePickFile = useCallback(async () => {
+    if (uploading) return;
+    const file = await pickDocument();
+    if (!file) return;
+
+    updateField(fileField, file);
+
+    try {
+      const result = await upload(file);
+      updateField(urlField, result.url);
+      if (result.expiresAt) {
+        updateField(expiryField, isoToDDMMYYYY(result.expiresAt));
+      }
+    } catch (err) {
+      updateField(fileField, null);
+      showAlert({
+        title:   'Invalid Document',
+        message: typeof err?.message === 'string'
+          ? err.message
+          : typeof err === 'string'
+            ? err
+            : 'Failed to upload document. Please try again.',
+        type: 'error',
+      });
+    }
+  }, [uploading, fileField, urlField, expiryField, updateField, upload, showAlert]);
+
+  const handleRemove = useCallback(() => {
+    if (uploading) return;
+    updateField(fileField, null);
+    updateField(urlField, null);
+    updateField(expiryField, '');
+    clear();
+  }, [uploading, fileField, urlField, expiryField, updateField, clear]);
+
+  const showExtractedExpiry = !!documentUrl && !!expiresAt;
+  const showManualExpiry    = !!documentUrl && !expiresAt;
+
+  return (
+    <>
+      <UploadField
+        label={label}
+        hint={uploading ? 'Uploading…' : 'JPG, PNG, PDF (max. 5MB)'}
+        file={uploading ? null : formData[fileField]}
+        onPress={handlePickFile}
+        onRemove={handleRemove}
+      />
+
+      {uploading && (
+        <View style={styles.uploadingRow}>
+          <ActivityIndicator size="small" color="#10375C" />
+          <Text style={styles.uploadingText}>Uploading document…</Text>
+        </View>
+      )}
+
+      {showExtractedExpiry && (
+        <ExtractedExpiryBadge date={formData[expiryField]} />
+      )}
+
+      {showManualExpiry && (
+        <ExpiryRow
+          value={formData[expiryField]}
+          onChangeText={(t) => updateField(expiryField, formatDate(t))}
+        />
+      )}
+    </>
+  );
+};
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 const QualificationScreen = ({ navigation }) => {
-  const { formData, updateField } = useSubcontractorSignup();
-
-  const formatDate = useCallback((text) => {
-    const cleaned = text.replace(/\D/g, '').slice(0, 8);
-    if (cleaned.length > 4) {
-      return `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4)}`;
-    }
-    if (cleaned.length > 2) {
-      return `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
-    }
-    return cleaned;
-  }, []);
-
-  const handlePickFile = useCallback(async (field) => {
-    const file = await pickDocument();
-    if (file) updateField(field, file);
-  }, [updateField]);
-
   const handleContinue = useCallback(() => {
     navigation.navigate('SubProfileSetup');
   }, [navigation]);
@@ -55,43 +148,28 @@ const QualificationScreen = ({ navigation }) => {
         Qualification &amp; CIS
       </Text>
 
-      {/* Insurance */}
-      <UploadField
+      <DocumentSection
         label="Insurance"
-        hint="JPG, PNG or WEBP (max. 5MB)"
-        file={formData.insuranceDocuments}
-        onPress={() => handlePickFile('insuranceDocuments')}
-        onRemove={() => updateField('insuranceDocuments', null)}
-      />
-      <ExpiryRow
-        value={formData.insuranceExpiresAt}
-        onChangeText={(t) => updateField('insuranceExpiresAt', formatDate(t))}
+        documentType="insurance"
+        fileField="insuranceDocuments"
+        urlField="insuranceDocumentUrl"
+        expiryField="insuranceExpiresAt"
       />
 
-      {/* Tickets */}
-      <UploadField
+      <DocumentSection
         label="Tickets"
-        hint="JPG, PNG or WEBP (max. 5MB)"
-        file={formData.ticketDocuments}
-        onPress={() => handlePickFile('ticketDocuments')}
-        onRemove={() => updateField('ticketDocuments', null)}
-      />
-      <ExpiryRow
-        value={formData.ticketExpiresAt}
-        onChangeText={(t) => updateField('ticketExpiresAt', formatDate(t))}
+        documentType="ticket"
+        fileField="ticketDocuments"
+        urlField="ticketDocumentUrl"
+        expiryField="ticketExpiresAt"
       />
 
-      {/* Certification */}
-      <UploadField
+      <DocumentSection
         label="Certification"
-        hint="JPG, PNG or WEBP (max. 5MB)"
-        file={formData.certificationDocuments}
-        onPress={() => handlePickFile('certificationDocuments')}
-        onRemove={() => updateField('certificationDocuments', null)}
-      />
-      <ExpiryRow
-        value={formData.certificationExpiresAt}
-        onChangeText={(t) => updateField('certificationExpiresAt', formatDate(t))}
+        documentType="certification"
+        fileField="certificationDocuments"
+        urlField="certificationDocumentUrl"
+        expiryField="certificationExpiresAt"
       />
 
       <View style={styles.actionRow}>
@@ -111,10 +189,48 @@ const QualificationScreen = ({ navigation }) => {
   );
 };
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   heading: {
     fontFamily: FontFamily.bold,
     marginBottom: 20,
+  },
+  uploadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 20,
+  },
+  uploadingText: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10),
+    color: '#64748B',
+  },
+  extractedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+  },
+  extractedText: {
+    flex: 1,
+  },
+  extractedLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: RFValue(10),
+    color: '#16A34A',
+    marginBottom: 2,
+  },
+  extractedDate: {
+    fontFamily: FontFamily.bold,
+    fontSize: RFValue(11),
+    color: '#15803D',
   },
   actionRow: {
     flexDirection: 'row',

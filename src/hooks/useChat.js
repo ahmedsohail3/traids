@@ -175,9 +175,12 @@ const useChat = () => {
 
   const markConversationAsRead = useCallback(
     (chatId) => {
+      const conv        = rawConvs.find((c) => c._id === chatId);
+      const unreadField = userType === 'company' ? 'unreadCountCompany' : 'unreadCountSubcontractor';
+      if (!conv || (conv[unreadField] ?? 0) === 0) return;
       dispatch(markConversationAsReadThunk({ chatId, userType }));
     },
-    [dispatch, userType],
+    [dispatch, userType, rawConvs],
   );
 
   // ── Messages ─────────────────────────────────────────────────────────────────

@@ -1,17 +1,14 @@
 /**
  * MessageBubble — shared component for individual chat messages.
  * Renders sent (right) and received (left) messages differently.
- * Supports context menu (Edit/Reply/Copy/Delete) on long press.
  * Supports image and file attachments.
  */
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   Image,
-  Modal,
   Linking,
 } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
@@ -89,11 +86,7 @@ const AttachmentList = ({ attachments, isSent, hasText }) => (
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-const MENU_ITEMS = ['Edit', 'Reply', 'Copy', 'Delete Message'];
-
-const MessageBubble = ({ message, isSent, onDelete }) => {
-  const [menuVisible, setMenuVisible] = useState(false);
-
+const MessageBubble = ({ message, isSent }) => {
   if (message.deletedForAll) {
     return (
       <View style={[styles.row, isSent ? styles.rowRight : styles.rowLeft]}>
@@ -140,17 +133,8 @@ const MessageBubble = ({ message, isSent, onDelete }) => {
           </View>
 
           <View style={[styles.bubbleRow, isSent ? styles.bubbleRowRight : styles.bubbleRowLeft]}>
-            {/* Context menu dots — sent side */}
-            {isSent && (
-              <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.menuDots}>
-                <Text style={styles.menuDotsText}>•••</Text>
-              </TouchableOpacity>
-            )}
-
             {/* Bubble */}
-            <TouchableOpacity
-              onLongPress={() => setMenuVisible(true)}
-              activeOpacity={0.85}
+            <View
               style={[
                 styles.bubble,
                 isSent ? styles.bubbleSent : styles.bubbleReceived,
@@ -176,7 +160,7 @@ const MessageBubble = ({ message, isSent, onDelete }) => {
                   hasText={hasText}
                 />
               )}
-            </TouchableOpacity>
+            </View>
 
             {/* Read receipt — sent only */}
             {isSent && (
@@ -184,13 +168,6 @@ const MessageBubble = ({ message, isSent, onDelete }) => {
                 <Check size={RFValue(9)} color="#94A3B8" strokeWidth={3} />
                 <Check size={RFValue(9)} color="#94A3B8" strokeWidth={3} style={{ marginLeft: -7 }} />
               </View>
-            )}
-
-            {/* Context menu dots — received side */}
-            {!isSent && (
-              <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.menuDots}>
-                <Text style={styles.menuDotsText}>•••</Text>
-              </TouchableOpacity>
             )}
           </View>
         </View>
@@ -205,38 +182,6 @@ const MessageBubble = ({ message, isSent, onDelete }) => {
         )}
       </View>
 
-      {/* Context menu modal */}
-      <Modal
-        visible={menuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMenuVisible(false)}>
-        <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
-          <View style={styles.menuOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.menuCard}>
-                {MENU_ITEMS.map((label, idx) => (
-                  <TouchableOpacity
-                    key={label}
-                    style={[styles.menuItem, idx < MENU_ITEMS.length - 1 && styles.menuItemBorder]}
-                    onPress={() => {
-                      setMenuVisible(false);
-                      if (label === 'Delete Message') onDelete?.(message.id);
-                    }}>
-                    <Text
-                      style={[
-                        styles.menuItemText,
-                        label === 'Delete Message' && styles.menuItemDelete,
-                      ]}>
-                      {label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
     </>
   );
 };
@@ -319,9 +264,7 @@ const styles = StyleSheet.create({
   fileTextReceived: { color: '#FFFFFF' },
   fileTextSent:     { color: '#10375C' },
 
-  ticks:        { flexDirection: 'row', alignSelf: 'flex-end', marginBottom: 2 },
-  menuDots:     { padding: 4 },
-  menuDotsText: { fontSize: RFValue(10), color: '#94A3B8', letterSpacing: -2 },
+  ticks: { flexDirection: 'row', alignSelf: 'flex-end', marginBottom: 2 },
 
   // Deleted states
   deletedBubble: {
@@ -342,29 +285,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // Context menu
-  menuOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  menuCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    width: 160,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 8,
-    overflow: 'hidden',
-  },
-  menuItem:       { paddingVertical: 13, paddingHorizontal: 18 },
-  menuItemBorder: { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  menuItemText:   { fontFamily: FontFamily.medium,  fontSize: RFValue(11.5), color: '#10375C' },
-  menuItemDelete: { color: '#EF4444', fontFamily: FontFamily.semiBold },
 });
 
 export default MessageBubble;

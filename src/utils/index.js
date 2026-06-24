@@ -71,6 +71,11 @@ export const stripHtml = (str) =>
   str ? str.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
 
 
+
+export const formatErrorMsg = (err) =>
+  (typeof err === 'string' ? err : 'Failed to delete job.')
+    .replace(/\bin_progress\b/gi, 'In Progress');
+
 /**
  * Clear all session data — tokens + user type.
  * Called on logout and by the 401 interceptor on session expiry.

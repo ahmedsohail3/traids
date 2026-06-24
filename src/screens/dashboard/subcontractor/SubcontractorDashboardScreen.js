@@ -62,7 +62,7 @@ const mapProfileCompletion = (data) => data?.profileCompletion ?? 0;
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-const ProfileCard = ({ profile, pct, colors }) => {
+const ProfileCard = ({ profile, pct, colors, onPress }) => {
   const name    = profile?.fullName ?? profile?.primaryContactName ?? '—';
   const trade   = profile?.trade ?? profile?.primaryTrade ?? 'Subcontractor';
   const initial = name[0]?.toUpperCase() ?? '?';
@@ -82,7 +82,9 @@ const ProfileCard = ({ profile, pct, colors }) => {
           <Text style={[styles.profileName, { color: colors.textPrimary }]}>{name}</Text>
           <Text style={[styles.profileTrade, { color: colors.textSecondary }]}>{trade}</Text>
         </View>
-        <ChevronRight size={RFValue(16)} color={colors.textSecondary} strokeWidth={2} />
+        <TouchableOpacity onPress={onPress} hitSlop={8} activeOpacity={0.7}>
+          <ChevronRight size={RFValue(16)} color={colors.textSecondary} strokeWidth={2} />
+        </TouchableOpacity>
       </View>
 
       {/* Progress row */}
@@ -222,7 +224,12 @@ const SubcontractorDashboardScreen = ({ navigation }) => {
         </View>
 
         {/* ── Profile completion ── */}
-        <ProfileCard profile={profile} pct={profilePct} colors={colors} />
+        <ProfileCard
+          profile={profile}
+          pct={profilePct}
+          colors={colors}
+          onPress={() => navigation.navigate('SubTabs', { screen: 'More', params: { screen: 'Settings' } })}
+        />
 
         {/* ── Recommended For You ── */}
         <SectionHeader

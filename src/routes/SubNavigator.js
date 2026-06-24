@@ -10,6 +10,10 @@
  */
 import React, { useState } from 'react';
 import { View } from 'react-native';
+import useSocketConnection from '~hooks/useSocketConnection';
+import RealtimeToast from '~components/Socket/RealtimeToast';
+
+const SocketManager = () => { useSocketConnection(); return null; };
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -27,6 +31,7 @@ import MoreStack from './MoreStack';
 import SubChatScreen from '~screens/chats/subcontractor/SubChatScreen';
 import SubJobDetailScreen from '~screens/jobs/subcontractor/SubJobDetailScreen';
 import SubBookingDetailScreen from '~screens/bookings/subcontractor/SubBookingDetailScreen';
+import NotificationsScreen from '~screens/notifications/NotificationsScreen';
 
 // ─── Stack navigators for each tab ───────────────────────────────────────────
 
@@ -71,7 +76,7 @@ const SubTabs = () => {
         <Tab.Screen name="JobBoard" component={SubJobBoardStack} />
         <Tab.Screen name="Chats" component={SubChatStack} />
         <Tab.Screen name="Bookings" component={SubBookingsStack} />
-        <Tab.Screen name="More" component={MoreStack} />
+        <Tab.Screen name="More" component={MoreStack} initialParams={{ userType: 'subcontractor' }} />
       </Tab.Navigator>
       <MenuDrawerOverlay visible={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
     </View>
@@ -81,12 +86,17 @@ const SubTabs = () => {
 // ─── Root stack: tabs + full-screen (no tab bar) ──────────────────────────────
 const RootStack = createNativeStackNavigator();
 const SubNavigator = () => (
-  <RootStack.Navigator screenOptions={{ headerShown: false }}>
-    <RootStack.Screen name="SubTabs" component={SubTabs} />
-    <RootStack.Screen name="SubChat" component={SubChatScreen} options={{ animation: 'slide_from_right' }} />
-    <RootStack.Screen name="SubJobDetail" component={SubJobDetailScreen} options={{ animation: 'slide_from_right' }} />
-    <RootStack.Screen name="SubBookingDetail" component={SubBookingDetailScreen} options={{ animation: 'slide_from_right' }} />
-  </RootStack.Navigator>
+  <View style={{ flex: 1 }}>
+    <SocketManager />
+    <RealtimeToast />
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Screen name="SubTabs" component={SubTabs} />
+      <RootStack.Screen name="SubChat" component={SubChatScreen} options={{ animation: 'slide_from_right' }} />
+      <RootStack.Screen name="SubJobDetail" component={SubJobDetailScreen} options={{ animation: 'slide_from_right' }} />
+      <RootStack.Screen name="SubBookingDetail" component={SubBookingDetailScreen} options={{ animation: 'slide_from_right' }} />
+      <RootStack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: 'slide_from_right' }} />
+    </RootStack.Navigator>
+  </View>
 );
 
 export default SubNavigator;

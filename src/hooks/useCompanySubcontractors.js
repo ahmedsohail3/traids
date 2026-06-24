@@ -28,10 +28,13 @@ const buildCompliance = (raw) => {
   ];
   for (const { key, label } of DOCS) {
     if (raw[key]) {
+      const documents = Array.isArray(raw[key].documents) ? raw[key].documents : [];
       entries.push({
         label,
-        date:   formatDate(raw[key].expiresAt),
-        status: complianceStatus(raw[key].expiresAt),
+        date:        formatDate(raw[key].expiresAt),
+        status:      complianceStatus(raw[key].expiresAt),
+        hasDocument: documents.length > 0,
+        documentUrl: documents[0] ?? null,
       });
     }
   }
@@ -49,6 +52,8 @@ const mapProfile = (raw) => {
     about:      raw.professionalBio ?? raw.about ?? raw.bio ?? '',
     avatarUri:  raw.profileImage    ?? raw.avatarUri ?? null,
     location:   raw.cityLocation    ?? raw.location  ?? null,
+    yearsOfExperience: raw.yearsOfExperience ?? null,
+    availability:      raw.availability      ?? null,
     compliance: buildCompliance(raw),
     workHistory: (raw.workExamples ?? raw.workHistory ?? []).map((w) => ({
       title:    w.title    ?? w.jobTitle    ?? '',
