@@ -7,7 +7,7 @@
  *
  * Stat cards always render; chart / budget / jobs sections gate on real values.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Briefcase, Users, ClipboardCheck, PoundSterling } from 'lucide-react-native';
@@ -20,8 +20,6 @@ import EmptyState from '~components/Common/EmptyState';
 import TrendChart from '~components/Common/TrendChart';
 import BudgetBar from '~components/Common/BudgetBar';
 import JobCard from '~components/Common/JobCard';
-import UnpaidInvoiceBanner from '~components/Dashboard/UnpaidInvoiceBanner';
-import PostingBlockedModal from '~components/Dashboard/PostingBlockedModal';
 import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 import { Images } from '~assets';
@@ -106,9 +104,6 @@ const CompanyDashboardScreen = ({ navigation }) => {
   const { dashboard, loading, hasData, getDashboard } = useDashboard();
   const { jobs, getJobs } = useCompanyJobs();
 
-  const [hasUnpaidInvoice, setHasUnpaidInvoice] = useState(false);
-  const [showBlockedModal, setShowBlockedModal]  = useState(false);
-
   useEffect(() => { getDashboard(); getJobs(); }, []);
 
   const stats      = mapStats(dashboard);
@@ -127,9 +122,7 @@ const CompanyDashboardScreen = ({ navigation }) => {
         title="Dashboard"
         subtitle="Welcome back, here's what's happening today."
         showPostButton
-        onPostPress={() =>
-          hasUnpaidInvoice ? setShowBlockedModal(true) : navigation.navigate?.('PostJob')
-        }
+        onPostPress={() => navigation.navigate?.('PostJob')}
       />
 
       {loading && !hasData && (
@@ -139,8 +132,6 @@ const CompanyDashboardScreen = ({ navigation }) => {
       )}
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-
-        {hasUnpaidInvoice && <UnpaidInvoiceBanner />}
 
         {/* ── Stats grid — always visible ── */}
         <View style={styles.statsGrid}>
@@ -212,7 +203,6 @@ const CompanyDashboardScreen = ({ navigation }) => {
           )}
         </SectionCard>
 
-
         {/* ── Recent Jobs ── */}
         {recentJobs.length > 0 && (
           <View style={styles.sectionMargin}>
@@ -234,22 +224,7 @@ const CompanyDashboardScreen = ({ navigation }) => {
           </View>
         )}
 
-        {/* Dev toggle — remove in production */}
-        <TouchableOpacity
-          onPress={() => setHasUnpaidInvoice((p) => !p)}
-          style={[styles.devToggle, { marginTop: 24 }]}>
-          <Text style={styles.devToggleText}>
-            {hasUnpaidInvoice ? 'Remove Unpaid Invoice' : 'Trigger Unpaid Invoice'}
-          </Text>
-        </TouchableOpacity>
-
       </ScrollView>
-
-      <PostingBlockedModal
-        visible={showBlockedModal}
-        onDismiss={() => setShowBlockedModal(false)}
-        onViewInvoices={() => setShowBlockedModal(false)}
-      />
     </View>
   );
 };
@@ -271,8 +246,6 @@ const styles = StyleSheet.create({
   },
   recentTitle:  { fontSize: RFValue(13), fontFamily: FontFamily.bold },
   viewAll:      { fontSize: RFValue(11), fontFamily: FontFamily.medium },
-  devToggle:    { paddingVertical: 10, borderRadius: 10, alignItems: 'center', backgroundColor: '#EF4444' },
-  devToggleText:{ color: '#fff', fontFamily: FontFamily.semiBold, fontSize: RFValue(11) },
 });
 
 export default CompanyDashboardScreen;
