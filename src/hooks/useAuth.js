@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  login, logout, clearAuthError,
+  login, logout, clearAuthError, backgroundLogin,
   forgotPassword, verifyResetToken, resetPassword,
   clearResetFlow, clearResetError,
 } from '~redux/reducers/authSlice';
@@ -11,7 +11,10 @@ import { disconnectSocket } from '~services/socket/socketService';
 
 const useAuth = () => {
   const dispatch = useDispatch();
-  const { isAuthenticated, user, loading, error, resetFlow } = useSelector((s) => s.auth);
+  const {
+    isAuthenticated, user, loading, error, resetFlow,
+    sessionReady, sessionLoading, sessionError,
+  } = useSelector((s) => s.auth);
 
   const handleLogin = useCallback(
     (email, password, userType) =>
@@ -47,6 +50,13 @@ const useAuth = () => {
 
   const handleClearResetFlow = useCallback(() => dispatch(clearResetFlow()), [dispatch]);
 
+  // Silent login straight after signup — stores tokens without leaving the
+  // registration stack, so the Stripe onboarding call can be authorised
+  const startSession = useCallback(
+    (email, password, userType) => dispatch(backgroundLogin({ email, password, userType })),
+    [dispatch],
+  );
+
   const clearError = useCallback(() => dispatch(clearAuthError()), [dispatch]);
   const clearResetErr = useCallback(() => dispatch(clearResetError()), [dispatch]);
 
@@ -58,6 +68,11 @@ const useAuth = () => {
     login: handleLogin,
     logout: handleLogout,
     clearError,
+    // Post-signup silent session
+    sessionReady,
+    sessionLoading,
+    sessionError,
+    startSession,
     // Reset flow
     resetFlow,
     forgotPassword: handleForgotPassword,

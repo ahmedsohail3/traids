@@ -74,6 +74,38 @@ export const login = createAsyncThunk(
   },
 );
 
+/**
+ * backgroundLogin
+ *
+ * Signup does not return a JWT, but the last registration step (Stripe payout
+ * onboarding) needs one. This logs in silently with the credentials just used to
+ * register and stores the tokens, so axios can authorise `onboarding-link`.
+ *
+ * Deliberately does NOT set `isAuthenticated` — that would make RootNavigator
+ * swap the auth stack for the app stack and eject the user mid-registration.
+ * The user still finishes on the completion screen and logs in normally.
+ */
+export const backgroundLogin = createAsyncThunk(
+  'auth/backgroundLogin',
+  async ({ email, password, userType }, { rejectWithValue }) => {
+    try {
+      const data = await loginApi({ email, password, userType });
+      const payload = data?.data ?? data;
+      const { accessToken, refreshToken } = payload;
+
+      if (!accessToken) return rejectWithValue('Could not start your session.');
+
+      await storeAccessToken(accessToken);
+      if (refreshToken) await storeRefreshToken(refreshToken);
+      await storeUserType(userType);
+
+      return true;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
 // ── Slice ──────────────────────────────────────────────────────────────────────
 
 const RESET_FLOW_INITIAL = {
@@ -96,6 +128,10 @@ const initialState = {
   loading: false,
   error: null,
   resetFlow: { ...RESET_FLOW_INITIAL },
+  // Silent post-signup session (see backgroundLogin) — tokens only, no nav switch
+  sessionReady:   false,
+  sessionLoading: false,
+  sessionError:   null,
 };
 
 const authSlice = createSlice({
@@ -111,6 +147,9 @@ const authSlice = createSlice({
       state.user = initialState.user;
       state.loading = false;
       state.error = null;
+      state.sessionReady   = false;
+      state.sessionLoading = false;
+      state.sessionError   = null;
     },
     clearAuthError: (state) => {
       state.error = null;
@@ -150,6 +189,21 @@ const authSlice = createSlice({
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload ?? 'Login failed. Please try again.';
+      })
+      // ── Silent post-signup session ───────────────────────────────────────
+      .addCase(backgroundLogin.pending, (state) => {
+        state.sessionLoading = true;
+        state.sessionReady   = false;
+        state.sessionError   = null;
+      })
+      .addCase(backgroundLogin.fulfilled, (state) => {
+        state.sessionLoading = false;
+        state.sessionReady   = true;
+      })
+      .addCase(backgroundLogin.rejected, (state, { payload }) => {
+        state.sessionLoading = false;
+        state.sessionReady   = false;
+        state.sessionError   = payload ?? 'Could not start your session.';
       })
       // ── Forgot Password ──────────────────────────────────────────────────
       .addCase(forgotPassword.pending, (state) => {

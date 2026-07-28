@@ -19,6 +19,7 @@ import Checkbox from "./Checkbox";
 import PriceSlider from "./PriceSlider";
 import DocumentPickerField from "./DocumentPickerField";
 import ImagePickerField from "./ImagePickerField";
+import StripeOnboardingModal from "./StripeOnboardingModal";
 
 export {
   AppText as Text,
@@ -42,5 +43,6 @@ export {
   PriceSlider,
   DocumentPickerField,
   ImagePickerField,
+  StripeOnboardingModal,
 };
 

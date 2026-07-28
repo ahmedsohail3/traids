@@ -6,6 +6,7 @@ import RegisterContainer from '../RegisterContainer';
 import useSubcontractorSignup from '~hooks/useSubcontractorSignup';
 import { pickImageFromLibrary, pickDocument } from '~utils/filePicker';
 import useAlert from '~hooks/useAlert';
+import useAuth from '~hooks/useAuth';
 
 const ProfileSetupScreen = ({ navigation }) => {
   const {
@@ -20,13 +21,18 @@ const ProfileSetupScreen = ({ navigation }) => {
   } = useSubcontractorSignup();
 
   const { showAlert } = useAlert();
+  const { startSession } = useAuth();
 
-  // Navigate to PaymentSetup once signup API succeeds
+  // Navigate to PaymentSetup once signup API succeeds.
+  // Signup returns no JWT, so log in silently here — the next screen's Stripe
+  // onboarding call needs one. Credentials are read before reset() wipes them,
+  // and the login runs in the background while the user reads that screen.
   useEffect(() => {
-    if (submitted) {
-      reset();
-      navigation.navigate('SubPaymentSetup');
-    }
+    if (!submitted) return;
+    const { email, password } = formData;
+    if (email && password) startSession(email, password, 'subcontractor');
+    reset();
+    navigation.navigate('SubPaymentSetup');
   }, [submitted]);
 
   // Show API-level error via alert, and send the user back to the step that owns

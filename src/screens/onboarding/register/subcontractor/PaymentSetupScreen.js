@@ -1,12 +1,15 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { Text, Button } from '~components/Common';
+import { Text, Button, StripeOnboardingModal } from '~components/Common';
 import StatusListItem from '~components/Common/StatusListItem';
 import InfoBox from '~components/Common/InfoBox';
 import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 import RegisterContainer from '../RegisterContainer';
+import useSubcontractorSignup from '~hooks/useSubcontractorSignup';
+import useAuth from '~hooks/useAuth';
+import useAlert from '~hooks/useAlert';
 
 // ─── Account Created Banner (reuses CardDetailsScreen's pattern) ─────────────
 const AccountCreatedBanner = ({ colors }) => (
@@ -25,16 +28,44 @@ const AccountCreatedBanner = ({ colors }) => (
 
 const PaymentSetupScreen = ({ navigation }) => {
   const { colors } = useTheme();
-  const [loading, setLoading] = useState(false);
+  const { showAlert } = useAlert();
+  const { sessionReady, sessionLoading, sessionError } = useAuth();
+  const {
+    onboardingUrl,
+    onboardingLoading,
+    onboardingError,
+    startOnboarding,
+    closeOnboarding,
+    dismissOnboardingError,
+  } = useSubcontractorSignup();
+
+  // Surface a failed onboarding-link call — the user can retry the button
+  useEffect(() => {
+    if (!onboardingError) return;
+    showAlert({ title: 'Bank Setup Failed', message: onboardingError, type: 'error' });
+    dismissOnboardingError();
+  }, [onboardingError]);
 
   const handleBankSetup = useCallback(() => {
-    setLoading(true);
-    // TODO: open Stripe onboarding / bank verification
-    setTimeout(() => {
-      setLoading(false);
-      navigation.navigate('SubCompletion');
-    }, 800);
-  }, [navigation]);
+    // The silent post-signup login supplies the JWT this call needs
+    if (!sessionReady) {
+      showAlert({
+        title: sessionLoading ? 'Almost Ready' : 'Session Expired',
+        message: sessionLoading
+          ? 'Setting up your account — try again in a moment.'
+          : (sessionError ?? 'Please log in to finish setting up your payouts.'),
+        type: sessionLoading ? 'info' : 'error',
+      });
+      return;
+    }
+    startOnboarding();
+  }, [sessionReady, sessionLoading, sessionError, startOnboarding, showAlert]);
+
+  // Stripe redirected back — onboarding is done, close out the flow
+  const handleOnboardingComplete = useCallback(() => {
+    closeOnboarding();
+    navigation.navigate('SubCompletion');
+  }, [closeOnboarding, navigation]);
 
   return (
     <RegisterContainer
@@ -77,7 +108,7 @@ const PaymentSetupScreen = ({ navigation }) => {
       <Button
         title="Continue to Bank Setup →"
         onPress={handleBankSetup}
-        loading={loading}
+        loading={onboardingLoading || sessionLoading}
         style={styles.cta}
       />
 
@@ -86,6 +117,12 @@ const PaymentSetupScreen = ({ navigation }) => {
         style={[styles.note, { color: colors.textMuted }]}>
         You'll be guided through Stripe's secure onboarding, takes about 5 minutes.
       </Text>
+
+      <StripeOnboardingModal
+        url={onboardingUrl}
+        onClose={closeOnboarding}
+        onComplete={handleOnboardingComplete}
+      />
     </RegisterContainer>
   );
 };
