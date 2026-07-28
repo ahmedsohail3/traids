@@ -131,6 +131,10 @@ const companySignupSlice = createSlice({
     submitted:  false,
     validating: false,
     validated:  {},   // field → last value the server confirmed as free
+    // Card tokenised at step 2 (publishable key only) and confirmed against a
+    // SetupIntent at the end, once the company account actually exists
+    paymentMethodId: null,
+    cardPreview:     null,   // { brand, last4 } for display
   },
   reducers: {
     updateFormField: (state, { payload: { field, value } }) => {
@@ -152,7 +156,17 @@ const companySignupSlice = createSlice({
       submitted:  false,
       validating: false,
       validated:  {},
+      paymentMethodId: null,
+      cardPreview:     null,
     }),
+    // Stripe returns a pm_… id — a plain string, so it survives navigation and
+    // unmounting in a way the native CardField's contents never could
+    setPaymentMethod: (state, { payload }) => {
+      state.paymentMethodId = payload?.id ?? null;
+      state.cardPreview     = payload?.brand
+        ? { brand: payload.brand, last4: payload.last4 }
+        : null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -189,6 +203,7 @@ const companySignupSlice = createSlice({
 
 export const {
   updateFormField,
+  setPaymentMethod,
   setStepErrors,
   clearFieldError,
   resetSignup,

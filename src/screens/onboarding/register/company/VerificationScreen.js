@@ -5,6 +5,8 @@ import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 import RegisterContainer from '../RegisterContainer';
 import useCompanySignup from '~hooks/useCompanySignup';
+import useCompanyCardSetup from '~hooks/useCompanyCardSetup';
+import useAuth from '~hooks/useAuth';
 import useAlert from '~hooks/useAlert';
 
 const STEP_ROUTE = { 1: 'BusinessDetails', 3: 'CompanyDetails' };
@@ -14,16 +16,74 @@ const VerificationScreen = ({ navigation }) => {
   const {
     formData, errors, updateField, clearError,
     validateStep, submit, loading, error, submitted, reset, stepWithErrors,
+    paymentMethodId,
   } = useCompanySignup();
 
   const { showAlert } = useAlert();
+  const { startSession } = useAuth();
+  const { saveCard, savingCard } = useCompanyCardSetup();
 
-  // Navigate away once the API call succeeds, then wipe signup state
-  useEffect(() => {
-    if (submitted) {
+  /**
+   * Everything that can only happen once the company exists.
+   *
+   * Signup returns no JWT, so we log in silently first, then confirm the card
+   * that was tokenised back at step 2 against a fresh SetupIntent — the same
+   * order the web flow uses (account → setup-intent → confirm → save).
+   */
+  const finishRegistration = useCallback(async () => {
+    const { workEmail, password, primaryContactName, companyName } = formData;
+    const pmId = paymentMethodId;
+
+    let sessionOk = false;
+    try {
+      await startSession(workEmail, password, 'company').unwrap();
+      sessionOk = true;
+    } catch {
+      sessionOk = false;
+    }
+
+    // No card to attach — registration is done either way
+    if (!pmId) {
       reset();
       navigation.navigate('Login');
+      return;
     }
+
+    if (!sessionOk) {
+      showAlert({
+        title: 'Card Not Saved',
+        message: 'Your account is ready, but we could not save your card. You can add it after logging in.',
+        type: 'error',
+      });
+      reset();
+      navigation.navigate('Login');
+      return;
+    }
+
+    const saved = await saveCard({
+      paymentMethodId: pmId,
+      name: primaryContactName || companyName,
+    });
+
+    if (!saved) {
+      // Declined or failed 3DS — the account exists, so send them back to
+      // re-enter a card, where the retry finishes the setup on its own.
+      showAlert({
+        title: 'Card Declined',
+        message: 'Your account was created, but the card could not be saved. Please try another card.',
+        type: 'error',
+      });
+      navigation.navigate('CardDetails', { retry: true });
+      return;
+    }
+
+    reset();
+    navigation.navigate('Login');
+  }, [formData, paymentMethodId, startSession, saveCard, reset, navigation, showAlert]);
+
+  // Signup succeeded — hand off to the post-account work
+  useEffect(() => {
+    if (submitted) finishRegistration();
   }, [submitted]);
 
   // Show API-level error via alert, and send the user back to the step that owns
@@ -103,7 +163,7 @@ const VerificationScreen = ({ navigation }) => {
           title="Save & Continue"
           style={styles.continueBtn}
           onPress={handleContinue}
-          loading={loading}
+          loading={loading || savingCard}
         />
       </View>
     </RegisterContainer>

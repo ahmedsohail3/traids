@@ -1,119 +1,175 @@
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { RFValue } from 'react-native-responsive-fontsize';
-import { Text, Button, TextInput } from '~components/Common';
-import { useTheme } from '~context/ThemeContext';
-import { useSelector } from 'react-redux';
+import React, {useState, useCallback} from 'react';
+import {View, StyleSheet} from 'react-native';
+import {RFValue} from 'react-native-responsive-fontsize';
+import {CardField, useStripe} from '@stripe/stripe-react-native';
+import {Text, Button, TextInput} from '~components/Common';
+import {useTheme} from '~context/ThemeContext';
+import {useSelector, useDispatch} from 'react-redux';
 import RegisterContainer from '../RegisterContainer';
+import {setPaymentMethod} from '~redux/reducers/companySignupSlice';
+import useCompanyCardSetup from '~hooks/useCompanyCardSetup';
+import useAlert from '~hooks/useAlert';
 
 // ─── Success Banner ────────────────────────────────────────────────────────
-const SuccessBanner = ({ colors, companyName }) => (
-  <View style={[styles.banner, { backgroundColor: '#EDFBF1', borderColor: colors.success }]}>
-    <Text style={[styles.bannerIcon, { color: '#15803D' }]}>✅</Text>
-    <View style={{ flex: 1 }}>
-      <Text variant='sectionTitle' style={{ color: '#15803D', fontSize: RFValue(12) }}>Account Created</Text>
-      <Text style={[styles.bannerSub, { color: '#166534' }]}>
-        Welcome {companyName}! Now add your card to pay invoices.
+const SuccessBanner = ({colors, companyName}) => (
+  <View
+    style={[
+      styles.banner,
+      {backgroundColor: '#EDFBF1', borderColor: colors.success},
+    ]}>
+    <Text style={[styles.bannerIcon, {color: '#15803D'}]}>✅</Text>
+    <View style={{flex: 1}}>
+      <Text
+        variant="sectionTitle"
+        style={{color: '#15803D', fontSize: RFValue(12)}}>
+        Card Details
+      </Text>
+      <Text style={[styles.bannerSub, {color: '#166534'}]}>
+        {`${
+          companyName ? `${companyName} — a` : 'A'
+        }dd the card you'll use to pay invoices.`}
       </Text>
     </View>
   </View>
 );
 
 // ─── Screen ───────────────────────────────────────────────────────────────
-const CardDetailsScreen = ({ navigation, route }) => {
-  const { colors } = useTheme();
-  const companyName = useSelector((s) => s.companySignup?.formData?.companyName ?? '');
+const CardDetailsScreen = ({navigation, route}) => {
+  const {colors} = useTheme();
+  const dispatch = useDispatch();
+  const {showAlert} = useAlert();
+  const {createPaymentMethod} = useStripe();
+  const {saveCard, savingCard, setupError, dismissError} =
+    useCompanyCardSetup();
 
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvc, setCvc] = useState('');
+  const formData = useSelector(s => s.companySignup?.formData ?? {});
+  const companyName = formData.companyName ?? '';
+
+  // Set when the user is sent back here after a card was declined at confirm
+  // time — the account already exists, so this run finishes the setup outright.
+  const isRetry = route?.params?.retry === true;
+
   const [nameOnCard, setNameOnCard] = useState('');
+  const [cardComplete, setCardComplete] = useState(false);
   const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
+  const [tokenising, setTokenising] = useState(false);
 
-  const formatCardNumber = useCallback(text => {
-    const cleaned = text.replace(/\D/g, '').slice(0, 16);
-    const groups = cleaned.match(/.{1,4}/g) || [];
-    return groups.join('  ');
-  }, []);
+  const billingName =
+    nameOnCard.trim() ||
+    formData.primaryContactName ||
+    companyName ||
+    undefined;
 
-  const formatExpiry = useCallback(text => {
-    const cleaned = text.replace(/\D/g, '').slice(0, 4);
-    if (cleaned.length > 2) return `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
-    return cleaned;
-  }, []);
+  const handleContinue = useCallback(async () => {
+    if (!cardComplete) {
+      setErrors({card: 'Enter complete card details'});
+      return;
+    }
+    setErrors({});
+    dismissError();
+    setTokenising(true);
 
-  const validate = useCallback(() => {
-    const e = {};
-    const rawCard = cardNumber.replace(/\s/g, '');
-    if (rawCard.length < 16) e.cardNumber = 'Enter a valid 16-digit card number';
-    if (expiry.length < 5) e.expiry = 'Enter a valid expiry date';
-    if (!cvc.trim() || cvc.length < 3) e.cvc = 'Enter a valid CVC';
-    if (!nameOnCard.trim()) e.nameOnCard = 'Name on card is required';
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  }, [cardNumber, expiry, cvc, nameOnCard]);
+    // Tokenise with the publishable key alone — no account or JWT needed yet.
+    // Only a pm_… id comes back; the card itself never reaches our servers.
+    const {paymentMethod, error} = await createPaymentMethod({
+      paymentMethodType: 'Card',
+      paymentMethodData: billingName
+        ? {billingDetails: {name: billingName}}
+        : undefined,
+    });
+    setTokenising(false);
 
-  const handleContinue = useCallback(() => {
-    if (!validate()) return;
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    if (error) {
+      setErrors({card: error.message ?? 'This card could not be used.'});
+      return;
+    }
+
+    dispatch(
+      setPaymentMethod({
+        id: paymentMethod.id,
+        brand: paymentMethod.Card?.brand,
+        last4: paymentMethod.Card?.last4,
+      }),
+    );
+
+    // Normal run: the SetupIntent waits until the account exists (Verification).
+    if (!isRetry) {
       navigation.navigate('CompanyDetails');
-    }, 500);
-  }, [validate, navigation]);
+      return;
+    }
+
+    // Retry run: the company already exists and we hold a session, so the card
+    // can be attached right here before finishing registration.
+    const saved = await saveCard({
+      paymentMethodId: paymentMethod.id,
+      name: billingName,
+    });
+    if (!saved) return; // message surfaces via setupError below
+
+    showAlert({
+      title: 'Card Saved',
+      message: 'Your card has been saved.',
+      type: 'success',
+    });
+    navigation.navigate('Login');
+  }, [
+    cardComplete,
+    billingName,
+    createPaymentMethod,
+    dispatch,
+    isRetry,
+    saveCard,
+    navigation,
+    showAlert,
+    dismissError,
+  ]);
+
+  const cardError = errors.card ?? setupError;
 
   return (
     <RegisterContainer
       onBack={() => navigation.goBack()}
       currentStep={2}
       totalSteps={4}>
-
       <SuccessBanner colors={colors} companyName={companyName} />
 
-      <TextInput
-        label="Card Number"
-        value={cardNumber}
-        onChangeText={v => {
-          setCardNumber(formatCardNumber(v));
-          setErrors(p => ({ ...p, cardNumber: '' }));
+      <Text style={[styles.label, {color: colors.textPrimary}]}>
+        Card Details
+      </Text>
+
+      {/* Stripe-hosted native input — raw card data never enters our JS */}
+      <CardField
+        postalCodeEnabled={false}
+        placeholders={{number: '4242 4242 4242 4242'}}
+        onCardChange={details => {
+          setCardComplete(details.complete);
+          if (details.complete) setErrors({});
         }}
-        placeholder="4242  4242  4242  4242"
-        keyboardType="number-pad"
-        maxLength={22}
-        error={errors.cardNumber}
+        cardStyle={{
+          backgroundColor: colors.card ?? '#FFFFFF',
+          textColor: colors.textPrimary,
+          placeholderColor: colors.textMuted,
+          borderColor: cardError ? colors.error : colors.border,
+          borderWidth: 1,
+          borderRadius: 8,
+        }}
+        style={styles.cardField}
       />
 
-      <TextInput
-        label="Expiry Date"
-        value={expiry}
-        onChangeText={v => {
-          setExpiry(formatExpiry(v));
-          setErrors(p => ({ ...p, expiry: '' }));
-        }}
-        placeholder="12/26"
-        keyboardType="number-pad"
-        maxLength={5}
-        error={errors.expiry}
-      />
-
-      <TextInput
-        label="CVC"
-        value={cvc}
-        onChangeText={v => { setCvc(v.replace(/\D/g, '').slice(0, 4)); setErrors(p => ({ ...p, cvc: '' })); }}
-        placeholder="123"
-        keyboardType="number-pad"
-        maxLength={4}
-        error={errors.cvc}
-      />
+      {cardError ? (
+        <Text style={[styles.fieldError, {color: colors.error}]}>
+          {cardError}
+        </Text>
+      ) : null}
 
       <TextInput
         label="Name on Card"
         value={nameOnCard}
-        onChangeText={v => { setNameOnCard(v); setErrors(p => ({ ...p, nameOnCard: '' })); }}
-        placeholder="James Carter"
+        onChangeText={setNameOnCard}
+        placeholder={
+          formData.primaryContactName || companyName || 'James Carter'
+        }
         autoCapitalize="words"
-        error={errors.nameOnCard}
       />
 
       {/* Bottom action row */}
@@ -125,10 +181,10 @@ const CardDetailsScreen = ({ navigation, route }) => {
           onPress={() => navigation.goBack()}
         />
         <Button
-          title="Save & Continue"
+          title={isRetry ? 'Save Card' : 'Save & Continue'}
           style={styles.continueBtn}
           onPress={handleContinue}
-          loading={loading}
+          loading={tokenising || savingCard}
         />
       </View>
     </RegisterContainer>
@@ -153,13 +209,26 @@ const styles = StyleSheet.create({
   bannerSub: {
     fontSize: RFValue(10),
   },
+  label: {
+    fontSize: RFValue(11),
+    marginBottom: 6,
+  },
+  cardField: {
+    width: '100%',
+    height: RFValue(44),
+    marginBottom: 6,
+  },
+  fieldError: {
+    fontSize: RFValue(9),
+    marginBottom: 10,
+  },
   actionRow: {
     flexDirection: 'row',
     gap: 12,
     marginTop: 8,
   },
-  cancelBtn: { flex: 1 },
-  continueBtn: { flex: 2 },
+  cancelBtn: {flex: 1},
+  continueBtn: {flex: 2},
 });
 
 export default CardDetailsScreen;

@@ -41,13 +41,25 @@ const useCompanyCardSetup = () => {
 
   const { confirmSetupIntent } = useConfirmSetupIntent();
 
-  const saveCard = useCallback(async ({ name } = {}) => {
+  /**
+   * @param {Object}  opts
+   * @param {string} [opts.paymentMethodId] — confirm an already-tokenised card
+   *   (created at step 2 with the publishable key, before the account existed).
+   *   Omit to confirm against a mounted CardField instead.
+   * @param {string} [opts.name] — billing name
+   */
+  const saveCard = useCallback(async ({ paymentMethodId, name } = {}) => {
     try {
       const clientSecret = await dispatch(fetchSetupIntent()).unwrap();
 
+      const billingDetails = name ? { billingDetails: { name } } : {};
+      const paymentMethodData = paymentMethodId
+        ? { paymentMethodId, ...billingDetails }
+        : (name ? billingDetails : undefined);
+
       const { setupIntent, error } = await confirmSetupIntent(clientSecret, {
         paymentMethodType: 'Card',
-        paymentMethodData: name ? { billingDetails: { name } } : undefined,
+        paymentMethodData,
       });
 
       // SDK-level failure (declined card, failed 3DS, …) — report it into the slice

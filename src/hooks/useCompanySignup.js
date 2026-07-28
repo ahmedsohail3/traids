@@ -34,9 +34,10 @@ import {
  */
 const useCompanySignup = () => {
   const dispatch = useDispatch();
-  const { formData, errors, loading, error, submitted, validating, validated } = useSelector(
-    (s) => s.companySignup,
-  );
+  const {
+    formData, errors, loading, error, submitted, validating, validated,
+    paymentMethodId, cardPreview,
+  } = useSelector((s) => s.companySignup);
 
   const updateField = (field, value) =>
     dispatch(updateFormField({ field, value }));
@@ -105,6 +106,9 @@ const useCompanySignup = () => {
     validating,
     validateOnServer,
     stepWithErrors,
+    // Card tokenised at step 2, confirmed once the account exists
+    paymentMethodId,
+    cardPreview,
     submit,
     reset,
   };
