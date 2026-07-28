@@ -26,6 +26,19 @@ export const validateSubcontractorEmailApi = (email) =>
 export const getOnboardingLinkApi = () =>
   axiosInstance.post('/subcontractor/onboarding-link').then((r) => r.data);
 
+/**
+ * Source of truth for whether Connect onboarding actually completed.
+ *
+ * Stripe's return_url proves nothing on its own, so the account is re-read after
+ * the user comes back. `/auth/profile` is used because it is known to exist and
+ * is already authenticated — swap this constant if the backend exposes a
+ * dedicated payout/account status endpoint.
+ */
+export const PAYOUT_STATUS_ENDPOINT = '/auth/profile';
+
+export const getPayoutStatusApi = () =>
+  axiosInstance.get(PAYOUT_STATUS_ENDPOINT).then((r) => r.data);
+
 export const uploadSubcontractorDocumentApi = (documentType, file) => {
   const fd = new FormData();
   fd.append('documentType', documentType);

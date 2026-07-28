@@ -5,14 +5,25 @@ import { Text, Button, StripeOnboardingModal } from '~components/Common';
 import StatusListItem from '~components/Common/StatusListItem';
 import InfoBox from '~components/Common/InfoBox';
 import { useTheme } from '~context/ThemeContext';
-import { FontFamily } from '~theme/fonts';
 import RegisterContainer from '../RegisterContainer';
 import useSubcontractorSignup from '~hooks/useSubcontractorSignup';
 import useAuth from '~hooks/useAuth';
 import useAlert from '~hooks/useAlert';
 
+// How the server-verified onboarding state reads on the Bank Verification row
+const PAYOUT_ROW = {
+  true: {
+    status: 'done',
+    subtitle: 'Your bank account is verified.',
+  },
+  false: {
+    status: 'required',
+    subtitle: 'Confirm your bank account & verify your identity on Stripe.',
+  },
+};
+
 // ─── Account Created Banner (reuses CardDetailsScreen's pattern) ─────────────
-const AccountCreatedBanner = ({ colors }) => (
+const AccountCreatedBanner = ({ colors, firstName }) => (
   <View style={[styles.banner, { backgroundColor: '#EDFBF1', borderColor: colors.success }]}>
     <Text style={[styles.bannerIcon, { color: '#15803D' }]}>✅</Text>
     <View style={{ flex: 1 }}>
@@ -20,23 +31,27 @@ const AccountCreatedBanner = ({ colors }) => (
         Account Created!
       </Text>
       <Text style={[styles.bannerSub, { color: '#166534' }]}>
-        Welcome Emma. One more step — connect your bank account so we can send your payments.
+        {`Welcome${firstName ? ` ${firstName}` : ''}. One more step — connect your bank account so we can send your payments.`}
       </Text>
     </View>
   </View>
 );
 
-const PaymentSetupScreen = ({ navigation }) => {
+const PaymentSetupScreen = ({ navigation, route }) => {
   const { colors } = useTheme();
   const { showAlert } = useAlert();
   const { sessionReady, sessionLoading, sessionError } = useAuth();
   const {
+    formData,
     onboardingUrl,
     onboardingLoading,
     onboardingError,
     startOnboarding,
     closeOnboarding,
     dismissOnboardingError,
+    onboardingComplete,
+    payoutStatusLoading,
+    checkPayoutStatus,
   } = useSubcontractorSignup();
 
   // Surface a failed onboarding-link call — the user can retry the button
@@ -45,6 +60,11 @@ const PaymentSetupScreen = ({ navigation }) => {
     showAlert({ title: 'Bank Setup Failed', message: onboardingError, type: 'error' });
     dismissOnboardingError();
   }, [onboardingError]);
+
+  const payoutRow = PAYOUT_ROW[onboardingComplete ? 'true' : 'false'];
+
+  // Passed over from the signup form, which reset() has already cleared by now
+  const firstName = (route?.params?.fullName ?? formData.fullName ?? '').trim().split(/\s+/)[0];
 
   const handleBankSetup = useCallback(() => {
     // The silent post-signup login supplies the JWT this call needs
@@ -61,11 +81,25 @@ const PaymentSetupScreen = ({ navigation }) => {
     startOnboarding();
   }, [sessionReady, sessionLoading, sessionError, startOnboarding, showAlert]);
 
-  // Stripe redirected back — onboarding is done, close out the flow
-  const handleOnboardingComplete = useCallback(() => {
+  /**
+   * Runs on both ways out of the WebView — Stripe's redirect and the user
+   * closing it by hand. Neither proves anything, so `/auth/profile` decides:
+   * only a confirmed `stripeOnboardingComplete` lets the user move on.
+   */
+  const resolveOnboarding = useCallback(async () => {
     closeOnboarding();
-    navigation.navigate('SubCompletion');
-  }, [closeOnboarding, navigation]);
+
+    if (await checkPayoutStatus()) {
+      navigation.navigate('SubCompletion');
+      return;
+    }
+
+    showAlert({
+      title: 'Setup Incomplete',
+      message: 'Your bank setup was not completed. Tap Continue to Bank Setup to finish it.',
+      type: 'error',
+    });
+  }, [closeOnboarding, checkPayoutStatus, showAlert, navigation]);
 
   return (
     <RegisterContainer
@@ -74,7 +108,7 @@ const PaymentSetupScreen = ({ navigation }) => {
       currentStep={4}
       totalSteps={4}>
 
-      <AccountCreatedBanner colors={colors} />
+      <AccountCreatedBanner colors={colors} firstName={firstName} />
 
       {/* Status list */}
       <View style={styles.listContainer}>
@@ -90,8 +124,8 @@ const PaymentSetupScreen = ({ navigation }) => {
         />
         <StatusListItem
           title="Bank Verification"
-          subtitle="Confirm your bank account & verify your identity on Stripe."
-          status="required"
+          subtitle={payoutRow.subtitle}
+          status={payoutRow.status}
         />
       </View>
 
@@ -108,7 +142,7 @@ const PaymentSetupScreen = ({ navigation }) => {
       <Button
         title="Continue to Bank Setup →"
         onPress={handleBankSetup}
-        loading={onboardingLoading || sessionLoading}
+        loading={onboardingLoading || sessionLoading || payoutStatusLoading}
         style={styles.cta}
       />
 
@@ -120,8 +154,8 @@ const PaymentSetupScreen = ({ navigation }) => {
 
       <StripeOnboardingModal
         url={onboardingUrl}
-        onClose={closeOnboarding}
-        onComplete={handleOnboardingComplete}
+        onClose={resolveOnboarding}
+        onComplete={resolveOnboarding}
       />
     </RegisterContainer>
   );

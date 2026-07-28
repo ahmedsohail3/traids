@@ -3,7 +3,9 @@ import {
   subcontractorSignupApi,
   validateSubcontractorEmailApi,
   getOnboardingLinkApi,
+  getPayoutStatusApi,
 } from '~services/subcontractorSignupService';
+import { isOnboardingComplete } from '~utils/payoutStatus';
 import { getErrorMessage, getValidationErrors, getInvalidValidationFields } from '~utils';
 
 // ── Initial form state (mirrors API field names) ───────────────────────────────
@@ -108,6 +110,24 @@ export const fetchOnboardingLink = createAsyncThunk(
   },
 );
 
+/**
+ * Re-reads `/auth/profile` to find out whether Stripe onboarding actually
+ * finished — used both when Stripe redirects back and when the user closes the
+ * WebView by hand. A failed read counts as "not complete", so the user is asked
+ * to onboard again rather than being waved through unverified.
+ */
+export const fetchPayoutStatus = createAsyncThunk(
+  'subcontractorSignup/payoutStatus',
+  async () => {
+    try {
+      const res = await getPayoutStatusApi();
+      return isOnboardingComplete(res);
+    } catch {
+      return false;
+    }
+  },
+);
+
 export const submitSubcontractorSignup = createAsyncThunk(
   'subcontractorSignup/submit',
   async (formData, { rejectWithValue }) => {
@@ -139,6 +159,8 @@ const subcontractorSignupSlice = createSlice({
     onboardingUrl:     null,
     onboardingLoading: false,
     onboardingError:   null,
+    onboardingComplete:  false,
+    payoutStatusLoading: false,
   },
   reducers: {
     updateFormField: (state, { payload: { field, value } }) => {
@@ -163,6 +185,8 @@ const subcontractorSignupSlice = createSlice({
       onboardingUrl:     null,
       onboardingLoading: false,
       onboardingError:   null,
+      onboardingComplete:  false,
+      payoutStatusLoading: false,
     }),
     // Closes the onboarding WebView — the link is single-use, so it is dropped
     clearOnboardingUrl: (state) => {
@@ -198,6 +222,13 @@ const subcontractorSignupSlice = createSlice({
       .addCase(fetchOnboardingLink.rejected, (state, { payload }) => {
         state.onboardingLoading = false;
         state.onboardingError   = payload ?? 'Could not start bank setup.';
+      })
+      .addCase(fetchPayoutStatus.pending, (state) => {
+        state.payoutStatusLoading = true;
+      })
+      .addCase(fetchPayoutStatus.fulfilled, (state, { payload }) => {
+        state.payoutStatusLoading = false;
+        state.onboardingComplete  = payload;
       })
       .addCase(submitSubcontractorSignup.pending, (state) => {
         state.loading = true;

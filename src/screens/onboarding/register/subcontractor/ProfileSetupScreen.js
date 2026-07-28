@@ -29,10 +29,11 @@ const ProfileSetupScreen = ({ navigation }) => {
   // and the login runs in the background while the user reads that screen.
   useEffect(() => {
     if (!submitted) return;
-    const { email, password } = formData;
+    const { email, password, fullName } = formData;
     if (email && password) startSession(email, password, 'subcontractor');
     reset();
-    navigation.navigate('SubPaymentSetup');
+    // fullName is carried across because reset() clears the form behind us
+    navigation.navigate('SubPaymentSetup', { fullName });
   }, [submitted]);
 
   // Show API-level error via alert, and send the user back to the step that owns

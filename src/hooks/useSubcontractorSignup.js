@@ -7,6 +7,7 @@ import {
   submitSubcontractorSignup,
   validateSubcontractorEmail,
   fetchOnboardingLink,
+  fetchPayoutStatus,
   clearOnboardingUrl,
   clearOnboardingError,
   STEP_VALIDATORS,
@@ -33,6 +34,7 @@ import {
  *   stepWithErrors — () → first step number holding a field error, or null
  *   onboardingUrl / onboardingLoading / onboardingError — Stripe Connect payout setup
  *   startOnboarding / closeOnboarding — open & dismiss the onboarding WebView
+ *   onboardingComplete / checkPayoutStatus — server-verified Stripe onboarding state
  *   submit       — () → dispatch the signup thunk
  *   reset        — () → wipe all form state
  */
@@ -41,6 +43,7 @@ const useSubcontractorSignup = () => {
   const {
     formData, errors, loading, error, submitted, validatingEmail, validatedEmail,
     onboardingUrl, onboardingLoading, onboardingError,
+    onboardingComplete, payoutStatusLoading,
   } = useSelector((s) => s.subcontractorSignup);
 
   const updateField = (field, value) =>
@@ -94,6 +97,13 @@ const useSubcontractorSignup = () => {
   const closeOnboarding = () => dispatch(clearOnboardingUrl());
   const dismissOnboardingError = () => dispatch(clearOnboardingError());
 
+  /**
+   * Verifies onboarding against `/auth/profile` — Stripe's return_url alone does
+   * not mean it succeeded, and closing the WebView says nothing either.
+   * @returns {Promise<boolean>} true only when the backend confirms completion
+   */
+  const checkPayoutStatus = () => dispatch(fetchPayoutStatus()).unwrap();
+
   const submit = () => dispatch(submitSubcontractorSignup(formData));
 
   const reset = () => dispatch(resetSignup());
@@ -116,6 +126,9 @@ const useSubcontractorSignup = () => {
     startOnboarding,
     closeOnboarding,
     dismissOnboardingError,
+    onboardingComplete,
+    payoutStatusLoading,
+    checkPayoutStatus,
     submit,
     reset,
   };
