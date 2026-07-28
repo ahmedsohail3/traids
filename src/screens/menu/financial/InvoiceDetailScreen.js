@@ -1,11 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { Text, Button } from '~components/Common';
+import { Text, Button, AddPaymentMethodModal } from '~components/Common';
 import Header from '~components/Header';
 import { useTheme } from '~context/ThemeContext';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { FontFamily } from '~theme/fonts';
 import useCompanyInvoices from '~hooks/useCompanyInvoices';
+import useCompanyCardSetup from '~hooks/useCompanyCardSetup';
+import useAlert from '~hooks/useAlert';
+import { useSelector } from 'react-redux';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -29,12 +32,49 @@ const InvoiceDetailScreen = ({ route }) => {
   const { colors } = useTheme();
   const { invoiceId } = route.params ?? {};
 
-  const { selectedInvoice: inv, loadingInvoiceDetail, getInvoiceById, resetSelectedInvoice } = useCompanyInvoices();
+  const {
+    selectedInvoice: inv, loadingInvoiceDetail, getInvoiceById, resetSelectedInvoice,
+    paying, payError, pay, dismissPayError,
+  } = useCompanyInvoices();
+
+  const { paymentMethod, loadingPaymentMethod, getPaymentMethod } = useCompanyCardSetup();
+  const { showAlert } = useAlert();
+  const companyName = useSelector((s) => s.profile?.data?.companyName ?? '');
+
+  const [showAddCard, setShowAddCard] = useState(false);
 
   useEffect(() => {
     if (invoiceId) getInvoiceById(invoiceId);
     return () => resetSelectedInvoice();
   }, [invoiceId]);
+
+  // Which card is about to be charged
+  useEffect(() => {
+    getPaymentMethod();
+  }, []);
+
+  // Surface a failed charge — the invoice stays unpaid and the button retries
+  useEffect(() => {
+    if (!payError) return;
+    showAlert({ title: 'Payment Failed', message: payError, type: 'error' });
+    dismissPayError();
+  }, [payError]);
+
+  const handlePay = useCallback(async () => {
+    if (!paymentMethod) {
+      setShowAddCard(true);
+      return;
+    }
+    if (await pay(invoiceId)) {
+      showAlert({ title: 'Payment Successful', message: 'This invoice has been paid.', type: 'success' });
+    }
+  }, [paymentMethod, pay, invoiceId, showAlert]);
+
+  const handleCardSaved = useCallback(() => {
+    setShowAddCard(false);
+    getPaymentMethod();
+    showAlert({ title: 'Card Saved', message: 'You can now pay this invoice.', type: 'success' });
+  }, [getPaymentMethod, showAlert]);
 
   const statusKey    = (inv?.paymentStatus ?? inv?.status ?? '').toLowerCase();
   const statusColors = PAYMENT_STATUS_COLORS[statusKey] ?? { bg: '#94A3B8', text: '#FFFFFF' };
@@ -152,16 +192,35 @@ const InvoiceDetailScreen = ({ route }) => {
 
             {/* Pay Now — only when not yet paid */}
             {!isPaid && (
-              <Button
-                title="Pay Now  ›"
-                variant="primary"
-                style={styles.payBtn}
-                onPress={() => {}}
-              />
+              <>
+                {/* Say which card gets charged before they commit */}
+                {!loadingPaymentMethod && (
+                  <Text style={[styles.cardOnFile, { color: colors.textMuted }]}>
+                    {paymentMethod?.last4
+                      ? `Paying with ${paymentMethod.brand ?? 'card'} •••• ${paymentMethod.last4}`
+                      : 'No card on file — add one to pay this invoice.'}
+                  </Text>
+                )}
+
+                <Button
+                  title={paymentMethod ? 'Pay Now  ›' : 'Add Payment Method'}
+                  variant="primary"
+                  style={styles.payBtn}
+                  onPress={handlePay}
+                  loading={paying}
+                />
+              </>
             )}
           </View>
         </ScrollView>
       )}
+
+      <AddPaymentMethodModal
+        visible={showAddCard}
+        onClose={() => setShowAddCard(false)}
+        onSaved={handleCardSaved}
+        billingName={companyName}
+      />
     </View>
   );
 };
@@ -223,6 +282,7 @@ const styles = StyleSheet.create({
   totalLabel: { fontFamily: FontFamily.semiBold, fontSize: RFValue(13), color: '#10375C' },
   totalValue: { fontFamily: FontFamily.semiBold, fontSize: RFValue(14), color: '#10375C' },
   payBtn:     { marginTop: 16 },
+  cardOnFile: { fontSize: RFValue(9), fontFamily: FontFamily.regular, marginTop: 14, textAlign: 'center' },
 });
 
 export default InvoiceDetailScreen;

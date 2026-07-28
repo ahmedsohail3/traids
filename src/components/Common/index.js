@@ -20,6 +20,7 @@ import PriceSlider from "./PriceSlider";
 import DocumentPickerField from "./DocumentPickerField";
 import ImagePickerField from "./ImagePickerField";
 import StripeOnboardingModal from "./StripeOnboardingModal";
+import AddPaymentMethodModal from "./AddPaymentMethodModal";
 
 export {
   AppText as Text,
@@ -44,5 +45,6 @@ export {
   DocumentPickerField,
   ImagePickerField,
   StripeOnboardingModal,
+  AddPaymentMethodModal,
 };
 
