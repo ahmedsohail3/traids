@@ -10,13 +10,11 @@ import useAlert from '~hooks/useAlert';
 const ProfileSetupScreen = ({ navigation }) => {
   const {
     formData,
-    errors,
     loading,
     error,
     submitted,
     updateField,
-    clearError,
-    validateStep,
+    stepWithErrors,
     submit,
     reset,
   } = useSubcontractorSignup();
@@ -31,11 +29,12 @@ const ProfileSetupScreen = ({ navigation }) => {
     }
   }, [submitted]);
 
-  // Show API-level error via alert
+  // Show API-level error via alert, and send the user back to the step that owns
+  // the failing field (email / password / hourly rate all live on Personal Details)
   useEffect(() => {
-    if (error) {
-      showAlert({ title: 'Signup Failed', message: error, type: 'error' });
-    }
+    if (!error) return;
+    showAlert({ title: 'Signup Failed', message: error, type: 'error' });
+    if (stepWithErrors() === 1) navigation.navigate('SubPersonalDetails');
   }, [error]);
 
   const handlePickPhoto = useCallback(async () => {
@@ -49,9 +48,8 @@ const ProfileSetupScreen = ({ navigation }) => {
   }, [updateField]);
 
   const handleContinue = useCallback(() => {
-    if (!validateStep(3)) return;
     submit();
-  }, [validateStep, submit]);
+  }, [submit]);
 
   return (
     <RegisterContainer
@@ -71,43 +69,6 @@ const ProfileSetupScreen = ({ navigation }) => {
         file={formData.profileImage}
         onPress={handlePickPhoto}
         onRemove={() => updateField('profileImage', null)}
-      />
-
-      <TextInput
-        label="Hourly Rate (£) *"
-        value={formData.hourlyRate}
-        onChangeText={(v) => { updateField('hourlyRate', v.replace(/[^0-9.]/g, '')); clearError('hourlyRate'); }}
-        placeholder="£12"
-        keyboardType="decimal-pad"
-        error={errors.hourlyRate}
-      />
-
-      <TextInput
-        label="Enter Password *"
-        value={formData.password}
-        onChangeText={(v) => { updateField('password', v); clearError('password'); }}
-        placeholder="••••••••"
-        secureTextEntry
-        error={errors.password}
-      />
-
-      <TextInput
-        label="Confirm Password *"
-        value={formData.confirmPassword}
-        onChangeText={(v) => { updateField('confirmPassword', v); clearError('confirmPassword'); }}
-        placeholder="••••••••"
-        secureTextEntry
-        error={errors.confirmPassword}
-      />
-
-      <TextInput
-        label="Email *"
-        value={formData.email}
-        onChangeText={(v) => { updateField('email', v); clearError('email'); }}
-        placeholder="Your email"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        error={errors.email}
       />
 
       <TextInput

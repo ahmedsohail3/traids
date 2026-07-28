@@ -126,6 +126,31 @@ export const getValidationErrors = (error) => {
   return [];
 };
 
+/**
+ * Reads a successful /validate response body and returns { field: message } for
+ * every field the server flagged as unavailable.
+ *
+ * Expected shape — a 200 carrying per-field results:
+ *   { success: true, data: { email: { valid: false, message: 'Email already in use' } } }
+ * Also tolerates `exists: true` / `available: false` in place of `valid: false`.
+ *
+ * @param {Object} response — raw API response body
+ * @returns {Object} field → message (empty when everything is available)
+ */
+export const getInvalidValidationFields = (response) => {
+  const payload = response?.data ?? response;
+  if (!payload || typeof payload !== "object") return {};
+
+  const invalid = {};
+  for (const [field, result] of Object.entries(payload)) {
+    if (!result || typeof result !== "object") continue;
+    if (result.valid === false || result.exists === true || result.available === false) {
+      invalid[field] = result.message ?? "This value is already registered";
+    }
+  }
+  return invalid;
+};
+
 // ── Persisted State ────────────────────────────────────────────────────────────
 
 /**

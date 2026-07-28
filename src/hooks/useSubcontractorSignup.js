@@ -5,7 +5,9 @@ import {
   clearFieldError,
   resetSignup,
   submitSubcontractorSignup,
+  validateSubcontractorEmail,
   STEP_VALIDATORS,
+  STEP_FIELDS,
 } from '~redux/reducers/subcontractorSignupSlice';
 
 /**
@@ -23,14 +25,16 @@ import {
  *   updateField  — (field, value) → update a single field
  *   clearError   — (field) → clear a single field's error
  *   validateStep — (step) → run step rules, store errors, return boolean
+ *   validatingEmail — true while the email availability check is in flight
+ *   validateEmail — () → Promise<boolean>, server check for an existing email
+ *   stepWithErrors — () → first step number holding a field error, or null
  *   submit       — () → dispatch the signup thunk
  *   reset        — () → wipe all form state
  */
 const useSubcontractorSignup = () => {
   const dispatch = useDispatch();
-  const { formData, errors, loading, error, submitted } = useSelector(
-    (s) => s.subcontractorSignup,
-  );
+  const { formData, errors, loading, error, submitted, validatingEmail, validatedEmail } =
+    useSelector((s) => s.subcontractorSignup);
 
   const updateField = (field, value) =>
     dispatch(updateFormField({ field, value }));
@@ -48,6 +52,34 @@ const useSubcontractorSignup = () => {
     return true;
   };
 
+  // Server-side field errors can belong to an earlier step's screen — this tells
+  // the caller which step to send the user back to so the errors are visible.
+  const stepWithErrors = () => {
+    const failed = Object.keys(errors);
+    if (!failed.length) return null;
+    const step = Object.keys(STEP_FIELDS).find((s) =>
+      STEP_FIELDS[s].some((field) => failed.includes(field)),
+    );
+    return step ? Number(step) : null;
+  };
+
+  /**
+   * Asks the server whether the current email is free.
+   * Skips the round-trip when the same email was already confirmed.
+   * @returns {Promise<boolean>} true when the email is available
+   */
+  const validateEmail = async () => {
+    const email = formData.email?.trim();
+    if (!email) return false;
+    if (validatedEmail === email) return true;
+    try {
+      await dispatch(validateSubcontractorEmail(email)).unwrap();
+      return true;
+    } catch {
+      return false; // message is already in errors.email
+    }
+  };
+
   const submit = () => dispatch(submitSubcontractorSignup(formData));
 
   const reset = () => dispatch(resetSignup());
@@ -61,6 +93,9 @@ const useSubcontractorSignup = () => {
     updateField,
     clearError,
     validateStep,
+    validatingEmail,
+    validateEmail,
+    stepWithErrors,
     submit,
     reset,
   };

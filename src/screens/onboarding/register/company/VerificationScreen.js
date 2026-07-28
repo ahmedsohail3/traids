@@ -5,13 +5,18 @@ import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 import RegisterContainer from '../RegisterContainer';
 import useCompanySignup from '~hooks/useCompanySignup';
+import useAlert from '~hooks/useAlert';
+
+const STEP_ROUTE = { 1: 'BusinessDetails', 3: 'CompanyDetails' };
 
 const VerificationScreen = ({ navigation }) => {
   const { colors } = useTheme();
   const {
     formData, errors, updateField, clearError,
-    validateStep, submit, loading, submitted, reset,
+    validateStep, submit, loading, error, submitted, reset, stepWithErrors,
   } = useCompanySignup();
+
+  const { showAlert } = useAlert();
 
   // Navigate away once the API call succeeds, then wipe signup state
   useEffect(() => {
@@ -20,6 +25,15 @@ const VerificationScreen = ({ navigation }) => {
       navigation.navigate('Login');
     }
   }, [submitted]);
+
+  // Show API-level error via alert, and send the user back to the step that owns
+  // the failing field (registration number, work email, phone number, …)
+  useEffect(() => {
+    if (!error) return;
+    showAlert({ title: 'Signup Failed', message: error, type: 'error' });
+    const route = STEP_ROUTE[stepWithErrors()];
+    if (route) navigation.navigate(route);
+  }, [error]);
 
   // In a real app this would open the document picker
   const handlePickFile = useCallback((field) => {

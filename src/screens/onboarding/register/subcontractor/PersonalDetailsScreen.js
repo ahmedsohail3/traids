@@ -4,6 +4,7 @@ import { Text, Button, TextInput, SelectDropdown } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import RegisterContainer from '../RegisterContainer';
 import useSubcontractorSignup from '~hooks/useSubcontractorSignup';
+import useScrollToFieldError from '~hooks/useScrollToFieldError';
 
 const TRADE_OPTIONS = [
   { label: 'Electrician', value: 'electrician' },
@@ -13,19 +14,34 @@ const TRADE_OPTIONS = [
 ];
 
 const PersonalDetailsScreen = ({ navigation }) => {
-  const { formData, errors, updateField, clearError, validateStep } = useSubcontractorSignup();
+  const {
+    formData,
+    errors,
+    updateField,
+    clearError,
+    validateStep,
+    validatingEmail,
+    validateEmail,
+  } = useSubcontractorSignup();
 
-  const handleContinue = useCallback(() => {
+  // Server-validated field — scroll it back into view when it comes back rejected
+  const { scrollRef, onContentLayout, registerField } = useScrollToFieldError(errors, ['email']);
+
+  const handleContinue = useCallback(async () => {
     if (!validateStep(1)) return;
+    // Server check for an already-registered email — no-ops if this email passed before
+    if (!(await validateEmail())) return;
     navigation.navigate('SubQualification');
-  }, [validateStep, navigation]);
+  }, [validateStep, validateEmail, navigation]);
 
   return (
     <RegisterContainer
       title="Subcontractor Registration"
       onBack={() => navigation.goBack()}
       currentStep={1}
-      totalSteps={4}>
+      totalSteps={4}
+      scrollRef={scrollRef}
+      onContentLayout={onContentLayout}>
 
       <Text variant="sectionTitle" style={styles.heading}>
         Personal Details
@@ -38,6 +54,36 @@ const PersonalDetailsScreen = ({ navigation }) => {
         placeholder="Your Name"
         autoCapitalize="words"
         error={errors.fullName}
+      />
+
+      <View {...registerField('email')}>
+        <TextInput
+          label="Email *"
+          value={formData.email}
+          onChangeText={(v) => { updateField('email', v); clearError('email'); }}
+          placeholder="Your email"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          error={errors.email}
+        />
+      </View>
+
+      <TextInput
+        label="Enter Password *"
+        value={formData.password}
+        onChangeText={(v) => { updateField('password', v); clearError('password'); }}
+        placeholder="••••••••"
+        secureTextEntry
+        error={errors.password}
+      />
+
+      <TextInput
+        label="Confirm Password *"
+        value={formData.confirmPassword}
+        onChangeText={(v) => { updateField('confirmPassword', v); clearError('confirmPassword'); }}
+        placeholder="••••••••"
+        secureTextEntry
+        error={errors.confirmPassword}
       />
 
       <SelectDropdown
@@ -55,6 +101,15 @@ const PersonalDetailsScreen = ({ navigation }) => {
         onChangeText={(v) => updateField('yearsOfExperience', v)}
         placeholder="e.g. 5"
         keyboardType="number-pad"
+      />
+
+      <TextInput
+        label="Hourly Rate (£) *"
+        value={formData.hourlyRate}
+        onChangeText={(v) => { updateField('hourlyRate', v.replace(/[^0-9.]/g, '')); clearError('hourlyRate'); }}
+        placeholder="£12"
+        keyboardType="decimal-pad"
+        error={errors.hourlyRate}
       />
 
       <TextInput
@@ -86,6 +141,7 @@ const PersonalDetailsScreen = ({ navigation }) => {
           title="Save & Continue"
           style={styles.continueBtn}
           onPress={handleContinue}
+          loading={validatingEmail}
         />
       </View>
     </RegisterContainer>

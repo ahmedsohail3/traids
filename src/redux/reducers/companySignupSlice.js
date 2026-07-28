@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { companySignupApi } from '~services/companySignupService';
-import { getErrorMessage, getValidationErrors } from '~utils';
+import { companySignupApi, validateCompanyFieldsApi } from '~services/companySignupService';
+import { getErrorMessage, getValidationErrors, getInvalidValidationFields } from '~utils';
 
 // ── Initial form state (mirrors API field names) ───────────────────────────────
 export const INITIAL_FORM_DATA = {
@@ -52,7 +52,56 @@ export const STEP_VALIDATORS = {
   },
 };
 
-// ── Async thunk ────────────────────────────────────────────────────────────────
+// ── Which fields belong to which step ──────────────────────────────────────────
+// Used to route server-side field errors back to the screen that owns the field.
+export const STEP_FIELDS = {
+  1: ['companyName', 'registrationNumber', 'vatNumber', 'industryType'],
+  3: ['primaryContactName', 'workEmail', 'phoneNumber', 'password', 'confirmPassword', 'headOfficeAddress'],
+  4: ['companyDocuments', 'insuranceCertificate', 'healthAndSafetyPolicy'],
+};
+
+// ── Fields each step asks the server to check for duplicates ───────────────────
+export const STEP_VALIDATE_FIELDS = {
+  1: ['registrationNumber'],
+  3: ['workEmail', 'phoneNumber'],
+};
+
+// ── Async thunks ───────────────────────────────────────────────────────────────
+
+/**
+ * Checks the given fields against the server before the user leaves a step.
+ * Resolves with the checked { field: value } map; rejects with per-field messages.
+ */
+export const validateCompanyFields = createAsyncThunk(
+  'companySignup/validateFields',
+  async (fields, { rejectWithValue }) => {
+    const fieldNames = Object.keys(fields);
+    try {
+      const data = await validateCompanyFieldsApi(fields);
+      // Taken values come back as a 200 with { data: { <field>: { valid: false, message } } }
+      const invalid = getInvalidValidationFields(data);
+      const messages = Object.entries(invalid);
+      if (messages.length) {
+        const fieldErrors = {};
+        messages.forEach(([field, message]) => {
+          // Pin anything the form doesn't own onto the first field being checked
+          fieldErrors[fieldNames.includes(field) ? field : fieldNames[0]] = message;
+        });
+        return rejectWithValue(fieldErrors);
+      }
+      return fields;
+    } catch (error) {
+      const fieldErrors = {};
+      getValidationErrors(error).forEach(({ field, message }) => {
+        if (fieldNames.includes(field)) fieldErrors[field] = message;
+      });
+      // Fall back to pinning a general message on the first field being checked
+      if (!Object.keys(fieldErrors).length) fieldErrors[fieldNames[0]] = getErrorMessage(error);
+      return rejectWithValue(fieldErrors);
+    }
+  },
+);
+
 export const submitCompanySignup = createAsyncThunk(
   'companySignup/submit',
   async (formData, { rejectWithValue }) => {
@@ -75,15 +124,19 @@ export const submitCompanySignup = createAsyncThunk(
 const companySignupSlice = createSlice({
   name: 'companySignup',
   initialState: {
-    formData:  { ...INITIAL_FORM_DATA },
-    errors:    {},
-    loading:   false,
-    error:     null,
-    submitted: false,
+    formData:   { ...INITIAL_FORM_DATA },
+    errors:     {},
+    loading:    false,
+    error:      null,
+    submitted:  false,
+    validating: false,
+    validated:  {},   // field → last value the server confirmed as free
   },
   reducers: {
     updateFormField: (state, { payload: { field, value } }) => {
       state.formData[field] = value;
+      // Editing a checked field invalidates its previous server check
+      if (field in state.validated) delete state.validated[field];
     },
     setStepErrors: (state, { payload }) => {
       state.errors = { ...state.errors, ...payload };
@@ -92,15 +145,30 @@ const companySignupSlice = createSlice({
       delete state.errors[field];
     },
     resetSignup: () => ({
-      formData:  { ...INITIAL_FORM_DATA },
-      errors:    {},
-      loading:   false,
-      error:     null,
-      submitted: false,
+      formData:   { ...INITIAL_FORM_DATA },
+      errors:     {},
+      loading:    false,
+      error:      null,
+      submitted:  false,
+      validating: false,
+      validated:  {},
     }),
   },
   extraReducers: (builder) => {
     builder
+      .addCase(validateCompanyFields.pending, (state, { meta }) => {
+        state.validating = true;
+        Object.keys(meta.arg).forEach((field) => { delete state.errors[field]; });
+      })
+      .addCase(validateCompanyFields.fulfilled, (state, { payload }) => {
+        state.validating = false;
+        state.validated  = { ...state.validated, ...payload };
+      })
+      .addCase(validateCompanyFields.rejected, (state, { payload, meta }) => {
+        state.validating = false;
+        Object.keys(meta.arg).forEach((field) => { delete state.validated[field]; });
+        state.errors = { ...state.errors, ...payload };
+      })
       .addCase(submitCompanySignup.pending, (state) => {
         state.loading = true;
         state.error   = null;

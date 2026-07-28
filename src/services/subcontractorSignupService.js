@@ -10,6 +10,13 @@ export const subcontractorSignupApi = (formData) =>
     )
     .then((r) => r.data);
 
+/**
+ * POST /subcontractor/validate
+ * Checks whether an email is already registered before the signup call.
+ */
+export const validateSubcontractorEmailApi = (email) =>
+  axiosInstance.post('/subcontractor/validate', { email }).then((r) => r.data);
+
 export const uploadSubcontractorDocumentApi = (documentType, file) => {
   const fd = new FormData();
   fd.append('documentType', documentType);

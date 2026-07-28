@@ -24,6 +24,9 @@ import { Images } from '~assets';
  *   onBack        – callback for the back arrow
  *   currentStep   – 1-based step number (omit to hide progress bar)
  *   totalSteps    – total number of steps (default 4)
+ *   scrollRef       – ref to the underlying ScrollView (see useScrollToFieldError)
+ *   onContentLayout – layout callback for the content block, so callers can
+ *                     translate a field's offset into a scroll position
  */
 const RegisterContainer = ({
   children,
@@ -31,6 +34,8 @@ const RegisterContainer = ({
   currentStep,
   totalSteps = 4,
   title = 'Company Registration',
+  scrollRef,
+  onContentLayout,
 }) => {
   const { colors, isDark } = useTheme();
   const showProgress = currentStep != null;
@@ -42,6 +47,7 @@ const RegisterContainer = ({
         backgroundColor={colors.background}
       />
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
@@ -81,7 +87,7 @@ const RegisterContainer = ({
         )}
 
         {/* Content — directly on background, no card wrapper */}
-        <View style={styles.content}>
+        <View style={styles.content} onLayout={onContentLayout}>
           {children}
         </View>
       </ScrollView>

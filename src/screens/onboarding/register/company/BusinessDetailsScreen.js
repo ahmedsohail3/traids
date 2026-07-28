@@ -4,6 +4,7 @@ import { Text, Button, TextInput, SelectDropdown } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import RegisterContainer from '../RegisterContainer';
 import useCompanySignup from '~hooks/useCompanySignup';
+import useScrollToFieldError from '~hooks/useScrollToFieldError';
 
 const INDUSTRY_OPTIONS = [
   { label: 'Construction',          value: 'construction' },
@@ -12,18 +13,28 @@ const INDUSTRY_OPTIONS = [
 ];
 
 const BusinessDetailsScreen = ({ navigation }) => {
-  const { formData, errors, updateField, clearError, validateStep } = useCompanySignup();
+  const { formData, errors, updateField, clearError, validateStep, validating, validateOnServer } =
+    useCompanySignup();
 
-  const handleContinue = useCallback(() => {
+  // Server-validated field — scroll it back into view when it comes back rejected
+  const { scrollRef, onContentLayout, registerField } = useScrollToFieldError(errors, [
+    'registrationNumber',
+  ]);
+
+  const handleContinue = useCallback(async () => {
     if (!validateStep(1)) return;
+    // Server check for an already-registered registration number
+    if (!(await validateOnServer(1))) return;
     navigation.navigate('CardDetails');
-  }, [validateStep, navigation]);
+  }, [validateStep, validateOnServer, navigation]);
 
   return (
     <RegisterContainer
       onBack={() => navigation.goBack()}
       currentStep={1}
-      totalSteps={4}>
+      totalSteps={4}
+      scrollRef={scrollRef}
+      onContentLayout={onContentLayout}>
 
       <Text
         variant="sectionTitle"
@@ -40,14 +51,16 @@ const BusinessDetailsScreen = ({ navigation }) => {
         error={errors.companyName}
       />
 
-      <TextInput
-        label="Registration Number *"
-        value={formData.registrationNumber}
-        onChangeText={v => { updateField('registrationNumber', v); clearError('registrationNumber'); }}
-        placeholder="12345678"
-        keyboardType="default"
-        error={errors.registrationNumber}
-      />
+      <View {...registerField('registrationNumber')}>
+        <TextInput
+          label="Registration Number *"
+          value={formData.registrationNumber}
+          onChangeText={v => { updateField('registrationNumber', v); clearError('registrationNumber'); }}
+          placeholder="12345678"
+          keyboardType="default"
+          error={errors.registrationNumber}
+        />
+      </View>
 
       <TextInput
         label="VAT Number"
@@ -77,6 +90,7 @@ const BusinessDetailsScreen = ({ navigation }) => {
           title="Save & Continue"
           style={styles.continueBtn}
           onPress={handleContinue}
+          loading={validating}
         />
       </View>
     </RegisterContainer>

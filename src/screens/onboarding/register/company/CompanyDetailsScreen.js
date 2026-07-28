@@ -4,20 +4,32 @@ import { Text, Button, TextInput } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import RegisterContainer from '../RegisterContainer';
 import useCompanySignup from '~hooks/useCompanySignup';
+import useScrollToFieldError from '~hooks/useScrollToFieldError';
 
 const CompanyDetailsScreen = ({ navigation }) => {
-  const { formData, errors, updateField, clearError, validateStep } = useCompanySignup();
+  const { formData, errors, updateField, clearError, validateStep, validating, validateOnServer } =
+    useCompanySignup();
 
-  const handleContinue = useCallback(() => {
+  // Server-validated fields — listed top-down so the highest error wins the scroll
+  const { scrollRef, onContentLayout, registerField } = useScrollToFieldError(errors, [
+    'workEmail',
+    'phoneNumber',
+  ]);
+
+  const handleContinue = useCallback(async () => {
     if (!validateStep(3)) return;
+    // Server check for an already-registered work email / phone number
+    if (!(await validateOnServer(3))) return;
     navigation.navigate('Verification');
-  }, [validateStep, navigation]);
+  }, [validateStep, validateOnServer, navigation]);
 
   return (
     <RegisterContainer
       onBack={() => navigation.goBack()}
       currentStep={3}
-      totalSteps={4}>
+      totalSteps={4}
+      scrollRef={scrollRef}
+      onContentLayout={onContentLayout}>
 
       <Text
         variant="sectionTitle"
@@ -34,24 +46,28 @@ const CompanyDetailsScreen = ({ navigation }) => {
         error={errors.primaryContactName}
       />
 
-      <TextInput
-        label="Work Email *"
-        value={formData.workEmail}
-        onChangeText={v => { updateField('workEmail', v); clearError('workEmail'); }}
-        placeholder="john@acme.com"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        error={errors.workEmail}
-      />
+      <View {...registerField('workEmail')}>
+        <TextInput
+          label="Work Email *"
+          value={formData.workEmail}
+          onChangeText={v => { updateField('workEmail', v); clearError('workEmail'); }}
+          placeholder="john@acme.com"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          error={errors.workEmail}
+        />
+      </View>
 
-      <TextInput
-        label="Phone Number *"
-        value={formData.phoneNumber}
-        onChangeText={v => { updateField('phoneNumber', v); clearError('phoneNumber'); }}
-        placeholder="+44 7706 900083"
-        keyboardType="phone-pad"
-        error={errors.phoneNumber}
-      />
+      <View {...registerField('phoneNumber')}>
+        <TextInput
+          label="Phone Number *"
+          value={formData.phoneNumber}
+          onChangeText={v => { updateField('phoneNumber', v); clearError('phoneNumber'); }}
+          placeholder="+44 7706 900083"
+          keyboardType="phone-pad"
+          error={errors.phoneNumber}
+        />
+      </View>
 
       <TextInput
         label="Enter Password *"
@@ -91,6 +107,7 @@ const CompanyDetailsScreen = ({ navigation }) => {
           title="Save & Continue"
           style={styles.continueBtn}
           onPress={handleContinue}
+          loading={validating}
         />
       </View>
     </RegisterContainer>
