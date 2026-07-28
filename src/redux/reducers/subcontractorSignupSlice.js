@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import {
   subcontractorSignupApi,
   validateSubcontractorEmailApi,
+  getOnboardingLinkApi,
 } from '~services/subcontractorSignupService';
 import { getErrorMessage, getValidationErrors, getInvalidValidationFields } from '~utils';
 
@@ -88,6 +89,25 @@ export const validateSubcontractorEmail = createAsyncThunk(
   },
 );
 
+/**
+ * Fetches the Stripe Connect Express onboarding URL for the payout setup step.
+ * The URL is opened in an in-app WebView; its return_url already carries the
+ * `stripeReturn=true` marker the modal watches for.
+ */
+export const fetchOnboardingLink = createAsyncThunk(
+  'subcontractorSignup/onboardingLink',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await getOnboardingLinkApi();
+      const url = res?.data?.url ?? res?.url;
+      if (!url) return rejectWithValue('Could not start bank setup. Please try again.');
+      return url;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
 export const submitSubcontractorSignup = createAsyncThunk(
   'subcontractorSignup/submit',
   async (formData, { rejectWithValue }) => {
@@ -115,6 +135,10 @@ const subcontractorSignupSlice = createSlice({
     submitted:       false,
     validatingEmail: false,
     validatedEmail:  null,   // last email confirmed available — skips repeat calls
+    // Stripe Connect payout onboarding (step 4)
+    onboardingUrl:     null,
+    onboardingLoading: false,
+    onboardingError:   null,
   },
   reducers: {
     updateFormField: (state, { payload: { field, value } }) => {
@@ -136,7 +160,17 @@ const subcontractorSignupSlice = createSlice({
       submitted:       false,
       validatingEmail: false,
       validatedEmail:  null,
+      onboardingUrl:     null,
+      onboardingLoading: false,
+      onboardingError:   null,
     }),
+    // Closes the onboarding WebView — the link is single-use, so it is dropped
+    clearOnboardingUrl: (state) => {
+      state.onboardingUrl = null;
+    },
+    clearOnboardingError: (state) => {
+      state.onboardingError = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -152,6 +186,18 @@ const subcontractorSignupSlice = createSlice({
         state.validatingEmail = false;
         state.validatedEmail  = null;
         state.errors.email    = payload ?? 'Could not verify this email. Please try again.';
+      })
+      .addCase(fetchOnboardingLink.pending, (state) => {
+        state.onboardingLoading = true;
+        state.onboardingError   = null;
+      })
+      .addCase(fetchOnboardingLink.fulfilled, (state, { payload }) => {
+        state.onboardingLoading = false;
+        state.onboardingUrl     = payload;
+      })
+      .addCase(fetchOnboardingLink.rejected, (state, { payload }) => {
+        state.onboardingLoading = false;
+        state.onboardingError   = payload ?? 'Could not start bank setup.';
       })
       .addCase(submitSubcontractorSignup.pending, (state) => {
         state.loading = true;
@@ -176,6 +222,8 @@ export const {
   setStepErrors,
   clearFieldError,
   resetSignup,
+  clearOnboardingUrl,
+  clearOnboardingError,
 } = subcontractorSignupSlice.actions;
 
 export default subcontractorSignupSlice.reducer;

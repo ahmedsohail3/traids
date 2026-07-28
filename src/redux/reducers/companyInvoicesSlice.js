@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getJobInvoicesApi, getInvoiceByIdApi } from '~services/companyInvoicesService';
+import { getJobInvoicesApi, getInvoiceByIdApi, payInvoiceApi } from '~services/companyInvoicesService';
 import { getErrorMessage } from '~utils';
 
 export const fetchJobInvoices = createAsyncThunk(
@@ -26,6 +26,29 @@ export const fetchInvoiceById = createAsyncThunk(
   },
 );
 
+/**
+ * Charges an invoice against the saved card. The backend confirms the
+ * PaymentIntent off-session, so this usually settles server-side in one call —
+ * a `requires_action` status hands 3DS back to the app to resolve in-app.
+ */
+export const payInvoice = createAsyncThunk(
+  'companyInvoices/payInvoice',
+  async (invoiceId, { rejectWithValue }) => {
+    try {
+      const res = await payInvoiceApi(invoiceId);
+      const data = res?.data ?? res;
+      return {
+        invoiceId,
+        status:          data?.status ?? 'succeeded',
+        paymentIntentId: data?.paymentIntentId ?? null,
+        clientSecret:    data?.clientSecret ?? null,
+      };
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
 const companyInvoicesSlice = createSlice({
   name: 'companyInvoices',
   initialState: {
@@ -35,6 +58,8 @@ const companyInvoicesSlice = createSlice({
     selectedInvoice:      null,
     loadingInvoiceDetail: false,
     detailError:          null,
+    paying:               false,
+    payError:             null,
   },
   reducers: {
     clearJobInvoices: (state) => {
@@ -44,6 +69,24 @@ const companyInvoicesSlice = createSlice({
     clearSelectedInvoice: (state) => {
       state.selectedInvoice      = null;
       state.detailError          = null;
+    },
+    clearPayError: (state) => {
+      state.payError = null;
+    },
+    // 3DS is resolved on-device after the thunk resolves, so its failure is
+    // reported back into the slice from the hook
+    setPayError: (state, { payload }) => {
+      state.paying   = false;
+      state.payError = payload;
+    },
+    // Flips the invoice locally once payment has settled — covers the 3DS path,
+    // where the charge only completes after handleNextAction resolves on-device
+    markInvoicePaid: (state, { payload: invoiceId }) => {
+      if (state.selectedInvoice?._id === invoiceId) {
+        state.selectedInvoice.paymentStatus = 'paid';
+      }
+      const listed = state.invoices.find((i) => i._id === invoiceId);
+      if (listed) listed.paymentStatus = 'paid';
     },
   },
   extraReducers: (builder) => {
@@ -71,9 +114,33 @@ const companyInvoicesSlice = createSlice({
       .addCase(fetchInvoiceById.rejected, (state, { payload }) => {
         state.loadingInvoiceDetail = false;
         state.detailError          = payload ?? 'Failed to load invoice.';
+      })
+      .addCase(payInvoice.pending, (state) => {
+        state.paying   = true;
+        state.payError = null;
+      })
+      .addCase(payInvoice.fulfilled, (state, { payload }) => {
+        state.paying = false;
+        // 'requires_action' isn't settled yet — the screen resolves 3DS, then
+        // dispatches markInvoicePaid once handleNextAction succeeds
+        if (payload.status === 'succeeded') {
+          companyInvoicesSlice.caseReducers.markInvoicePaid(state, {
+            payload: payload.invoiceId,
+          });
+        }
+      })
+      .addCase(payInvoice.rejected, (state, { payload }) => {
+        state.paying   = false;
+        state.payError = payload ?? 'Payment failed. Please try again.';
       });
   },
 });
 
-export const { clearJobInvoices, clearSelectedInvoice } = companyInvoicesSlice.actions;
+export const {
+  clearJobInvoices,
+  clearSelectedInvoice,
+  clearPayError,
+  setPayError,
+  markInvoicePaid,
+} = companyInvoicesSlice.actions;
 export default companyInvoicesSlice.reducer;

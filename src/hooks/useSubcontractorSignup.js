@@ -6,6 +6,9 @@ import {
   resetSignup,
   submitSubcontractorSignup,
   validateSubcontractorEmail,
+  fetchOnboardingLink,
+  clearOnboardingUrl,
+  clearOnboardingError,
   STEP_VALIDATORS,
   STEP_FIELDS,
 } from '~redux/reducers/subcontractorSignupSlice';
@@ -28,13 +31,17 @@ import {
  *   validatingEmail — true while the email availability check is in flight
  *   validateEmail — () → Promise<boolean>, server check for an existing email
  *   stepWithErrors — () → first step number holding a field error, or null
+ *   onboardingUrl / onboardingLoading / onboardingError — Stripe Connect payout setup
+ *   startOnboarding / closeOnboarding — open & dismiss the onboarding WebView
  *   submit       — () → dispatch the signup thunk
  *   reset        — () → wipe all form state
  */
 const useSubcontractorSignup = () => {
   const dispatch = useDispatch();
-  const { formData, errors, loading, error, submitted, validatingEmail, validatedEmail } =
-    useSelector((s) => s.subcontractorSignup);
+  const {
+    formData, errors, loading, error, submitted, validatingEmail, validatedEmail,
+    onboardingUrl, onboardingLoading, onboardingError,
+  } = useSelector((s) => s.subcontractorSignup);
 
   const updateField = (field, value) =>
     dispatch(updateFormField({ field, value }));
@@ -80,6 +87,13 @@ const useSubcontractorSignup = () => {
     }
   };
 
+  // ── Stripe Connect payout onboarding (step 4) ────────────────────────────────
+  // Fetching the link opens the in-app WebView; the modal closes itself once the
+  // return_url's `stripeReturn=true` marker shows up in the navigation state.
+  const startOnboarding = () => dispatch(fetchOnboardingLink());
+  const closeOnboarding = () => dispatch(clearOnboardingUrl());
+  const dismissOnboardingError = () => dispatch(clearOnboardingError());
+
   const submit = () => dispatch(submitSubcontractorSignup(formData));
 
   const reset = () => dispatch(resetSignup());
@@ -96,6 +110,12 @@ const useSubcontractorSignup = () => {
     validatingEmail,
     validateEmail,
     stepWithErrors,
+    onboardingUrl,
+    onboardingLoading,
+    onboardingError,
+    startOnboarding,
+    closeOnboarding,
+    dismissOnboardingError,
     submit,
     reset,
   };

@@ -16,6 +16,7 @@ import dashboardReducer from "../reducers/dashboardSlice";
 import companySubcontractorsReducer from "../reducers/companySubcontractorsSlice";
 import companyReportsReducer from "../reducers/companyReportsSlice";
 import companySignupReducer from "../reducers/companySignupSlice";
+import companyPaymentReducer from "../reducers/companyPaymentSlice";
 import subcontractorJobsReducer from "../reducers/subcontractorJobsSlice";
 import subcontractorBookingsReducer from "../reducers/subcontractorBookingsSlice";
 import companyJobsReducer from "../reducers/companyJobsSlice";
@@ -41,6 +42,7 @@ const combinedReducer = combineReducers({
   companySubcontractors: companySubcontractorsReducer,
   companyReports: companyReportsReducer,
   companySignup: companySignupReducer,
+  companyPayment: companyPaymentReducer,
   subcontractorJobs: subcontractorJobsReducer,
   subcontractorBookings: subcontractorBookingsReducer,
   companyJobs: companyJobsReducer,

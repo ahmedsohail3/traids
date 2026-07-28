@@ -17,6 +17,15 @@ export const subcontractorSignupApi = (formData) =>
 export const validateSubcontractorEmailApi = (email) =>
   axiosInstance.post('/subcontractor/validate', { email }).then((r) => r.data);
 
+/**
+ * POST /subcontractor/onboarding-link
+ * @returns {Promise<{ url: string }>} Stripe Connect Express hosted onboarding URL.
+ * Its return_url already points at the web route carrying `stripeReturn=true`,
+ * which the in-app WebView watches for instead of using a deep link.
+ */
+export const getOnboardingLinkApi = () =>
+  axiosInstance.post('/subcontractor/onboarding-link').then((r) => r.data);
+
 export const uploadSubcontractorDocumentApi = (documentType, file) => {
   const fd = new FormData();
   fd.append('documentType', documentType);
