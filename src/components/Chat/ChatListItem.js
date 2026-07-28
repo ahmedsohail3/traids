@@ -2,7 +2,6 @@
  * ChatListItem — shared component for chat conversation list previews.
  * Used by both Subcontractor and Company chat list screens.
  */
-import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Text } from '~components/Common';
 import { RFValue } from 'react-native-responsive-fontsize';

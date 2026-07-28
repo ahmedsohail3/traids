@@ -8,7 +8,7 @@
  *
  * Does NOT import or conditionally render any Company screens.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { View } from 'react-native';
 import useSocketConnection from '~hooks/useSocketConnection';
 import RealtimeToast from '~components/Socket/RealtimeToast';

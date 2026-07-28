@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 import { View, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { FontFamily } from '~theme/fonts';

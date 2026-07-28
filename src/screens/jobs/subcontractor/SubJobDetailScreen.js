@@ -3,7 +3,7 @@
  * Data comes from GET /jobs/{jobId} via useSubcontractorJobs.getJobDetails.
  * Registered outside the tab navigator so no bottom tab bar is shown.
  */
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,

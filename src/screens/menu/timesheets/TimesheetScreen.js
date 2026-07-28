@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator,
 } from 'react-native';

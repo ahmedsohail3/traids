@@ -8,7 +8,7 @@
  *   pending[]    — job objects (same shape as inProgress)
  *   completed[]  — job objects (same shape as inProgress)
  */
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { useTheme } from '~context/ThemeContext';

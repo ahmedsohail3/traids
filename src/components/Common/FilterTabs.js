@@ -6,7 +6,6 @@
  *   activeTab   String   The key of the currently selected tab
  *   onChange    Function (tabKey) => void
  */
-import React from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Text } from '~components/Common';

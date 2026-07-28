@@ -6,7 +6,7 @@
  *   Offers tab    → offer object: { job: { _id, ... }, company, ... }
  *   Other tabs    → job object directly: { _id, jobTitle, company, ... }
  */
-import React, { useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, ActivityIndicator, Image, Linking,
 } from 'react-native';

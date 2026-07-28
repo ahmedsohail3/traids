@@ -12,7 +12,6 @@
  *   avatarUri   string
  *   onViewProfile function
  */
-import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { MapPin, Star } from 'lucide-react-native';

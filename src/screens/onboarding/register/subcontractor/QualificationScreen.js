@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text, Button, TextInput, UploadField } from '~components/Common';
 import { FontFamily } from '~theme/fonts';

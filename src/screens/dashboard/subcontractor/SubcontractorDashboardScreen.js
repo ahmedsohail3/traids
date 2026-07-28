@@ -4,7 +4,7 @@
  * Data comes from /subcontractor/dashboard via useSubcontractorDashboard.
  * Each section shows EmptyState when the API returns nothing / zeroed values.
  */
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import {
   View,
   StyleSheet,

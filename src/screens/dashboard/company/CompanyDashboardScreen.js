@@ -7,7 +7,7 @@
  *
  * Stat cards always render; chart / budget / jobs sections gate on real values.
  */
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Briefcase, Users, ClipboardCheck, PoundSterling } from 'lucide-react-native';

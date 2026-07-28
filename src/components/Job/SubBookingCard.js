@@ -12,7 +12,6 @@
  *   trade              string
  *   onPress            function
  */
-import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { MapPin, Briefcase } from 'lucide-react-native';

@@ -5,7 +5,6 @@
  *   labels string[]   — x-axis labels (optional)
  *   color  string     — line color
  */
-import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';

@@ -7,7 +7,6 @@
  *
  * userType: 'company' | 'subcontractor'  (default: 'company')
  */
-import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import TimesheetScreen from '~screens/menu/timesheets/TimesheetScreen';

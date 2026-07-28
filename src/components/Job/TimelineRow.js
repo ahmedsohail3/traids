@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, TouchableOpacity, StyleSheet, TextInput as RNTextInput } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Calendar } from 'lucide-react-native';

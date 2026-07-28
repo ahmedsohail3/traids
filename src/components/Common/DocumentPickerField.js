@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Upload, FileText, X } from 'lucide-react-native';

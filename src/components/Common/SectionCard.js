@@ -2,7 +2,6 @@
  * SectionCard — white card with a bold title + optional right label (e.g. "This Week ▾")
  * Used in dashboard for "Active Jobs Trend", "Budget Spent", "Recent Jobs", etc.
  */
-import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Text } from '~components/Common';

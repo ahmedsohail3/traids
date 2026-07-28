@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { MapPin, Calendar, Users, Briefcase } from 'lucide-react-native';

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Modal, Platform } from 'react-native';
 import { ScrollView, Text } from '~components/Common';
 import { RFValue } from 'react-native-responsive-fontsize';

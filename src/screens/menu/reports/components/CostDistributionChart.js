@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';

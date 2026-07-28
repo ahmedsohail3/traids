@@ -4,7 +4,7 @@
  * "Find Subcontractors" screen for Company role.
  * Shows a searchable, filterable list of subcontractors.
  */
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator,
 } from 'react-native';

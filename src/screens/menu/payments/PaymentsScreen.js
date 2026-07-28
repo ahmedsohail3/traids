@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
 import { ScrollView, Text } from '~components/Common';
 import Header from '~components/Header';

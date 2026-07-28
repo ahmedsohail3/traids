@@ -9,7 +9,6 @@
  *   iconColor    string (optional, defaults to theme primary)
  *   positive     boolean (optional) — if true, subLabel shows in green
  */
-import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Text } from '~components/Common';

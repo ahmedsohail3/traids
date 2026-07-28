@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Building2, HardHat, ArrowRight } from 'lucide-react-native';

@@ -9,7 +9,7 @@
  *     Android → react-native-date-picker (modal)
  *     iOS     → @react-native-community/datetimepicker (spinner in modal)
  */
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   ScrollView,

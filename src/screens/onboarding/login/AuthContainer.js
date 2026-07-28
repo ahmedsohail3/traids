@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, StyleSheet, TouchableOpacity, StatusBar, ScrollView } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import Icon from 'react-native-vector-icons/Feather';

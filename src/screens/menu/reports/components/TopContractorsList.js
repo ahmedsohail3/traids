@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';

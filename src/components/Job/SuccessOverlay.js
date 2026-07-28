@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Modal, Image } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Text } from '~components/Common';

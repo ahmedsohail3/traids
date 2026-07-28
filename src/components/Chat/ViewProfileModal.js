@@ -2,7 +2,6 @@
  * ViewProfileModal — shared bottom-sheet modal to view a contact's profile.
  * Used from within a chat conversation.
  */
-import React from 'react';
 import { View, StyleSheet, Modal, TouchableWithoutFeedback, Platform, Image } from 'react-native';
 import { Text } from '~components/Common';
 import { RFValue } from 'react-native-responsive-fontsize';

@@ -1,5 +1,4 @@
 // OnboardingLayout.js
-import React from "react";
 import {View, StyleSheet, StatusBar} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import {useTheme} from "~context/ThemeContext";

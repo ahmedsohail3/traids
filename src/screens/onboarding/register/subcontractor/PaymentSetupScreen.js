@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Text, Button, StripeOnboardingModal } from '~components/Common';

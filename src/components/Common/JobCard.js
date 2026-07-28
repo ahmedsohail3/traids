@@ -15,7 +15,6 @@
  *   onShare      function
  *   onStart      function
  */
-import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { MapPin, User, Calendar, Pencil, Trash2, Share2 } from 'lucide-react-native';

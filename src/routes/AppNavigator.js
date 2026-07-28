@@ -12,7 +12,7 @@
  * The userType ('company' | 'subcontractor') is read from the Redux auth store
  * and passed down to DashboardStack so it can render the correct dashboard.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';

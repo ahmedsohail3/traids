@@ -14,7 +14,6 @@
  *   onViewDoc          function(docName)
  *   onPress            function
  */
-import React from 'react';
 import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { FileText, Eye, CheckCircle } from 'lucide-react-native';

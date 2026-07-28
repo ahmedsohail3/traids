@@ -2,7 +2,6 @@
  * BudgetBar — horizontal budget category bar (Materials, Labor, Permits, Other).
  * Props: label, value (0-100), color
  */
-import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Text } from '~components/Common';

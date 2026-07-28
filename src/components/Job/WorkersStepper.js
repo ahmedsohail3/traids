@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Minus, Plus } from 'lucide-react-native';

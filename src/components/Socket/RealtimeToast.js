@@ -5,7 +5,7 @@
  * event arrives and auto-dismisses after 4 seconds.
  * Mounted once inside each role navigator — never inside a screen.
  */
-import React, { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import {
   View, StyleSheet, Animated, TouchableOpacity,
 } from 'react-native';

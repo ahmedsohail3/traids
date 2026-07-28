@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Button, UploadField } from '~components/Common';
 import { useTheme } from '~context/ThemeContext';

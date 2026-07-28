@@ -8,7 +8,6 @@
  * Company tabs:      Dashboard | Subcontractors | Jobs  | Chats | More
  * Subcontractor tabs: Dashboard | JobBoard       | Chats | Bookings | More
  */
-import React from "react";
 import { View, TouchableOpacity, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { RFValue } from "react-native-responsive-fontsize";

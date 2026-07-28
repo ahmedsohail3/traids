@@ -8,7 +8,6 @@
  *   • CompanyNavigator   — authenticated company users
  *   • SubNavigator       — authenticated subcontractor users
  */
-import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';

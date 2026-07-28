@@ -1,4 +1,4 @@
-import React, {useState, useCallback} from 'react';
+import {useState, useCallback} from 'react';
 import {View, StyleSheet} from 'react-native';
 import {RFValue} from 'react-native-responsive-fontsize';
 import {CardField, useStripe} from '@stripe/stripe-react-native';

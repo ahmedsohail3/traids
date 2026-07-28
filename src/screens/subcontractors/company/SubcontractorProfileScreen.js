@@ -4,7 +4,7 @@
  * Full-screen subcontractor profile for Company role.
  * Shows bio, compliance center, work history, and a "Book Now" / offer flow.
  */
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import {
   View, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator,
 } from 'react-native';

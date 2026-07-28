@@ -3,7 +3,6 @@
  * Renders sent (right) and received (left) messages differently.
  * Supports image and file attachments.
  */
-import React from 'react';
 import {
   View,
   StyleSheet,

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { ScrollView } from '~components/Common';
 import Header from '~components/Header';

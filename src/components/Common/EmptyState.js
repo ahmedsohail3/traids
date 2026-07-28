@@ -2,7 +2,6 @@
  * EmptyState — centred placeholder shown inside a SectionCard when no data exists.
  * Props: icon (Lucide), title, subtitle
  */
-import React from 'react';
 import { View, StyleSheet, Image } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Text } from '~components/Common';

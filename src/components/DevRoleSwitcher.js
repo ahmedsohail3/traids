@@ -9,7 +9,6 @@
  * Renders in the top-right corner, on top of all other content.
  * Mount it inside <NavigationContainer> in App.js (see comment there).
  */
-import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUserType } from '~redux/reducers/authSlice';

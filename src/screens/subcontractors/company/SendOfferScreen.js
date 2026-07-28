@@ -10,7 +10,7 @@
  * Either way, POST /offers is called with the same field set; the values
  * just come from the manual form or from the selected existing job.
  */
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   ScrollView,

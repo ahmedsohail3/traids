@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { ScrollView, Text, Button } from '~components/Common';
 import Header from '~components/Header';

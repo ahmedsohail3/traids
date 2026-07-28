@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { View, TouchableOpacity, StyleSheet, Modal, Platform } from 'react-native';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';

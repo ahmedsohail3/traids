@@ -14,7 +14,7 @@
  *   minLabel    string   — override left label (default prefix+min)
  *   maxLabel    string   — override right label (default prefix+max+'+')
  */
-import React, { useRef, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 import { View, Animated, PanResponder, StyleSheet } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Text } from '~components/Common';
