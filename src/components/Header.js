@@ -1,15 +1,15 @@
-import { useState, useEffect } from "react";
-import { View, StyleSheet, Image, TouchableOpacity } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Icon from "react-native-vector-icons/Ionicons";
-import { RFValue } from "react-native-responsive-fontsize";
-import { Text } from "~components/Common";
-import { FontFamily } from "~theme/fonts";
-import { useNavigation } from "@react-navigation/native";
-import { Images } from "~assets";
-import useProfile from "~hooks/useProfile";
-import useNotifications from "~hooks/useNotifications";
-import NotificationDropdownModal from "~components/Notifications/NotificationDropdownModal";
+import {useState, useEffect} from 'react';
+import {View, StyleSheet, Image, TouchableOpacity} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/Ionicons';
+import {RFValue} from 'react-native-responsive-fontsize';
+import {Text} from '~components/Common';
+import {FontFamily} from '~theme/fonts';
+import {useNavigation} from '@react-navigation/native';
+import {Images} from '~assets';
+import useProfile from '~hooks/useProfile';
+import useNotifications from '~hooks/useNotifications';
+import NotificationDropdownModal from '~components/Notifications/NotificationDropdownModal';
 
 const Header = ({
   title,
@@ -20,19 +20,16 @@ const Header = ({
 }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { profile } = useProfile();
-  const { unreadCount, getNotifications } = useNotifications();
+  const {profile} = useProfile();
+  const {unreadCount, getNotifications} = useNotifications();
   const [notifVisible, setNotifVisible] = useState(false);
 
-  useEffect(() => { getNotifications(); }, []);
+  useEffect(() => {
+    getNotifications();
+  }, []);
 
   return (
-    <View
-      style={[
-        styles.dashCard,
-        { paddingTop: insets.top + RFValue(12) },
-      ]}>
-
+    <View style={[styles.dashCard, {paddingTop: insets.top + RFValue(12)}]}>
       {/* Top row: logo + right icons */}
       <View style={styles.row}>
         {/* Logo */}
@@ -54,7 +51,11 @@ const Header = ({
             style={styles.iconCircle}
             activeOpacity={0.7}
             onPress={() => setNotifVisible(true)}>
-            <Icon name="notifications-outline" size={RFValue(17)} color="#FFFFFF" />
+            <Icon
+              name="notifications-outline"
+              size={RFValue(17)}
+              color="#FFFFFF"
+            />
             {unreadCount > 0 && <View style={styles.notifBadge} />}
           </TouchableOpacity>
 
@@ -64,9 +65,13 @@ const Header = ({
             activeOpacity={0.7}
             onPress={() => navigation.navigate?.('Profile')}>
             {profile?.profileImage ? (
-              <Image source={{ uri: profile.profileImage }} style={styles.avatarImg} />
-              ) : <Icon name="diamond-outline" size={RFValue(17)} color="#000000" />
-            }
+              <Image
+                source={{uri: profile.profileImage}}
+                style={styles.avatarImg}
+              />
+            ) : (
+              <Icon name="diamond-outline" size={RFValue(17)} color="#000000" />
+            )}
             {/* Online dot */}
             <View style={styles.onlineDot} />
           </TouchableOpacity>
@@ -89,11 +94,20 @@ const Header = ({
             <Icon name="arrow-back" size={RFValue(18)} color="#fff" />
           </TouchableOpacity>
         )}
-        <View style={[styles.row, styles.titleRow, { flex: 1, marginTop: 0 }]}>
+        <View style={[styles.row, styles.titleRow, {flex: 1, marginTop: 0}]}>
           <View style={styles.titleBlock}>
-            {title ? <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>{title}</Text> : null}
+            {title ? (
+              <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>
+                {title}
+              </Text>
+            ) : null}
             {subtitle ? (
-              <Text style={styles.subtitleText} numberOfLines={1} adjustsFontSizeToFit>{subtitle}</Text>
+              <Text
+                style={styles.subtitleText}
+                numberOfLines={1}
+                adjustsFontSizeToFit>
+                {subtitle}
+              </Text>
             ) : null}
           </View>
 
@@ -103,7 +117,11 @@ const Header = ({
               style={styles.fab}
               activeOpacity={0.85}
               onPress={onPostPress}>
-              <Icon name="add" size={RFValue(22)} color="#FFFFFF" />
+              <Icon
+                name="add-circle-outline"
+                size={RFValue(22)}
+                color="#FFFFFF"
+              />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -121,9 +139,9 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 18,
   },
   row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   logoRow: {
     flexDirection: 'row',
@@ -143,7 +161,7 @@ const styles = StyleSheet.create({
   brandDot: {
     color: '#F2A154', // orange
     fontSize: RFValue(20),
-    fontFamily: FontFamily.bold
+    fontFamily: FontFamily.bold,
   },
   iconsRow: {
     flexDirection: 'row',
@@ -232,7 +250,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 12,
     shadowColor: '#F2A154',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.45,
     shadowRadius: 8,
     elevation: 6,

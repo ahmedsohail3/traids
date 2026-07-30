@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Text } from '~components/Common';
@@ -10,6 +10,41 @@ const SLATE = '#94A3B8';
 const TabsHeader = ({ activeTab, onTabSelect, tabs = [] }) => {
   const scrollRef = useRef(null);
 
+  // Layout of each tab within the scroll content, keyed by tab id.
+  const tabLayouts   = useRef({});
+  const viewportW    = useRef(0);
+  const contentW     = useRef(0);
+
+  const firstTabId = tabs[0]?.id;
+
+  // Centre the active tab in the viewport. The first tab stays pinned to the
+  // start — centring it would leave dead space on the left.
+  const centerActiveTab = useCallback(() => {
+    const scroller = scrollRef.current;
+    if (!scroller || !viewportW.current) return;
+
+    if (firstTabId === activeTab) {
+      scroller.scrollTo({ x: 0, animated: true });
+      return;
+    }
+
+    const layout = tabLayouts.current[activeTab];
+    if (!layout) return;
+
+    const maxScroll = Math.max(0, contentW.current - viewportW.current);
+    const target    = layout.x + layout.width / 2 - viewportW.current / 2;
+    scroller.scrollTo({ x: Math.min(Math.max(target, 0), maxScroll), animated: true });
+  }, [activeTab, firstTabId]);
+
+  useEffect(() => { centerActiveTab(); }, [centerActiveTab]);
+
+  const handleTabLayout = useCallback((tabId) => (e) => {
+    const { x, width } = e.nativeEvent.layout;
+    tabLayouts.current[tabId] = { x, width };
+    // Layout for the initially active tab can land after the first effect run.
+    if (tabId === activeTab) centerActiveTab();
+  }, [activeTab, centerActiveTab]);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Account Settings</Text>
@@ -20,12 +55,15 @@ const TabsHeader = ({ activeTab, onTabSelect, tabs = [] }) => {
           horizontal 
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          onLayout={(e) => { viewportW.current = e.nativeEvent.layout.width; centerActiveTab(); }}
+          onContentSizeChange={(w) => { contentW.current = w; centerActiveTab(); }}
         >
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <TouchableOpacity
                 key={tab.id}
+                onLayout={handleTabLayout(tab.id)}
                 onPress={() => onTabSelect(tab.id)}
                 style={[styles.tabItem, isActive && styles.tabItemActive]}
                 activeOpacity={0.7}

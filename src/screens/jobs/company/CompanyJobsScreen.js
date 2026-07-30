@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
   Modal, KeyboardAvoidingView, Platform, ScrollView as RNScrollView,
@@ -15,7 +15,6 @@ import useCompanyJobs from '~hooks/useCompanyJobs';
 import useAlert from '~hooks/useAlert';
 import { formatErrorMsg, stripHtml } from '~utils';
 import { pickDocument } from '~utils/filePicker';
-import { buildUpdateJobFormData } from '~utils/buildFormData';
 
 // ── Data mapper ───────────────────────────────────────────────────────────────
 
@@ -48,9 +47,12 @@ const mapJob = (raw, index) => ({
 
 const EMPTY_FORM = { jobTitle: '', hourlyRate: '', description: '', workersRequired: '' };
 
+// Headroom left above a focused job card so it doesn't sit flush with the top edge.
+const FOCUS_TOP_GAP = 12;
+
 // ── Screen ────────────────────────────────────────────────────────────────────
 
-const CompanyJobsScreen = ({ navigation }) => {
+const CompanyJobsScreen = ({ navigation, route }) => {
   const { colors } = useTheme();
   const {
     jobs, loading, getJobs, deleteJob, updateJob, updatingJob,
@@ -65,6 +67,11 @@ const CompanyJobsScreen = ({ navigation }) => {
   const [editingJobId,  setEditingJobId]  = useState(null);
   const [editForm,      setEditForm]      = useState(EMPTY_FORM);
   const [editDocuments, setEditDocuments] = useState([]);
+
+  // ── Focus-a-job state (e.g. after posting a new job) ─────────────────────────
+  const scrollRef   = useRef(null);
+  const cardOffsets = useRef({});          // jobId -> y offset within the list
+  const [focusJobId, setFocusJobId] = useState(null);
 
   useEffect(() => { getJobs(); }, []);
 
@@ -89,6 +96,39 @@ const CompanyJobsScreen = ({ navigation }) => {
     const matchesSearch = job.title.toLowerCase().includes(search.toLowerCase());
     return matchesTab && matchesSearch;
   }), [mapped, activeTab, search]);
+
+  // ── Focus handling ───────────────────────────────────────────────────────────
+
+  // A `focusJobId` route param (sent after posting a job) means: refresh, clear
+  // any filtering that would hide the job, then scroll it into view.
+  const requestedFocusId = route?.params?.focusJobId;
+
+  useEffect(() => {
+    if (!requestedFocusId) return;
+    setActiveTab('All');
+    setSearch('');
+    setFocusJobId(requestedFocusId);
+    // Consume the param so re-visiting the tab doesn't scroll again.
+    navigation.setParams({ focusJobId: undefined });
+    getJobs();
+  }, [requestedFocusId, getJobs, navigation]);
+
+  // Scrolls once the target card's offset is known; no-ops until then.
+  const scrollToFocusedJob = useCallback(() => {
+    const y = focusJobId ? cardOffsets.current[focusJobId] : undefined;
+    if (y === undefined) return;
+    scrollRef.current?.scrollTo({ y: Math.max(y - FOCUS_TOP_GAP, 0), animated: true });
+    setFocusJobId(null);
+  }, [focusJobId]);
+
+  const handleCardLayout = useCallback((jobId) => (e) => {
+    cardOffsets.current[jobId] = e.nativeEvent.layout.y;
+    if (jobId === focusJobId) scrollToFocusedJob();
+  }, [focusJobId, scrollToFocusedJob]);
+
+  // Covers the case where the card was already laid out before it was focused,
+  // so no fresh onLayout fires.
+  useEffect(() => { scrollToFocusedJob(); }, [filtered, scrollToFocusedJob]);
 
   // ── Edit handlers ────────────────────────────────────────────────────────────
 
@@ -122,7 +162,7 @@ const CompanyJobsScreen = ({ navigation }) => {
 
   const handleSaveEdit = useCallback(async () => {
     try {
-      await updateJob(editingJobId, buildUpdateJobFormData({ ...editForm, documents: editDocuments }));
+      await updateJob(editingJobId, { ...editForm, documents: editDocuments });
       showAlert({ title: 'Updated', message: 'Job updated successfully.', type: 'success' });
       closeEdit();
       getJobs();
@@ -201,39 +241,39 @@ const CompanyJobsScreen = ({ navigation }) => {
         <FilterTabs tabs={filterTabs} activeTab={activeTab} onChange={setActiveTab} />
 
         {/* Jobs List */}
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContent}>
+        <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContent}>
           {filtered.length === 0 && !loading ? (
             <View style={styles.emptyWrap}>
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No jobs found.</Text>
             </View>
           ) : (
             filtered.map((job, index) => (
-              <JobCard
-                key={job._id ?? index}
-                {...job}
-                onPress={() => navigation.navigate('CompanyJobDetail', { job, status: job.status })}
-                onEdit={() => openEdit(job._id)}
-                onDelete={() => {
-                  showConfirm({
-                    title:       'Delete Job',
-                    message:     'Are you sure you want to delete this job? This action cannot be undone.',
-                    confirmText: 'Delete',
-                    type:        'error',
-                    onConfirm:   async () => {
-                      try {
-                        await deleteJob(job._id);
-                        showAlert({ title: 'Deleted', message: 'Job deleted successfully.', type: 'success' });
-                      } catch (err) {
-                        showAlert({ title: 'Error', message: formatErrorMsg(err), type: 'error' });
-                      }
-                    },
-                  });
-                }}
-                onShare={() => {}}
-                onStart={job.status === 'Pending' ? () => handleStartJob(job._id) : undefined}
-                onComplete={job.status === 'In Progress' ? () => handleCompleteJob(job._id) : undefined}
-                status={job.status}
-              />
+              <View key={job._id ?? index} onLayout={handleCardLayout(job._id)}>
+                <JobCard
+                  {...job}
+                  onPress={() => navigation.navigate('CompanyJobDetail', { job, status: job.status })}
+                  onEdit={() => openEdit(job._id)}
+                  onDelete={() => {
+                    showConfirm({
+                      title:       'Delete Job',
+                      message:     'Are you sure you want to delete this job? This action cannot be undone.',
+                      confirmText: 'Delete',
+                      type:        'error',
+                      onConfirm:   async () => {
+                        try {
+                          await deleteJob(job._id);
+                          showAlert({ title: 'Deleted', message: 'Job deleted successfully.', type: 'success' });
+                        } catch (err) {
+                          showAlert({ title: 'Error', message: formatErrorMsg(err), type: 'error' });
+                        }
+                      },
+                    });
+                  }}
+                  onStart={job.status === 'Pending' ? () => handleStartJob(job._id) : undefined}
+                  onComplete={job.status === 'In Progress' ? () => handleCompleteJob(job._id) : undefined}
+                  status={job.status}
+                />
+              </View>
             ))
           )}
 

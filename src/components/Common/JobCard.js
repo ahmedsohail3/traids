@@ -12,12 +12,11 @@
  *   status       'Pending' | 'Active' | 'Accepted' | 'In Progress' | 'Completed'
  *   onEdit       function
  *   onDelete     function
- *   onShare      function
  *   onStart      function
  */
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { MapPin, User, Calendar, Pencil, Trash2, Share2 } from 'lucide-react-native';
+import { MapPin, User, Calendar, Pencil, Trash2 } from 'lucide-react-native';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
@@ -41,8 +40,7 @@ const JobCard = ({
   onPress,
   onEdit,
   onDelete,
-  onShare,
-  onStart,    // 'Start Job' action — shown when status is Pending
+  onStart,  // 'Start Job' action — shown when status is Pending
   onComplete, // 'Complete Job' action — shown when status is In Progress
 }) => {
   const { colors } = useTheme();
@@ -90,11 +88,6 @@ const JobCard = ({
           {!status?.toLowerCase().includes('progress') && status?.toLowerCase() !== 'completed' && (
             <TouchableOpacity onPress={onDelete} activeOpacity={0.7} style={styles.actionBtn}>
               <Trash2 size={RFValue(13)} color="#EF4444" strokeWidth={2.5} />
-            </TouchableOpacity>
-          )}
-          {onShare && (
-            <TouchableOpacity onPress={onShare} activeOpacity={0.7} style={styles.actionBtn}>
-              <Share2 size={RFValue(13)} color="#64748B" strokeWidth={2.5} />
             </TouchableOpacity>
           )}
         </View>
