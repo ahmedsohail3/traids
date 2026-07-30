@@ -3,9 +3,6 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Keyboard,
-  Platform,
   FlatList,
   ActivityIndicator,
 } from 'react-native';
@@ -21,8 +18,16 @@ import MessageInput from '~components/Chat/MessageInput';
 import ViewProfileModal from '~components/Chat/ViewProfileModal';
 import useChat from '~hooks/useChat';
 import useAlert from '~hooks/useAlert';
+import useKeyboardInset from '~hooks/useKeyboardInset';
 import useConversationSocket from '~hooks/useConversationSocket';
 import useSocket from '~hooks/useSocket';
+
+// Breathing room between the message input and the top of the keyboard.
+const KEYBOARD_GAP = 24;
+
+// Safety valve for the scroll-to-bottom retries, so a list that can't reach its
+// end (bad measurement) can't spin forever.
+const MAX_PIN_ATTEMPTS = 15;
 
 const CompanyChatScreen = ({ route }) => {
   const { colors } = useTheme();
@@ -74,9 +79,13 @@ const CompanyChatScreen = ({ route }) => {
   }, [connected, connectionStatus, activeChatId]);
 
   const [profileVisible, setProfileVisible] = useState(false);
-  const [kbOffset,       setKbOffset]       = useState(0);
+  const bottomGap = Math.max(insets.bottom, 16);
+  const { keyboardInset, keyboardVisible, onLayout } = useKeyboardInset(insets.bottom);
   const listRef      = useRef(null);
   const loadGuardRef = useRef(false);
+  // While false the list stays pinned to the newest message as rows render in.
+  const openedAtBottomRef = useRef(false);
+  const pinAttemptsRef    = useRef(0);
 
   // Fetch on mount when an existing chatId is available; clear cache on unmount
   useEffect(() => {
@@ -94,29 +103,66 @@ const CompanyChatScreen = ({ route }) => {
 
   const pagination = getPaginationForChat(activeChatId);
 
-  // Auto-scroll to bottom when messages first load
+  // Open on the latest message. A one-shot timer can't do this reliably — the
+  // FlatList renders in batches, so the content keeps growing after the first
+  // frame. Instead we re-pin to the end on every content size change until the
+  // user takes over by dragging.
   useEffect(() => {
-    if (apiMessages.length > 0) {
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 50);
-    }
-  }, [apiMessages.length]);
+    openedAtBottomRef.current = false; // new conversation → land at the bottom again
+    pinAttemptsRef.current    = 0;
+  }, [activeChatId]);
 
-  // Android: manual keyboard tracking (adjustResize unreliable with edge-to-edge)
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const show = Keyboard.addListener('keyboardDidShow', (e) => setKbOffset(e.endCoordinates.height));
-    const hide = Keyboard.addListener('keyboardDidHide', () => setKbOffset(0));
-    return () => { show.remove(); hide.remove(); };
+  const handleContentSizeChange = useCallback(() => {
+    if (openedAtBottomRef.current) return;
+    pinAttemptsRef.current = 0; // content grew — this is a fresh run at the bottom
+    listRef.current?.scrollToEnd({ animated: false });
   }, []);
 
-  // ── Pagination ───────────────────────────────────────────────────────────────
+  const handleListLayout = useCallback(() => {
+    if (openedAtBottomRef.current) return;
+    listRef.current?.scrollToEnd({ animated: false });
+  }, []);
+
+  const handleScrollBeginDrag = useCallback(() => {
+    openedAtBottomRef.current = true; // hand scroll position back to the user
+  }, []);
+
+  // Opening the keyboard shrinks the list, which leaves the newest message
+  // hidden below the fold. Re-reveal it in the smaller viewport — keyed on the
+  // inset too, so keyboard height changes (autocorrect bar, emoji switch) also
+  // re-settle at the bottom.
+  useEffect(() => {
+    if (!keyboardVisible) return;
+    const frame = requestAnimationFrame(() =>
+      listRef.current?.scrollToEnd({ animated: true }),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [keyboardVisible, keyboardInset]);
+
+  // ── Scroll: pagination + finishing the initial pin ───────────────────────────
   const handleScroll = useCallback(
     ({ nativeEvent }) => {
-      const y = nativeEvent.contentOffset.y;
-      if (y < 80 && pagination.hasMore && !loadingMessages && !loadGuardRef.current) {
-        loadGuardRef.current = true;
-        loadMoreMessages(activeChatId);
-        setTimeout(() => { loadGuardRef.current = false; }, 1500);
+      const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
+
+      // Load earlier messages only once the pin is released, i.e. only for
+      // user-driven scrolls. Our own scrollToEnd emits onScroll events that
+      // start at y = 0, which would otherwise page in history on open.
+      if (openedAtBottomRef.current) {
+        if (contentOffset.y < 80 && pagination.hasMore && !loadingMessages && !loadGuardRef.current) {
+          loadGuardRef.current = true;
+          loadMoreMessages(activeChatId);
+          setTimeout(() => { loadGuardRef.current = false; }, 1500);
+        }
+        return;
+      }
+
+      // Still pinning: one scrollToEnd lands short because rows are measured in
+      // batches and offscreen heights are only estimates, so the content grows
+      // mid-scroll. Re-aim until we actually reach the end.
+      const distanceFromEnd = contentSize.height - contentOffset.y - layoutMeasurement.height;
+      if (distanceFromEnd > 2 && pinAttemptsRef.current < MAX_PIN_ATTEMPTS) {
+        pinAttemptsRef.current += 1;
+        listRef.current?.scrollToEnd({ animated: false });
       }
     },
     [activeChatId, loadMoreMessages, pagination.hasMore, loadingMessages],
@@ -201,10 +247,8 @@ const CompanyChatScreen = ({ route }) => {
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <Header title="Messages" subtitle="Manage your chat system here." showBackButton />
 
-      <KeyboardAvoidingView
-        style={styles.kavFill}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={[styles.container, { marginBottom: kbOffset > 0 ? kbOffset + Math.max(insets.bottom, 16) : Math.max(insets.bottom, 16) }]}>
+      <View style={styles.fill} onLayout={onLayout}>
+        <View style={[styles.container, { marginBottom: keyboardVisible ? keyboardInset + KEYBOARD_GAP : bottomGap }]}>
           {/* Contact bar */}
           <TouchableOpacity
             style={styles.contactRow}
@@ -242,7 +286,10 @@ const CompanyChatScreen = ({ route }) => {
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
               onScroll={handleScroll}
-              scrollEventThrottle={200}
+              onScrollBeginDrag={handleScrollBeginDrag}
+              onContentSizeChange={handleContentSizeChange}
+              onLayout={handleListLayout}
+              scrollEventThrottle={32}
               removeClippedSubviews
               maxToRenderPerBatch={20}
               windowSize={10}
@@ -254,7 +301,7 @@ const CompanyChatScreen = ({ route }) => {
             sendingMessage={isSending}
           />
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       <ViewProfileModal
         visible={profileVisible}
@@ -267,7 +314,7 @@ const CompanyChatScreen = ({ route }) => {
 
 const styles = StyleSheet.create({
   root:      { flex: 1 },
-  kavFill:   { flex: 1 },
+  fill:      { flex: 1 },
   container: {
     flex: 1,
     marginTop: 16,
