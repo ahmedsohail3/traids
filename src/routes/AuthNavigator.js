@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
-  AccountTypeScreen,
+  LoginAccountTypeScreen,
   LoginScreen,
   ResetPasswordScreen,
   OtpVerificationScreen,
@@ -13,7 +13,11 @@ const Stack = createNativeStackNavigator();
 
 /**
  * AuthNavigator — handles the full authentication/onboarding flow:
- *   AccountType → Login → ResetPassword → OtpVerification → NewPassword
+ *   LoginAccountType → Login → ResetPassword → OtpVerification → NewPassword
+ *
+ * 'LoginAccountType' picks which role to sign in as and passes it to Login as
+ * `accountType`. Not to be confused with RegisterNavigator's 'RegisterAccountType',
+ * which picks which role to sign *up* as.
  *
  * 'Register' mounts the RegisterNavigator (nested) for the full company registration flow.
  * Success modal (PasswordSuccessModal) is mounted inside NewPasswordScreen.
@@ -21,9 +25,9 @@ const Stack = createNativeStackNavigator();
 const AuthNavigator = () => (
   <OnboardingLayout>
     <Stack.Navigator
-      initialRouteName="AccountType"
+      initialRouteName="LoginAccountType"
       screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-      <Stack.Screen name="AccountType" component={AccountTypeScreen} />
+      <Stack.Screen name="LoginAccountType" component={LoginAccountTypeScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       <Stack.Screen

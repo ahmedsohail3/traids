@@ -25,9 +25,9 @@ export const INITIAL_FORM_DATA = {
   insuranceDocuments:     null,   // file object — display only
   insuranceDocumentUrl:   null,   // S3 URL from upload-document API
   insuranceExpiresAt:     '',     // DD/MM/YYYY, converted to ISO in form builder
-  ticketDocuments:        null,
-  ticketDocumentUrl:      null,
-  ticketExpiresAt:        '',
+  ticketsDocuments:       null,
+  ticketsDocumentUrl:     null,
+  ticketsExpiresAt:       '',
   certificationDocuments: null,
   certificationDocumentUrl: null,
   certificationExpiresAt: '',
@@ -42,7 +42,7 @@ export const INITIAL_FORM_DATA = {
 
 export const STEP_FIELDS = {
   1: ['fullName', 'email', 'password', 'confirmPassword', 'primaryTrade', 'yearsOfExperience', 'hourlyRate', 'postcode', 'cityLocation'],
-  2: ['insuranceDocuments', 'insuranceExpiresAt', 'ticketDocuments', 'ticketExpiresAt', 'certificationDocuments', 'certificationExpiresAt'],
+  2: ['insuranceDocuments', 'insuranceExpiresAt', 'ticketsDocuments', 'ticketsExpiresAt', 'certificationDocuments', 'certificationExpiresAt'],
   3: ['profileImage', 'professionalBio', 'workExamples'],
 };
 

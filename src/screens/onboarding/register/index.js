@@ -1,4 +1,4 @@
-import RegisterAccountTypeScreen from './AccountTypeScreen';
+import RegisterAccountTypeScreen from './RegisterAccountTypeScreen';
 import BusinessDetailsScreen from './company/BusinessDetailsScreen';
 import CardDetailsScreen from './company/CardDetailsScreen';
 import CompanyDetailsScreen from './company/CompanyDetailsScreen';

@@ -242,9 +242,9 @@ export const buildSubcontractorSignupFormData = ({
   insuranceDocuments:       __,   // file object — UI only, not sent
   insuranceDocumentUrl,
   insuranceExpiresAt,
-  ticketDocuments:          ___,  // file object — UI only, not sent
-  ticketDocumentUrl,
-  ticketExpiresAt,
+  ticketsDocuments:         ___,  // file object — UI only, not sent
+  ticketsDocumentUrl,
+  ticketsExpiresAt,
   certificationDocuments:   ____, // file object — UI only, not sent
   certificationDocumentUrl,
   certificationExpiresAt,
@@ -275,8 +275,10 @@ export const buildSubcontractorSignupFormData = ({
   if (insuranceISO) fd.append('insurance[expiresAt]', insuranceISO);
 
   // ── Tickets document URL + expiry ─────────────────────────────────────────────
-  if (ticketDocumentUrl) fd.append('ticketDocuments', ticketDocumentUrl);
-  const ticketsISO = parseDDMMYYYY(ticketExpiresAt);
+  // Wire key is plural — matches `tickets[expiresAt]` below, the `tickets` group
+  // the API returns, and the profile update payload.
+  if (ticketsDocumentUrl) fd.append('ticketsDocuments', ticketsDocumentUrl);
+  const ticketsISO = parseDDMMYYYY(ticketsExpiresAt);
   if (ticketsISO) fd.append('tickets[expiresAt]', ticketsISO);
 
   // ── Certification document URL + expiry ──────────────────────────────────────

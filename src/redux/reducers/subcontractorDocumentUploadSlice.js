@@ -20,7 +20,8 @@ const parseUploadError = (error) => {
   return raw;
 };
 
-const DOCUMENT_TYPES = ['insurance', 'ticket', 'certification'];
+// Also the `documentType` values POST /subcontractor/upload-document accepts.
+const DOCUMENT_TYPES = ['insurance', 'tickets', 'certification'];
 
 const makeEntry = () => ({
   uploading:   false,
@@ -30,6 +31,15 @@ const makeEntry = () => ({
 });
 
 const initialState = Object.fromEntries(DOCUMENT_TYPES.map((t) => [t, makeEntry()]));
+
+// Returns the draft entry for a document type, creating it if the slice predates
+// it. Without this, a state shape left over from a Fast Refresh — or a renamed
+// document type — makes the reducers throw on `state[t].uploading`.
+const entryFor = (state, documentType) => {
+  if (!documentType) return null;
+  if (!state[documentType]) state[documentType] = makeEntry();
+  return state[documentType];
+};
 
 // ── Async Thunk ────────────────────────────────────────────────────────────────
 
@@ -56,31 +66,32 @@ const subcontractorDocumentUploadSlice = createSlice({
   initialState,
   reducers: {
     clearDocumentUpload: (state, { payload: documentType }) => {
-      state[documentType] = makeEntry();
+      if (documentType) state[documentType] = makeEntry();
     },
     resetAllDocumentUploads: () => ({ ...initialState }),
   },
   extraReducers: (builder) => {
     builder
       .addCase(uploadSubcontractorDocument.pending, (state, { meta }) => {
-        const t = meta.arg.documentType;
-        state[t].uploading   = true;
-        state[t].error       = null;
-        state[t].documentUrl = null;
-        state[t].expiresAt   = null;
+        const entry = entryFor(state, meta.arg.documentType);
+        if (!entry) return;
+        entry.uploading   = true;
+        entry.error       = null;
+        entry.documentUrl = null;
+        entry.expiresAt   = null;
       })
       .addCase(uploadSubcontractorDocument.fulfilled, (state, { payload }) => {
-        const t = payload.documentType;
-        state[t].uploading   = false;
-        state[t].documentUrl = payload.url;
-        state[t].expiresAt   = payload.expiresAt;
+        const entry = entryFor(state, payload.documentType);
+        if (!entry) return;
+        entry.uploading   = false;
+        entry.documentUrl = payload.url;
+        entry.expiresAt   = payload.expiresAt;
       })
       .addCase(uploadSubcontractorDocument.rejected, (state, { payload }) => {
-        const t = payload?.documentType;
-        if (t) {
-          state[t].uploading = false;
-          state[t].error     = payload.message ?? 'Upload failed.';
-        }
+        const entry = entryFor(state, payload?.documentType);
+        if (!entry) return;
+        entry.uploading = false;
+        entry.error     = payload.message ?? 'Upload failed.';
       });
   },
 });

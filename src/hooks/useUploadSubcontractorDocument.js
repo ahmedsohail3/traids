@@ -10,7 +10,7 @@ const FALLBACK = { uploading: false, error: null, documentUrl: null, expiresAt: 
 /**
  * useUploadSubcontractorDocument
  *
- * Manages upload state for a single document type ('insurance' | 'ticket' | 'certification').
+ * Manages upload state for a single document type ('insurance' | 'tickets' | 'certification').
  *
  * Returns:
  *   uploading   — true while the API call is in flight

@@ -74,12 +74,8 @@ const LoginScreen = ({ route, navigation }) => {
           error={fieldErrors.password}
         />
 
-        {/* Remember + Forgot row */}
+        {/* Forgot row */}
         <View style={styles.forgotRow}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={styles.checkboxStub} />
-            <Text style={{ fontSize: RFValue(10), color: colors.textSecondary }}>Remember me</Text>
-          </View>
           <TouchableOpacity onPress={() => navigation.navigate('ResetPassword', { userType: accountType })}>
             <Text style={{ fontSize: RFValue(10), color: colors.secondary }}>Forgot Password?</Text>
           </TouchableOpacity>
@@ -102,7 +98,7 @@ const LoginScreen = ({ route, navigation }) => {
         </Text>
         <Text
           style={{ color: colors.primary, fontFamily: FontFamily.bold }}
-          onPress={() => navigation.navigate('Register')}>
+          onPress={() => navigation.navigate('Register', { screen: 'RegisterAccountType' })}>
           Register
         </Text>
       </View>
@@ -128,18 +124,10 @@ const styles = StyleSheet.create({
   form: { marginBottom: 4 },
   forgotRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     marginTop: -4,
     marginBottom: 16,
-  },
-  checkboxStub: {
-    width: 14,
-    height: 14,
-    borderWidth: 1,
-    borderColor: '#0A2540',
-    borderRadius: 1,
-    marginRight: 6,
   },
   apiError: {
     fontSize: RFValue(11),

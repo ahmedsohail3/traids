@@ -158,10 +158,10 @@ const QualificationScreen = ({ navigation }) => {
 
       <DocumentSection
         label="Tickets"
-        documentType="ticket"
-        fileField="ticketDocuments"
-        urlField="ticketDocumentUrl"
-        expiryField="ticketExpiresAt"
+        documentType="tickets"
+        fileField="ticketsDocuments"
+        urlField="ticketsDocumentUrl"
+        expiryField="ticketsExpiresAt"
       />
 
       <DocumentSection

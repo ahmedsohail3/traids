@@ -1,4 +1,9 @@
-import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+} from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Building2, HardHat, ArrowRight } from 'lucide-react-native';
 import { Text, ScrollView } from '~components/Common';
@@ -41,23 +46,29 @@ const AccountCard = ({
     </View>
     <Text
       variant="sectionTitle"
-      style={{ color: mainColor, marginBottom: 8, fontFamily: FontFamily.bold }}>
+      style={{
+        color: mainColor,
+        marginBottom: 8,
+      }}>
       {title}
     </Text>
-    <Text
-      variant="body"
-      style={[styles.cardDesc, { color: colors.textSecondary }]}>
+    <Text variant='body' style={[styles.cardDesc, { color: colors.textSecondary }]}>
       {description}
     </Text>
     <View style={styles.ctaRow}>
-      <Text style={[styles.cardCta, { color: mainColor }]}>Get Started</Text>
-      <ArrowRight size={RFValue(12)} color={mainColor} strokeWidth={2.5} style={{ marginLeft: 6 }} />
+      <Text variant='button' style={[styles.cardCta, { color: mainColor }]}>Get Started</Text>
+      <ArrowRight
+        size={RFValue(12)}
+        color={mainColor}
+        strokeWidth={2.5}
+        style={{ marginLeft: 6 }}
+      />
     </View>
   </TouchableOpacity>
 );
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
-const RegisterAccountTypeScreen = ({ navigation }) => {
+const LoginAccountTypeScreen = ({ navigation }) => {
   const { colors } = useTheme();
 
   return (
@@ -65,7 +76,7 @@ const RegisterAccountTypeScreen = ({ navigation }) => {
       contentContainerStyle={styles.scroll}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled">
-      {/* Logo header */}
+      {/* Header / Logo */}
       <View style={styles.header}>
         <Logo />
         <Text variant="screenTitle">Traids.</Text>
@@ -76,7 +87,9 @@ const RegisterAccountTypeScreen = ({ navigation }) => {
         style={{ fontFamily: FontFamily.bold, marginBottom: 10 }}>
         Choose Your Account Type
       </Text>
-      <Text variant="body" style={{ color: colors.textSecondary, marginBottom: 20 }}>
+      <Text
+        variant="body"
+        style={{ color: colors.textSecondary, marginBottom: 20 }}>
         Select the profile that best fits your role in the construction ecosystem.
       </Text>
 
@@ -84,34 +97,37 @@ const RegisterAccountTypeScreen = ({ navigation }) => {
       <View style={styles.cardsContainer}>
         <AccountCard
           icon={Building2}
-          title="Register as Company"
+          title="Login as Company"
           description="I want to hire subcontractors, manage projects, and streamline my workforce administration."
           mainColor={colors.primary}
-          iconBgColor="#F4F8FB"
-          onPress={() => navigation.navigate('BusinessDetails')}
+          iconBgColor="#F4F8FB" // Very light blue
+          onPress={() => navigation.navigate('Login', { accountType: 'company' })}
           colors={colors}
         />
         <AccountCard
           icon={HardHat}
-          title="Register as Subcontractor"
+          title="Login as Subcontractor"
           description="I am a skilled tradesperson or freelancer looking for high-quality projects and secure payments."
           mainColor={colors.secondary}
-          iconBgColor="#FEF5ED"
-          onPress={() => navigation.navigate('SubPersonalDetails')}
+          iconBgColor="#FEF5ED" // Very light orange
+          onPress={() => navigation.navigate('Login', { accountType: 'subcontractor' })}
           colors={colors}
         />
       </View>
 
-      {/* Login link */}
-      <View style={styles.loginRow}>
-        <Text variant="body" style={{ color: colors.textSecondary }}>
-          Already have an Account?{' '}
+      {/* Register Link */}
+      <View style={styles.registerRow}>
+        <Text variant='body' style={{ color: colors.textSecondary }}>
+          Don't Have an Account?{' '}
         </Text>
         <Text
-          variant="body"
+          variant='body'
           style={{ color: colors.primary, fontFamily: FontFamily.bold }}
-          onPress={() => navigation.navigate('Login')}>
-          Login
+          // Naming the inner screen rewinds RegisterNavigator to its entry point.
+          // Without it, re-entering Register resumes wherever the user left off
+          // mid-signup, since the nested navigator keeps its own state.
+          onPress={() => navigation.navigate('Register', { screen: 'RegisterAccountType' })}>
+          Register
         </Text>
       </View>
     </ScrollView>
@@ -120,9 +136,8 @@ const RegisterAccountTypeScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   scroll: {
-    flexGrow: 1,
+    flex: 1,
     paddingTop: 16,
-    paddingBottom: 40,
   },
   header: {
     flexDirection: 'row',
@@ -169,13 +184,21 @@ const styles = StyleSheet.create({
     fontSize: RFValue(12),
     fontFamily: FontFamily.semiBold,
   },
-  loginRow: {
+  registerRow: {
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
+  registerText: {
+    fontSize: RFValue(12),
+    fontFamily: FontFamily.regular,
+  },
+  registerLink: {
+    fontSize: RFValue(12),
+    fontFamily: FontFamily.bold,
+  },
 });
 
-export default RegisterAccountTypeScreen;
+export default LoginAccountTypeScreen;
