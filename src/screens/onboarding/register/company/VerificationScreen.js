@@ -45,7 +45,7 @@ const VerificationScreen = ({ navigation }) => {
     // No card to attach — registration is done either way
     if (!pmId) {
       reset();
-      navigation.navigate('Login');
+      navigation.navigate('Login', { accountType: 'company' });
       return;
     }
 
@@ -56,7 +56,7 @@ const VerificationScreen = ({ navigation }) => {
         type: 'error',
       });
       reset();
-      navigation.navigate('Login');
+      navigation.navigate('Login', { accountType: 'company' });
       return;
     }
 
@@ -78,7 +78,7 @@ const VerificationScreen = ({ navigation }) => {
     }
 
     reset();
-    navigation.navigate('Login');
+    navigation.navigate('Login', { accountType: 'company' });
   }, [formData, paymentMethodId, startSession, saveCard, reset, navigation, showAlert]);
 
   // Signup succeeded — hand off to the post-account work

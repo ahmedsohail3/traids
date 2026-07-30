@@ -111,7 +111,7 @@ const CardDetailsScreen = ({navigation, route}) => {
       message: 'Your card has been saved.',
       type: 'success',
     });
-    navigation.navigate('Login');
+    navigation.navigate('Login', { accountType: 'company' });
   }, [
     cardComplete,
     billingName,

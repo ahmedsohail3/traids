@@ -14,8 +14,10 @@ const COMPLETED_ITEMS = [
 
 const CompletionScreen = ({ navigation }) => {
   const handleGoToLogin = useCallback(() => {
-    // Pop back to the root of AuthNavigator so we land on Login
-    navigation.navigate('Login');
+    // Pop back to the root of AuthNavigator so we land on Login. accountType is
+    // explicit: Login defaults to 'company' without it, and navigating to an
+    // existing Login in the stack would otherwise keep its stale params.
+    navigation.navigate('Login', { accountType: 'subcontractor' });
   }, [navigation]);
 
   return (
