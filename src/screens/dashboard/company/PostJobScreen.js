@@ -649,12 +649,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   rateInputInner: {paddingLeft: 0, paddingRight: 12},
-  avgRateText: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: RFValue(9),
-    color: '#22C55E',
-    marginBottom: 20,
-  },
 
   tooltipBox: {
     position: 'absolute',
