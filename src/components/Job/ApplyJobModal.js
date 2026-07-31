@@ -6,8 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Platform,
-  KeyboardAvoidingView,
   Image,
   ActivityIndicator,
 } from 'react-native';
@@ -21,6 +19,7 @@ import { Images } from '~assets';
 import useSubcontractorJobs from '~hooks/useSubcontractorJobs';
 import useProfile from '~hooks/useProfile';
 import useAlert from '~hooks/useAlert';
+import useKeyboardInset from '~hooks/useKeyboardInset';
 import { buildJobApplicationFormData } from '~utils/buildFormData';
 import { pickDocument, pickImageFromLibrary } from '~utils/filePicker';
 
@@ -78,6 +77,11 @@ const ApplyJobModal = ({ visible, onClose, onSeeMyJobs, jobTitle, jobId }) => {
   const { showAlert } = useAlert();
   const { applyForJob, applyingForJob } = useSubcontractorJobs();
   const { profile } = useProfile();
+
+  // Measured keyboard avoidance instead of KeyboardAvoidingView: inside a Modal
+  // the KAV frame goes stale, so the sheet kept the keyboard's space after the
+  // keyboard was dismissed. This resolves back to 0 on every layout.
+  const { keyboardInset, keyboardVisible, onLayout } = useKeyboardInset(insets.bottom);
 
   const [form,      setForm]      = useState({ ...INITIAL_FORM });
   const [errors,    setErrors]    = useState({});
@@ -173,9 +177,11 @@ const ApplyJobModal = ({ visible, onClose, onSeeMyJobs, jobTitle, jobId }) => {
       animationType="slide"
       onRequestClose={handleClose}
     >
-      <KeyboardAvoidingView
-        style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      {/* Padding the overlay — not the sheet — keeps the sheet's maxHeight
+          measured against the space left above the keyboard. */}
+      <View
+        style={[styles.overlay, { paddingBottom: keyboardInset }]}
+        onLayout={onLayout}
       >
         {/* Backdrop */}
         <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={handleClose} />
@@ -183,7 +189,11 @@ const ApplyJobModal = ({ visible, onClose, onSeeMyJobs, jobTitle, jobId }) => {
         {/* Sheet */}
         <View style={[
           styles.sheet,
-          { backgroundColor: colors.modalBackground, paddingBottom: Math.max(insets.bottom, 16) },
+          {
+            backgroundColor: colors.modalBackground,
+            // The keyboard already covers the bottom safe area.
+            paddingBottom: keyboardVisible ? 16 : Math.max(insets.bottom, 16),
+          },
         ]}>
           <View style={styles.dragHandle} />
 
@@ -332,7 +342,7 @@ const ApplyJobModal = ({ visible, onClose, onSeeMyJobs, jobTitle, jobId }) => {
             </>
           )}
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 };
