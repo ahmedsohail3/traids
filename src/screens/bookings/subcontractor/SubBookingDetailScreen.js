@@ -6,7 +6,7 @@
  *   Offers tab    → offer object: { job: { _id, ... }, company, ... }
  *   Other tabs    → job object directly: { _id, jobTitle, company, ... }
  */
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, ActivityIndicator, Image, Linking,
 } from 'react-native';
@@ -36,6 +36,13 @@ const STATUS_STYLE = {
   pending:       { bg: ORANGE,    text: '#FFFFFF', label: 'Pending'     },
   completed:     { bg: '#3BB273', text: '#FFFFFF', label: 'Completed'   },
   offer:         { bg: '#6366F1', text: '#FFFFFF', label: 'Offer'       },
+};
+
+// Shown in place of the Accept/Reject buttons once the offer has been answered.
+// Colours match SubOfferCard's badge so the list and this screen agree.
+const OFFER_RESPONSE = {
+  accepted: { bg: '#077a09', label: 'Offer Accepted' },
+  rejected: { bg: '#DC2626', label: 'Offer Rejected' },
 };
 
 const fmtDate = (iso) => {
@@ -97,8 +104,22 @@ const SubBookingDetailScreen = ({ navigation, route }) => {
     processingOfferAction,
   } = useSubcontractorJobs();
 
-  const { getBookings } = useSubcontractorBookings();
+  const { offers, getBookings } = useSubcontractorBookings();
   const { rawConversations, getConversations } = useChat();
+
+  // The Accept/Reject buttons hang off the *offer's* status, not the job's —
+  // the job stays 'pending' after a response, so it can't gate them. Seeded from
+  // the offer we were handed, then updated from the action response and from any
+  // refreshed offers list (e.g. answered elsewhere).
+  const [offerStatus, setOfferStatus] = useState(booking?.status ?? 'pending');
+
+  const storedOfferStatus = offerId
+    ? offers?.find((o) => o._id === offerId)?.status
+    : null;
+
+  useEffect(() => {
+    if (storedOfferStatus) setOfferStatus(storedOfferStatus);
+  }, [storedOfferStatus]);
 
   const load = useCallback(() => {
     if (jobId) getJobDetails(jobId);
@@ -142,7 +163,8 @@ const SubBookingDetailScreen = ({ navigation, route }) => {
       type:        'success',
       onConfirm:   async () => {
         try {
-          await acceptJobOffer(offerId);
+          const res = await acceptJobOffer(offerId);
+          setOfferStatus(res?.data?.status ?? 'accepted');
           showAlert({ title: 'Accepted', message: 'Offer accepted successfully.', type: 'success' });
           if (jobId) getJobDetails(jobId);
           getBookings();
@@ -162,11 +184,11 @@ const SubBookingDetailScreen = ({ navigation, route }) => {
       type:        'error',
       onConfirm:   async () => {
         try {
-          await rejectJobOffer(offerId);
+          const res = await rejectJobOffer(offerId);
+          setOfferStatus(res?.data?.status ?? 'rejected');
           showAlert({ title: 'Rejected', message: 'Offer rejected successfully.', type: 'success' });
           if (jobId) getJobDetails(jobId);
           getBookings();
-          navigation.goBack();
         } catch (err) {
           showAlert({ title: 'Error', message: err ?? 'Failed to reject offer.', type: 'error' });
         }
@@ -176,6 +198,8 @@ const SubBookingDetailScreen = ({ navigation, route }) => {
 
   const statusKey   = (job?.status ?? '').toLowerCase();
   const statusStyle = STATUS_STYLE[statusKey] ?? STATUS_STYLE.pending;
+
+  const offerResponse = OFFER_RESPONSE[offerStatus] ?? null;
 
   const companyInitial  = (company.companyName ?? 'C')[0].toUpperCase();
   const avatarColor     = AVATAR_COLORS[0];
@@ -240,7 +264,12 @@ const SubBookingDetailScreen = ({ navigation, route }) => {
                   <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>Message</Text>
                 </TouchableOpacity>
               )}
-              {isOffer && statusKey === 'pending' && (
+              {isOffer && offerResponse && (
+                <View style={[styles.offerResponseBadge, { backgroundColor: offerResponse.bg }]}>
+                  <Text style={styles.offerResponseText}>{offerResponse.label}</Text>
+                </View>
+              )}
+              {isOffer && offerStatus === 'pending' && (
                 <>
                   <TouchableOpacity
                     style={[styles.actionBtn, { backgroundColor: '#FEE2E2', flex: 1 }]}
@@ -429,6 +458,18 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   actionBtnText: {
+    fontFamily: FontFamily.bold,
+    fontSize: RFValue(11),
+  },
+  offerResponseBadge: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: RFValue(42),
+    borderRadius: 10,
+  },
+  offerResponseText: {
+    color: '#FFFFFF',
     fontFamily: FontFamily.bold,
     fontSize: RFValue(11),
   },
