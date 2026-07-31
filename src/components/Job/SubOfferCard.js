@@ -14,16 +14,21 @@
  *   onViewDoc          function(docName)
  *   onPress            function
  */
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { RFValue } from 'react-native-responsive-fontsize';
-import { FileText, Eye, CheckCircle } from 'lucide-react-native';
-import { Text } from '~components/Common';
-import { FontFamily } from '~theme/fonts';
-import { useTheme } from '~context/ThemeContext';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
+import {RFValue} from 'react-native-responsive-fontsize';
+import {FileText, Eye, CheckCircle} from 'lucide-react-native';
+import {Text} from '~components/Common';
+import {FontFamily} from '~theme/fonts';
+import {useTheme} from '~context/ThemeContext';
 
 const STATUS_BADGE = {
-  accepted: { label: 'Accepted', color: '#077a09' },
-  rejected: { label: 'Rejected', color: '#DC2626' },
+  accepted: {label: 'Accepted', color: '#077a09'},
+  rejected: {label: 'Rejected', color: '#DC2626'},
 };
 
 const AVATAR_COLORS = ['#10375C', '#F2A154', '#3BB273', '#6366F1', '#EC4899'];
@@ -43,49 +48,65 @@ const SubOfferCard = ({
   onViewDoc,
   onPress,
 }) => {
-  const { colors } = useTheme();
+  const {colors} = useTheme();
   const avatarColor = AVATAR_COLORS[companyColorIndex % AVATAR_COLORS.length];
-  const allVerified = documents.length > 0 && documents.every(d => d.verified);
+  // const allVerified = documents.length > 0 && documents.every(d => d.verified);
   const badge = STATUS_BADGE[status];
 
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.88}
-      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
-    >
+      style={[
+        styles.card,
+        {backgroundColor: colors.surface, borderColor: colors.border},
+      ]}>
       {/* ── Header: logo | title+company | rate ── */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
+      <View style={[styles.header, {borderBottomColor: colors.border}]}>
+        <View style={[styles.avatar, {backgroundColor: avatarColor}]}>
           <Text style={styles.avatarText}>{companyInitial}</Text>
         </View>
 
         <View style={styles.titleBlock}>
-          <Text style={[styles.jobTitle, { color: colors.textPrimary }]} numberOfLines={2}>
+          <Text
+            style={[styles.jobTitle, {color: colors.textPrimary}]}
+            numberOfLines={2}>
             {jobTitle}
           </Text>
-          <Text style={[styles.companyName, { color: colors.textSecondary }]}>
+          <Text style={[styles.companyName, {color: colors.textSecondary}]}>
             {companyName}
           </Text>
         </View>
 
         <View style={styles.rateBlock}>
-          <Text style={[styles.rateValue, { color: colors.textPrimary }]}>{rate}</Text>
-          <Text style={[styles.rateLabel, { color: colors.textSecondary }]}>Quote/Bid</Text>
+          <Text style={[styles.rateValue, {color: colors.textPrimary}]}>
+            {rate}
+          </Text>
+          <Text style={[styles.rateLabel, {color: colors.textSecondary}]}>
+            Quote/Bid
+          </Text>
         </View>
       </View>
 
       {/* ── Body ── */}
       <View style={styles.body}>
         {/* Message */}
-        <Text style={[styles.sectionLabel, { color: colors.textPrimary }]}>Message</Text>
-        <Text style={[styles.messageText, { color: colors.textSecondary }]} numberOfLines={5}>
+        <Text style={[styles.sectionLabel, {color: colors.textPrimary}]}>
+          Message
+        </Text>
+        <Text
+          style={[styles.messageText, {color: colors.textSecondary}]}
+          numberOfLines={5}>
           {message}
         </Text>
 
         {/* Compliance Documents */}
         {documents.length > 0 && (
-          <Text style={[styles.sectionLabel, { color: colors.textPrimary, marginTop: 12 }]}>
+          <Text
+            style={[
+              styles.sectionLabel,
+              {color: colors.textPrimary, marginTop: 12},
+            ]}>
             Compliance &amp; Safety Documents
           </Text>
         )}
@@ -99,27 +120,38 @@ const SubOfferCard = ({
                 backgroundColor: doc.verified ? '#F0FDF4' : colors.surface,
                 borderColor: doc.verified ? '#16A34A' : colors.border,
               },
-            ]}
-          >
+            ]}>
             <FileText
               size={RFValue(13)}
               color={doc.verified ? '#16A34A' : '#94A3B8'}
               strokeWidth={1.8}
             />
             <Text
-              style={[styles.docName, { color: doc.verified ? '#16A34A' : colors.textPrimary }]}
-              numberOfLines={1}
-            >
+              style={[
+                styles.docName,
+                {color: doc.verified ? '#16A34A' : colors.textPrimary},
+              ]}
+              numberOfLines={1}>
               {doc.name}
             </Text>
             <View style={styles.docIcons}>
-              <TouchableOpacity onPress={() => onViewDoc?.(doc.name)} hitSlop={8}>
+              <TouchableOpacity
+                onPress={() => onViewDoc?.(doc.name)}
+                hitSlop={8}>
                 <Eye size={RFValue(14)} color="#94A3B8" strokeWidth={1.8} />
               </TouchableOpacity>
               {doc.verified ? (
-                <CheckCircle size={RFValue(15)} color="#22C55E" strokeWidth={1.5} />
+                <CheckCircle
+                  size={RFValue(15)}
+                  color="#22C55E"
+                  strokeWidth={1.5}
+                />
               ) : (
-                <CheckCircle size={RFValue(15)} color="#CBD5E1" strokeWidth={1.5} />
+                <CheckCircle
+                  size={RFValue(15)}
+                  color="#CBD5E1"
+                  strokeWidth={1.5}
+                />
               )}
             </View>
           </View>
@@ -127,32 +159,35 @@ const SubOfferCard = ({
       </View>
 
       {/* ── Footer actions ── */}
-      <View style={[styles.footer, { borderTopColor: colors.border }]}>
+      <View style={[styles.footer, {borderTopColor: colors.border}]}>
         {badge ? (
-          <View style={[styles.statusBadge, { backgroundColor: badge.color }]}>
+          <View style={[styles.statusBadge, {backgroundColor: badge.color}]}>
             <Text style={styles.statusBadgeText}>{badge.label}</Text>
           </View>
         ) : (
           <>
             <TouchableOpacity
-              style={[styles.rejectBtn, { borderColor: colors.primary }]}
+              style={[styles.rejectBtn, {borderColor: colors.primary}]}
               onPress={onReject}
               disabled={loading}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.rejectBtnText, { color: colors.textPrimary }]}>Reject</Text>
+              activeOpacity={0.8}>
+              <Text style={[styles.rejectBtnText, {color: colors.textPrimary}]}>
+                Reject
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.acceptBtn, allVerified && styles.acceptBtnFilled]}
+              style={styles.acceptBtn}
               onPress={onAccept}
               disabled={loading}
-              activeOpacity={0.85}
-            >
-              {loading
-                ? <ActivityIndicator size="small" color="#FFFFFF" />
-                : <Text style={[styles.acceptBtnText, { color: allVerified ? '#FFFFFF' : '#CBD5E1' }]}>Accept</Text>
-              }
+              activeOpacity={0.85}>
+              {loading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={[styles.acceptBtnText, {color: '#FFFFFF'}]}>
+                  Accept
+                </Text>
+              )}
             </TouchableOpacity>
           </>
         )}
@@ -168,7 +203,7 @@ const styles = StyleSheet.create({
     marginBottom: RFValue(14),
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
@@ -284,7 +319,7 @@ const styles = StyleSheet.create({
     // borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F2A154',
   },
   acceptBtnFilled: {
     backgroundColor: '#F2A154',
