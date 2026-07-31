@@ -10,8 +10,7 @@ import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 import { useAlertContext } from '~providers/AlertProvider';
 import useNotifications, {
-  handleNotificationPress,
-  useMarkNotificationRead,
+  useNotificationPress,
   useMarkAllNotificationsRead,
 } from '~hooks/useNotifications';
 import NotificationCard from '~components/Notifications/NotificationCard';
@@ -19,16 +18,12 @@ import NotificationCard from '~components/Notifications/NotificationCard';
 const NotificationsScreen = ({ navigation }) => {
   const { colors }                                                  = useTheme();
   const { notifications, loadingNotifications, getNotifications }   = useNotifications();
-  const { markAsRead }                                              = useMarkNotificationRead();
   const { markAllRead, markingAllRead }                             = useMarkAllNotificationsRead();
   const { showConfirm }                                             = useAlertContext();
 
   useEffect(() => { getNotifications(); }, []);
 
-  const handlePress = useCallback(
-    (item) => handleNotificationPress(item, navigation, markAsRead),
-    [navigation, markAsRead],
-  );
+  const handlePress = useNotificationPress(navigation);
 
   const handleMarkAllRead = useCallback(() => {
     showConfirm({

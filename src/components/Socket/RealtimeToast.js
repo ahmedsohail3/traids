@@ -12,12 +12,17 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RFValue } from 'react-native-responsive-fontsize';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useDispatch } from 'react-redux';
+import { useNavigation } from '@react-navigation/native';
+import { useDispatch, useSelector } from 'react-redux';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { clearLatestEvent } from '~redux/reducers/socketSlice';
 import useRealtimeNotifications from '~hooks/useRealtimeNotifications';
-import { getNotificationMeta } from '~hooks/useNotifications';
+import {
+  getNotificationMeta,
+  resolveNotificationRoute,
+  getRoleStackRoute,
+} from '~hooks/useNotifications';
 
 const TOAST_DURATION_MS = 4000;
 const SLIDE_MS          = 280;
@@ -25,7 +30,10 @@ const SLIDE_MS          = 280;
 const RealtimeToast = () => {
   const dispatch        = useDispatch();
   const insets          = useSafeAreaInsets();
+  const navigation      = useNavigation();
   const { latestEvent } = useRealtimeNotifications();
+  const conversations   = useSelector((s) => s.chat?.conversations ?? []);
+  const userType        = useSelector((s) => s.auth?.user?.type ?? 'company');
 
   const translateY   = useRef(new Animated.Value(-120)).current;
   const timerRef     = useRef(null);
@@ -49,6 +57,21 @@ const RealtimeToast = () => {
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(hide, TOAST_DURATION_MS);
   }, [translateY, hide]);
+
+  // Tapping the toast opens whatever the event refers to — the conversation, the
+  // job, etc. The toast sits outside the role navigator's stack, so its navigation
+  // object is RootNavigator's: target the screen through its parent route.
+  const handlePress = useCallback(() => {
+    hide();
+
+    const route = resolveNotificationRoute(latestEvent, { userType, conversations });
+    if (!route) return;
+
+    navigation.navigate(getRoleStackRoute(userType), {
+      screen: route.name,
+      params: route.params,
+    });
+  }, [hide, latestEvent, conversations, navigation, userType]);
 
   useEffect(() => {
     if (!latestEvent) return;
@@ -74,7 +97,7 @@ const RealtimeToast = () => {
     >
       <TouchableOpacity
         style={styles.toast}
-        onPress={hide}
+        onPress={handlePress}
         activeOpacity={0.9}
       >
         <View style={[styles.iconWrap, { backgroundColor: `${meta.color}20` }]}>

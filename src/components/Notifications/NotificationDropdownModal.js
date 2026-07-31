@@ -9,15 +9,13 @@ import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useAlertContext } from '~providers/AlertProvider';
 import useNotifications, {
-  handleNotificationPress,
-  useMarkNotificationRead,
+  useNotificationPress,
   useMarkAllNotificationsRead,
 } from '~hooks/useNotifications';
 import NotificationCard from './NotificationCard';
 
 const NotificationDropdownModal = ({ visible, onClose, navigation }) => {
   const { notifications, loadingNotifications, getNotifications } = useNotifications();
-  const { markAsRead }                = useMarkNotificationRead();
   const { markAllRead, markingAllRead } = useMarkAllNotificationsRead();
   const { showConfirm }               = useAlertContext();
 
@@ -27,10 +25,12 @@ const NotificationDropdownModal = ({ visible, onClose, navigation }) => {
 
   const preview = notifications.slice(0, 3);
 
+  const onNotificationPress = useNotificationPress(navigation);
+
   const handleItemPress = useCallback((item) => {
     onClose();
-    handleNotificationPress(item, navigation, markAsRead);
-  }, [onClose, navigation, markAsRead]);
+    onNotificationPress(item);
+  }, [onClose, onNotificationPress]);
 
   const handleMarkAllRead = useCallback(() => {
     showConfirm({

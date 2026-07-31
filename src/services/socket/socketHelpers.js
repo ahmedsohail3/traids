@@ -61,6 +61,7 @@ export const buildNotificationFromEvent = (eventType, payload) => {
         title:      'Offer Rejected',
         message:    `${payload.subcontractorName ?? 'A subcontractor'} declined your offer for "${payload.jobTitle ?? 'a job'}"`,
         senderName: payload.subcontractorName ?? null,
+        jobId:      payload.jobId ?? null,
         isRead:     false,
         createdAt:  now,
       };
@@ -128,16 +129,20 @@ export const buildNotificationFromEvent = (eventType, payload) => {
 /**
  * Build a lightweight toast event object from a socket event.
  * This is stored in socketSlice for the in-app toast banner.
+ * conversationId/jobId are carried through so the toast can be tapped to open
+ * the related screen.
  */
 export const buildToastEvent = (eventType, payload) => {
   const notification = buildNotificationFromEvent(eventType, payload);
   if (!notification) return null;
   return {
-    id:         notification._id,
-    type:       notification.type,
-    title:      notification.title,
-    message:    notification.message,
-    senderName: notification.senderName ?? null,
-    timestamp:  notification.createdAt,
+    id:             notification._id,
+    type:           notification.type,
+    title:          notification.title,
+    message:        notification.message,
+    senderName:     notification.senderName ?? null,
+    conversationId: notification.conversationId ?? null,
+    jobId:          notification.jobId ?? null,
+    timestamp:      notification.createdAt,
   };
 };

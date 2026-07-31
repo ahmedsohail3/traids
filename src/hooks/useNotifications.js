@@ -38,30 +38,81 @@ export const formatNotificationTime = (dateStr) => {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 };
 
-// ── Navigation handler ────────────────────────────────────────────────────────
-// markRead is optional — pass it to mark before navigating
+// ── Route resolution ──────────────────────────────────────────────────────────
+// Single source of truth for "which screen does this notification/toast open?".
+// Both the notification lists and the realtime toast go through it, so a socket
+// event and its notification-list twin always land on the same screen.
+//
+// Returns a route relative to the role stack (CompanyNavigator / SubNavigator),
+// or null when the event carries nothing to open.
 
-export const handleNotificationPress = (notification, navigation, markRead) => {
+// Job-shaped notification types — every one of these opens the job it refers to.
+const JOB_TYPES = new Set([
+  'newJobApplication',
+  'offerAccepted',
+  'applicationRejected',
+  'jobOffer',
+]);
+
+export const resolveNotificationRoute = (
+  notification,
+  { userType = 'company', conversations = [] } = {},
+) => {
+  if (!notification) return null;
+  const isSub = userType === 'subcontractor';
+
+  if (notification.type === 'newMessage') {
+    const { conversationId } = notification;
+    if (!conversationId) return null;
+    // Fall back to a minimal conversation — the chat screen fetches its
+    // messages by _id anyway.
+    const conversation =
+      conversations.find((c) => c._id === conversationId) ??
+      { _id: conversationId, name: notification.senderName ?? 'Chat' };
+    return { name: isSub ? 'SubChat' : 'CompanyChat', params: { conversation } };
+  }
+
+  if (JOB_TYPES.has(notification.type)) {
+    if (notification.jobId) {
+      return {
+        name:   isSub ? 'SubJobDetail' : 'CompanyJobDetail',
+        params: { jobId: notification.jobId },
+      };
+    }
+    // Some offer events only carry an offerId — no job to open, so fall back to
+    // the jobs list rather than leaving the press dead.
+    return {
+      name:   isSub ? 'SubTabs' : 'CompanyTabs',
+      params: { screen: isSub ? 'JobBoard' : 'Jobs' },
+    };
+  }
+
+  return null;
+};
+
+// RootNavigator's route for each role stack — needed when navigating from
+// outside that stack (the toast lives there).
+export const getRoleStackRoute = (userType) =>
+  (userType === 'subcontractor' ? 'SubApp' : 'CompanyApp');
+
+// ── Navigation handler ────────────────────────────────────────────────────────
+// markRead is optional — pass it to mark before navigating.
+// `navigation` must belong to the role stack; pass { userType, conversations },
+// or use useNotificationPress below, which wires both up for you.
+
+export const handleNotificationPress = (
+  notification,
+  navigation,
+  markRead,
+  options = {},
+) => {
   if (!notification) return;
   const id = notification._id ?? notification.id;
   if (markRead && id && !notification.isRead) markRead(id);
   if (!navigation) return;
-  switch (notification.type) {
-    case 'newMessage':
-      if (notification.conversationId) {
-        navigation.navigate('CompanyChat', { conversationId: notification.conversationId });
-      }
-      break;
-    case 'newJobApplication':
-    case 'offerAccepted':
-    case 'applicationRejected':
-      if (notification.jobId) {
-        navigation.navigate('CompanyJobDetail', { jobId: notification.jobId });
-      }
-      break;
-    default:
-      break;
-  }
+
+  const route = resolveNotificationRoute(notification, options);
+  if (route) navigation.navigate(route.name, route.params);
 };
 
 // ── Primary hook ──────────────────────────────────────────────────────────────
@@ -102,6 +153,21 @@ export const useMarkNotificationRead = () => {
   );
 
   return { markAsRead, markingRead, markReadError };
+};
+
+// ── useNotificationPress ──────────────────────────────────────────────────────
+// Marks the notification read and routes to the right screen for the user's role.
+
+export const useNotificationPress = (navigation) => {
+  const { markAsRead } = useMarkNotificationRead();
+  const conversations  = useSelector((s) => s.chat?.conversations ?? []);
+  const userType       = useSelector((s) => s.auth?.user?.type ?? 'company');
+
+  return useCallback(
+    (notification) =>
+      handleNotificationPress(notification, navigation, markAsRead, { userType, conversations }),
+    [navigation, markAsRead, userType, conversations],
+  );
 };
 
 // ── useMarkAllNotificationsRead ───────────────────────────────────────────────
