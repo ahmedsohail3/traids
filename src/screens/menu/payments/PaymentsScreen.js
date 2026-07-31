@@ -1,20 +1,34 @@
-import { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
+import { useState, useEffect, useMemo } from 'react';
+import {
+  View, StyleSheet, TextInput as RNTextInput, ActivityIndicator, RefreshControl,
+} from 'react-native';
 import { ScrollView, Text } from '~components/Common';
 import Header from '~components/Header';
 import { useTheme } from '~context/ThemeContext';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { FontFamily } from '~theme/fonts';
-import { DollarSign, Search, SlidersHorizontal, Download, Eye } from 'lucide-react-native';
+import { DollarSign, Search } from 'lucide-react-native';
+import useSubcontractorWallet from '~hooks/useSubcontractorWallet';
+import useAlert from '~hooks/useAlert';
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-const INVOICES = [
-  { id: 'INV-001', status: 'Pending', hours: 16, amount: '£1250.00', fee: '£40.00', company: 'Buildright Construction' },
-  { id: 'INV-001', status: 'Pending', hours: 16, amount: '£1250.00', fee: '£40.00', company: 'Buildright Construction' },
-  { id: 'INV-001', status: 'Paid',    hours: 16, amount: '£1250.00', fee: '£40.00', company: 'Buildright Construction' },
-  { id: 'INV-001', status: 'Paid',    hours: 16, amount: '£1250.00', fee: '£40.00', company: 'Buildright Construction' },
-  { id: 'INV-001', status: 'Paid',    hours: 16, amount: '£1250.00', fee: '£40.00', company: 'Buildright Construction' },
-];
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const CURRENCY_SYMBOLS = { GBP: '£', USD: '$', EUR: '€' };
+
+const money = (amount, currency = 'GBP') =>
+  `${CURRENCY_SYMBOLS[currency] ?? ''}${Number(amount ?? 0).toFixed(2)}`;
+
+// Balances arrive as one entry per currency. Accounts are single-currency in
+// practice, so the first entry is the balance to show.
+const primaryBalance = (balances = []) => balances[0] ?? { amount: 0, currency: 'GBP' };
+
+const fmtDate = (iso) => {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  return isNaN(date.getTime())
+    ? '—'
+    : date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 const SummaryCard = ({ label, value, negative }) => (
@@ -36,47 +50,80 @@ const StatusPill = ({ status }) => {
   );
 };
 
-const InvoiceRow = ({ item }) => (
+const TransactionRow = ({ item, currency }) => (
   <View style={styles.invoiceRow}>
     {/* Top line */}
     <View style={styles.invoiceTop}>
-      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center',  }}>
-        <Text style={styles.invoiceId}>{item.id}</Text>
-        <StatusPill status={item.status} />
+      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+        <Text style={styles.invoiceId}>{item.invoiceNumber ?? '—'}</Text>
+        <StatusPill status={item.paidAt ? 'Paid' : 'Pending'} />
       </View>
       <View style={styles.invoiceAmountBlock}>
         <View style={{ flexDirection: 'row', gap: 4 }}>
-          <Text style={styles.invoiceHours}>{item.hours} hours</Text>
-          <Text style={styles.invoiceAmount}>{item.amount}</Text>
+          <Text style={styles.invoiceHours}>{item.hours ?? 0} hrs</Text>
+          <Text style={styles.invoiceAmount}>{money(item.netPayable, currency)}</Text>
         </View>
-        <Text style={styles.invoiceFee}>{item.fee}</Text>
+        <Text style={styles.invoiceFee}>
+          {money(item.grossAmount, currency)} gross · {money(item.platformFee, currency)} fee
+        </Text>
       </View>
     </View>
 
-    {/* Company name */}
-    <Text style={styles.invoiceCompany}>{item.company}</Text>
+    {/* Company + job */}
+    <Text style={styles.invoiceCompany}>{item.company?.companyName?.trim() ?? '—'}</Text>
+    <Text style={styles.invoiceJob} numberOfLines={1}>
+      {item.job?.jobTitle ?? '—'}
+      {item.hourlyRate != null ? ` · ${money(item.hourlyRate, currency)}/hr` : ''}
+    </Text>
 
     <View style={styles.divider} />
 
-    {/* Actions row */}
+    {/* Meta row */}
     <View style={styles.invoiceActions}>
-      <Text style={styles.actionsLabel}>Actions</Text>
-      <View style={styles.actionIcons}>
-        <TouchableOpacity style={styles.iconBtn}>
-          <Eye size={RFValue(13)} color="#94A3B8" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.iconBtn}>
-          <Download size={RFValue(13)} color="#94A3B8" />
-        </TouchableOpacity>
-      </View>
+      <Text style={styles.actionsLabel}>
+        {item.weekNumber != null ? `Week ${item.weekNumber}` : 'Week —'}
+        {item.weekStartDate ? ` · ${fmtDate(item.weekStartDate)}` : ''}
+      </Text>
+      <Text style={styles.actionsLabel}>
+        {item.paidAt ? `Paid ${fmtDate(item.paidAt)}` : 'Awaiting payment'}
+      </Text>
     </View>
   </View>
 );
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
-const PaymentsScreen = ({ navigation }) => {
+const PaymentsScreen = () => {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const [search, setSearch] = useState('');
+
+  const { available, pending, transactions, loading, error, getWallet } = useSubcontractorWallet();
+
+  useEffect(() => { getWallet(); }, [getWallet]);
+
+  useEffect(() => {
+    if (error) showAlert({ title: 'Unable to Load', message: error, type: 'error' });
+  }, [error, showAlert]);
+
+  const availableBalance = primaryBalance(available);
+  const pendingBalance   = primaryBalance(pending);
+  const currency         = availableBalance.currency ?? pendingBalance.currency;
+
+  const totalPaid = useMemo(
+    () => transactions.reduce((sum, t) => sum + Number(t.netPayable ?? 0), 0),
+    [transactions],
+  );
+
+  const visibleTransactions = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return transactions;
+    return transactions.filter((t) =>
+      [t.invoiceNumber, t.company?.companyName, t.job?.jobTitle, t.job?.trade]
+        .some((field) => field?.toLowerCase().includes(query)),
+    );
+  }, [transactions, search]);
+
+  const showEmptyState = !loading && visibleTransactions.length === 0;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -86,53 +133,62 @@ const PaymentsScreen = ({ navigation }) => {
         showBackButton
       />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContainer}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContainer}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={getWallet} tintColor="#10375C" />
+        }
+      >
         {/* Summary Cards */}
-        <SummaryCard label="Net Earnings" value="£142,500" />
-        <SummaryCard label="Awaiting Payment" value="£445.50" />
-        <SummaryCard label="Overdue Balance" value="£1,080.00" negative />
+        <SummaryCard label="Available Balance" value={money(availableBalance.amount, currency)} />
+        <SummaryCard label="Awaiting Payment"  value={money(pendingBalance.amount, currency)} />
+        <SummaryCard label="Total Paid Out"    value={money(totalPaid, currency)} />
 
-        {/* Invoice List Card */}
+        {/* Transaction List Card */}
         <View style={styles.listCard}>
-          {/* Search & Filter Bar */}
+          {/* Search Bar */}
           <View style={styles.searchBar}>
             <View style={styles.searchInputWrap}>
               <Search size={RFValue(12)} color="#94A3B8" />
               <RNTextInput
                 style={styles.searchInput}
-                placeholder="Search..."
+                placeholder="Search invoice, company or job..."
                 placeholderTextColor="#94A3B8"
                 value={search}
                 onChangeText={setSearch}
               />
             </View>
-            <TouchableOpacity style={styles.filterBtn}>
-              <SlidersHorizontal size={RFValue(14)} color="#64748B" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.filterBtn}>
-              <Download size={RFValue(14)} color="#64748B" />
-            </TouchableOpacity>
           </View>
 
-          {/* Invoice Rows */}
-          {INVOICES.map((item, idx) => (
-            <View key={idx}>
-              <InvoiceRow item={item} />
+          {loading && transactions.length === 0 ? (
+            <View style={styles.loader}>
+              <ActivityIndicator size="large" color="#10375C" />
             </View>
-          ))}
+          ) : showEmptyState ? (
+            <View style={styles.loader}>
+              <Text style={styles.emptyText}>
+                {search.trim() ? 'No matching transactions.' : 'No transactions yet.'}
+              </Text>
+            </View>
+          ) : (
+            visibleTransactions.map((item, idx) => (
+              <TransactionRow
+                key={item.invoiceNumber ?? idx}
+                item={item}
+                currency={currency}
+              />
+            ))
+          )}
 
-          {/* Pagination Footer */}
-          <View style={styles.paginationRow}>
-            <Text style={styles.paginationCount}>Showing {INVOICES.length} results</Text>
-            <View style={styles.paginationBtns}>
-              <TouchableOpacity>
-                <Text style={styles.paginationBtn}>Previous</Text>
-              </TouchableOpacity>
-              <TouchableOpacity>
-                <Text style={[styles.paginationBtn, styles.paginationBtnActive]}>Next</Text>
-              </TouchableOpacity>
+          {/* Footer count */}
+          {visibleTransactions.length > 0 && (
+            <View style={styles.paginationRow}>
+              <Text style={styles.paginationCount}>
+                Showing {visibleTransactions.length} of {transactions.length} results
+              </Text>
             </View>
-          </View>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -215,14 +271,13 @@ const styles = StyleSheet.create({
     color: '#10375C',
     padding: 0,
   },
-  filterBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    alignItems: 'center',
-    justifyContent: 'center',
+
+  // Loading / empty
+  loader: { paddingVertical: 32, alignItems: 'center', justifyContent: 'center' },
+  emptyText: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(11),
+    color: '#94A3B8',
   },
 
   // Invoice rows
@@ -257,7 +312,13 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: RFValue(10.5),
     color: '#10375C',
-    marginBottom: 12,
+    marginBottom: 2,
+  },
+  invoiceJob: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10),
+    color: '#64748B',
+    marginBottom: 10,
   },
   invoiceActions: {
     flexDirection: 'row',
@@ -269,8 +330,6 @@ const styles = StyleSheet.create({
     fontSize: RFValue(10),
     color: '#94A3B8',
   },
-  actionIcons: { flexDirection: 'row', gap: 12 },
-  iconBtn: { padding: 2 },
   divider: { height: 1, backgroundColor: '#EFEFEF', marginVertical: 10 },
 
   // Status Pill
@@ -302,13 +361,6 @@ const styles = StyleSheet.create({
     fontSize: RFValue(10),
     color: '#94A3B8',
   },
-  paginationBtns: { flexDirection: 'row', gap: 16 },
-  paginationBtn: {
-    fontFamily: FontFamily.medium,
-    fontSize: RFValue(10.5),
-    color: '#94A3B8',
-  },
-  paginationBtnActive: { color: '#10375C', fontFamily: FontFamily.bold },
 });
 
 export default PaymentsScreen;
