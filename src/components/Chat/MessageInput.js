@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import {useState} from 'react';
 import {
   View,
   StyleSheet,
@@ -10,10 +10,17 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { RFValue } from 'react-native-responsive-fontsize';
-import { FontFamily } from '~theme/fonts';
-import { Paperclip, Send, X, FileText, File, ImageIcon } from 'lucide-react-native';
-import { Text } from '~components/Common';
+import {RFValue} from 'react-native-responsive-fontsize';
+import {FontFamily} from '~theme/fonts';
+import {
+  Paperclip,
+  Send,
+  X,
+  FileText,
+  File,
+  ImageIcon,
+} from 'lucide-react-native';
+import {Text} from '~components/Common';
 import {
   pick,
   keepLocalCopy,
@@ -21,58 +28,77 @@ import {
   isErrorWithCode,
   errorCodes,
 } from '@react-native-documents/picker';
-import { launchImageLibrary } from 'react-native-image-picker';
+import {launchImageLibrary} from 'react-native-image-picker';
 
 // ── Pickers ───────────────────────────────────────────────────────────────────
 
 const pickImages = () =>
-  new Promise((resolve) => {
-    launchImageLibrary({ mediaType: 'mixed', selectionLimit: 5, quality: 0.85 }, (res) => {
-      if (res.didCancel || res.errorCode) return resolve([]);
-      resolve(
-        (res.assets ?? []).map((a) => ({
-          uri:  a.uri,
-          type: a.type  ?? 'image/jpeg',
-          name: a.fileName ?? `photo_${Date.now()}.jpg`,
-        })),
-      );
-    });
+  new Promise(resolve => {
+    launchImageLibrary(
+      {mediaType: 'mixed', selectionLimit: 5, quality: 0.85},
+      res => {
+        if (res.didCancel || res.errorCode) return resolve([]);
+        resolve(
+          (res.assets ?? []).map(a => ({
+            uri: a.uri,
+            type: a.type ?? 'image/jpeg',
+            name: a.fileName ?? `photo_${Date.now()}.jpg`,
+          })),
+        );
+      },
+    );
   });
 
 const pickDocuments = async () => {
   try {
-    const results = await pick({ allowMultiSelection: true, type: [types.allFiles] });
-    const copies  = await keepLocalCopy({
-      files:       results.map((r) => ({ uri: r.uri, fileName: r.name ?? 'file' })),
+    const results = await pick({
+      allowMultiSelection: true,
+      type: [types.allFiles],
+    });
+    const copies = await keepLocalCopy({
+      files: results.map(r => ({uri: r.uri, fileName: r.name ?? 'file'})),
       destination: 'cachesDirectory',
     });
     return copies
       .map((c, i) =>
         c.status !== 'error'
-          ? { uri: c.localUri, type: results[i].type ?? 'application/octet-stream', name: results[i].name ?? 'document' }
+          ? {
+              uri: c.localUri,
+              type: results[i].type ?? 'application/octet-stream',
+              name: results[i].name ?? 'document',
+            }
           : null,
       )
       .filter(Boolean);
   } catch (err) {
-    if (isErrorWithCode(err) && err.code === errorCodes.OPERATION_CANCELED) return [];
+    if (isErrorWithCode(err) && err.code === errorCodes.OPERATION_CANCELED)
+      return [];
     return [];
   }
 };
 
 // ── Attachment preview chip ───────────────────────────────────────────────────
 
-const isImageType = (file) => file.type?.startsWith('image/');
+const isImageType = file => file.type?.startsWith('image/');
 
-const AttachmentChip = ({ file, onRemove }) => (
+const AttachmentChip = ({file, onRemove}) => (
   <View style={styles.chip}>
     {isImageType(file) ? (
-      <Image source={{ uri: file.uri }} style={styles.chipImage} resizeMode="cover" />
+      <Image
+        source={{uri: file.uri}}
+        style={styles.chipImage}
+        resizeMode="cover"
+      />
     ) : (
       <View style={styles.chipDoc}>
-        {file.type === 'application/pdf'
-          ? <FileText size={RFValue(14)} color="#10375C" strokeWidth={1.8} />
-          : <File     size={RFValue(14)} color="#10375C" strokeWidth={1.8} />}
-        <Text style={styles.chipName} numberOfLines={1}>{file.name}</Text>
+        {file.type === 'application/pdf' ? (
+          <FileText size={RFValue(14)} color="#10375C" strokeWidth={1.8} />
+        ) : (
+          <File size={RFValue(14)} color="#10375C" strokeWidth={1.8} />
+        )}
+        <Text style={styles.chipName} numberOfLines={1}>
+          {file.name}
+        </Text>
       </View>
     )}
     <TouchableOpacity style={styles.chipRemove} onPress={onRemove} hitSlop={6}>
@@ -83,30 +109,30 @@ const AttachmentChip = ({ file, onRemove }) => (
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-const MessageInput = ({ onSend, sendingMessage }) => {
-  const [text,         setText]         = useState('');
-  const [attachments,  setAttachments]  = useState([]);
+const MessageInput = ({onSend, sendingMessage}) => {
+  const [text, setText] = useState('');
+  const [attachments, setAttachments] = useState([]);
   const [sheetVisible, setSheetVisible] = useState(false);
 
-  const removeAttachment = (idx) =>
-    setAttachments((prev) => prev.filter((_, i) => i !== idx));
+  const removeAttachment = idx =>
+    setAttachments(prev => prev.filter((_, i) => i !== idx));
 
   const handlePickImages = async () => {
     setSheetVisible(false);
     const files = await pickImages();
-    if (files.length) setAttachments((prev) => [...prev, ...files]);
+    if (files.length) setAttachments(prev => [...prev, ...files]);
   };
 
   const handlePickDocuments = async () => {
     setSheetVisible(false);
     const files = await pickDocuments();
-    if (files.length) setAttachments((prev) => [...prev, ...files]);
+    if (files.length) setAttachments(prev => [...prev, ...files]);
   };
 
   const handleSend = () => {
     const trimmed = text.trim();
     if ((!trimmed && attachments.length === 0) || sendingMessage) return;
-    onSend({ text: trimmed, attachments });
+    onSend({text: trimmed, attachments});
     setText('');
     setAttachments([]);
   };
@@ -135,7 +161,9 @@ const MessageInput = ({ onSend, sendingMessage }) => {
       {/* Input bar */}
       <View style={styles.container}>
         <View style={styles.inputContainer}>
-          <TouchableOpacity style={styles.attachBtn} onPress={() => setSheetVisible(true)}>
+          <TouchableOpacity
+            style={styles.attachBtn}
+            onPress={() => setSheetVisible(true)}>
             <Paperclip size={RFValue(14)} color="#10375C" />
           </TouchableOpacity>
 
@@ -152,9 +180,11 @@ const MessageInput = ({ onSend, sendingMessage }) => {
             style={[styles.sendBtn, canSend && styles.sendBtnActive]}
             onPress={handleSend}
             disabled={!canSend || sendingMessage}>
-            {sendingMessage
-              ? <ActivityIndicator size="small" color="#FFFFFF" />
-              : <Send size={RFValue(15)} color="#FFFFFF" />}
+            {sendingMessage ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Send size={RFValue(15)} color="#FFFFFF" />
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -171,19 +201,33 @@ const MessageInput = ({ onSend, sendingMessage }) => {
               <View style={styles.sheet}>
                 <View style={styles.sheetHandle} />
 
-                <TouchableOpacity style={styles.sheetOption} onPress={handlePickImages}>
-                  <View style={[styles.sheetIcon, { backgroundColor: '#EFF6FF' }]}>
-                    <ImageIcon size={RFValue(18)} color="#3B82F6" strokeWidth={1.8} />
+                <TouchableOpacity
+                  style={styles.sheetOption}
+                  onPress={handlePickImages}>
+                  <View
+                    style={[styles.sheetIcon, {backgroundColor: '#EFF6FF'}]}>
+                    <ImageIcon
+                      size={RFValue(18)}
+                      color="#3B82F6"
+                      strokeWidth={1.8}
+                    />
                   </View>
                   <View>
-                    <Text style={styles.sheetLabel}>Photo / Video</Text>
+                    <Text style={styles.sheetLabel}>Photo</Text>
                     <Text style={styles.sheetSub}>Choose from gallery</Text>
                   </View>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.sheetOption} onPress={handlePickDocuments}>
-                  <View style={[styles.sheetIcon, { backgroundColor: '#F0FDF4' }]}>
-                    <FileText size={RFValue(18)} color="#22C55E" strokeWidth={1.8} />
+                <TouchableOpacity
+                  style={styles.sheetOption}
+                  onPress={handlePickDocuments}>
+                  <View
+                    style={[styles.sheetIcon, {backgroundColor: '#F0FDF4'}]}>
+                    <FileText
+                      size={RFValue(18)}
+                      color="#22C55E"
+                      strokeWidth={1.8}
+                    />
                   </View>
                   <View>
                     <Text style={styles.sheetLabel}>Document</Text>

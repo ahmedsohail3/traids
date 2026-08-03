@@ -1,23 +1,23 @@
-import { useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { RFValue } from 'react-native-responsive-fontsize';
-import { CheckCircle } from 'lucide-react-native';
-import { Text, Button } from '~components/Common';
-import { FontFamily } from '~theme/fonts';
+import {useCallback} from 'react';
+import {View, StyleSheet, TouchableOpacity} from 'react-native';
+import {RFValue} from 'react-native-responsive-fontsize';
+import {CheckCircle} from 'lucide-react-native';
+import {Text, Button} from '~components/Common';
+import {FontFamily} from '~theme/fonts';
 
 const COMPLETED_ITEMS = [
-  { key: 'traids',    label: 'Traids Account',  sub: 'Profile created' },
-  { key: 'stripe',   label: 'Stripe Account',   sub: 'Payment account active' },
-  { key: 'bank',     label: 'Bank Verified',    sub: 'Barclays ••••9911 connected' },
-  { key: 'identity', label: 'Identity Verified', sub: 'KYC check passed' },
+  {key: 'traids', label: 'Traids Account', sub: 'Profile created'},
+  {key: 'stripe', label: 'Stripe Account', sub: 'Payment account active'},
+  {key: 'bank', label: 'Bank Verified', sub: 'Barclays ••••9911 connected'},
+  {key: 'identity', label: 'Identity Verified', sub: 'KYC check passed'},
 ];
 
-const CompletionScreen = ({ navigation }) => {
+const CompletionScreen = ({navigation}) => {
   const handleGoToLogin = useCallback(() => {
     // Pop back to the root of AuthNavigator so we land on Login. accountType is
     // explicit: Login defaults to 'company' without it, and navigating to an
     // existing Login in the stack would otherwise keep its stale params.
-    navigation.navigate('Login', { accountType: 'subcontractor' });
+    navigation.navigate('Login', {accountType: 'subcontractor'});
   }, [navigation]);
 
   return (
@@ -37,17 +37,12 @@ const CompletionScreen = ({ navigation }) => {
         </View>
 
         {/* Headline */}
-        <Text
-          variant="sectionTitle"
-          align="center"
-          style={styles.headline}>
-          You're all set, Emma!
+        <Text variant="sectionTitle" align="center" style={styles.headline}>
+          You're all set!
         </Text>
-        <Text
-          variant="body"
-          align="center"
-          style={styles.subtitle}>
-          Your bank account has been verified. You can now receive payments from companies on Traids.
+        <Text variant="body" align="center" style={styles.subtitle}>
+          Your bank account has been verified. You can now receive payments from
+          companies on Traids.
         </Text>
 
         {/* Checklist */}
@@ -60,7 +55,11 @@ const CompletionScreen = ({ navigation }) => {
             ]}>
             {/* Check icon */}
             <View style={styles.rowIcon}>
-              <CheckCircle size={RFValue(16)} color="#22C55E" strokeWidth={2.5} />
+              <CheckCircle
+                size={RFValue(16)}
+                color="#22C55E"
+                strokeWidth={2.5}
+              />
             </View>
             {/* Text */}
             <View style={styles.rowText}>

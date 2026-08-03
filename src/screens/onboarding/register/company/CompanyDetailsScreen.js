@@ -1,20 +1,27 @@
-import { useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Text, Button, TextInput } from '~components/Common';
-import { FontFamily } from '~theme/fonts';
+import {useCallback} from 'react';
+import {View, StyleSheet} from 'react-native';
+import {Text, Button, TextInput} from '~components/Common';
+import {FontFamily} from '~theme/fonts';
 import RegisterContainer from '../RegisterContainer';
 import useCompanySignup from '~hooks/useCompanySignup';
 import useScrollToFieldError from '~hooks/useScrollToFieldError';
 
-const CompanyDetailsScreen = ({ navigation }) => {
-  const { formData, errors, updateField, clearError, validateStep, validating, validateOnServer } =
-    useCompanySignup();
+const CompanyDetailsScreen = ({navigation}) => {
+  const {
+    formData,
+    errors,
+    updateField,
+    clearError,
+    validateStep,
+    validating,
+    validateOnServer,
+  } = useCompanySignup();
 
   // Server-validated fields — listed top-down so the highest error wins the scroll
-  const { scrollRef, onContentLayout, registerField } = useScrollToFieldError(errors, [
-    'workEmail',
-    'phoneNumber',
-  ]);
+  const {scrollRef, onContentLayout, registerField} = useScrollToFieldError(
+    errors,
+    ['workEmail', 'phoneNumber'],
+  );
 
   const handleContinue = useCallback(async () => {
     if (!validateStep(3)) return;
@@ -30,18 +37,20 @@ const CompanyDetailsScreen = ({ navigation }) => {
       totalSteps={4}
       scrollRef={scrollRef}
       onContentLayout={onContentLayout}>
-
       <Text
         variant="sectionTitle"
-        style={{ fontFamily: FontFamily.bold, marginBottom: 20 }}>
+        style={{fontFamily: FontFamily.bold, marginBottom: 20}}>
         Company Registration
       </Text>
 
       <TextInput
         label="Primary Contact Name *"
         value={formData.primaryContactName}
-        onChangeText={v => { updateField('primaryContactName', v); clearError('primaryContactName'); }}
-        placeholder="John Doe"
+        onChangeText={v => {
+          updateField('primaryContactName', v);
+          clearError('primaryContactName');
+        }}
+        placeholder="Contact Name"
         autoCapitalize="words"
         error={errors.primaryContactName}
       />
@@ -50,8 +59,11 @@ const CompanyDetailsScreen = ({ navigation }) => {
         <TextInput
           label="Work Email *"
           value={formData.workEmail}
-          onChangeText={v => { updateField('workEmail', v); clearError('workEmail'); }}
-          placeholder="john@acme.com"
+          onChangeText={v => {
+            updateField('workEmail', v);
+            clearError('workEmail');
+          }}
+          placeholder="user@example.com"
           keyboardType="email-address"
           autoCapitalize="none"
           error={errors.workEmail}
@@ -62,8 +74,11 @@ const CompanyDetailsScreen = ({ navigation }) => {
         <TextInput
           label="Phone Number *"
           value={formData.phoneNumber}
-          onChangeText={v => { updateField('phoneNumber', v); clearError('phoneNumber'); }}
-          placeholder="+44 7706 900083"
+          onChangeText={v => {
+            updateField('phoneNumber', v);
+            clearError('phoneNumber');
+          }}
+          placeholder="Phone Number"
           keyboardType="phone-pad"
           error={errors.phoneNumber}
         />
@@ -72,7 +87,10 @@ const CompanyDetailsScreen = ({ navigation }) => {
       <TextInput
         label="Enter Password *"
         value={formData.password}
-        onChangeText={v => { updateField('password', v); clearError('password'); }}
+        onChangeText={v => {
+          updateField('password', v);
+          clearError('password');
+        }}
         placeholder="••••••••"
         secureTextEntry
         error={errors.password}
@@ -81,7 +99,10 @@ const CompanyDetailsScreen = ({ navigation }) => {
       <TextInput
         label="Confirm Password *"
         value={formData.confirmPassword}
-        onChangeText={v => { updateField('confirmPassword', v); clearError('confirmPassword'); }}
+        onChangeText={v => {
+          updateField('confirmPassword', v);
+          clearError('confirmPassword');
+        }}
         placeholder="••••••••"
         secureTextEntry
         error={errors.confirmPassword}
@@ -90,8 +111,11 @@ const CompanyDetailsScreen = ({ navigation }) => {
       <TextInput
         label="Head Office Address *"
         value={formData.headOfficeAddress}
-        onChangeText={v => { updateField('headOfficeAddress', v); clearError('headOfficeAddress'); }}
-        placeholder="123 Construction Way, London, UK"
+        onChangeText={v => {
+          updateField('headOfficeAddress', v);
+          clearError('headOfficeAddress');
+        }}
+        placeholder="Address"
         autoCapitalize="words"
         error={errors.headOfficeAddress}
       />
@@ -115,9 +139,9 @@ const CompanyDetailsScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  actionRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  cancelBtn:  { flex: 1 },
-  continueBtn:{ flex: 2 },
+  actionRow: {flexDirection: 'row', gap: 12, marginTop: 8},
+  cancelBtn: {flex: 1},
+  continueBtn: {flex: 2},
 });
 
 export default CompanyDetailsScreen;

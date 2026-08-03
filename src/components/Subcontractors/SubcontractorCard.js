@@ -12,19 +12,34 @@
  *   avatarUri   string
  *   onViewProfile function
  */
-import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { RFValue } from 'react-native-responsive-fontsize';
-import { MapPin, Star } from 'lucide-react-native';
-import { Text, Button } from '~components/Common';
-import { FontFamily } from '~theme/fonts';
+import {View, StyleSheet, TouchableOpacity, Image} from 'react-native';
+import {RFValue} from 'react-native-responsive-fontsize';
+import {MapPin, Star} from 'lucide-react-native';
+import {Text, Button} from '~components/Common';
+import {FontFamily} from '~theme/fonts';
 
-const SubcontractorCard = ({ fullName, primaryTrade, totalRatings, yearsOfExperience, distance,cityLocation, professionalBio, hourlyRate, profileImage, onViewProfile }) => {
+const SubcontractorCard = ({
+  fullName,
+  primaryTrade,
+  totalRatings,
+  yearsOfExperience,
+  distance,
+  cityLocation,
+  professionalBio,
+  hourlyRate,
+  profileImage,
+  onViewProfile,
+}) => {
   return (
     <View style={styles.card}>
       {/* Top row: avatar + info */}
       <View style={styles.topRow}>
         <Image
-          source={profileImage ? { uri: profileImage } : { uri: `https://i.pravatar.cc/150?u=${fullName}` }}
+          source={
+            profileImage
+              ? {uri: profileImage}
+              : {uri: `https://i.pravatar.cc/150?u=${fullName}`}
+          }
           style={styles.avatar}
         />
         <View style={styles.info}>
@@ -34,28 +49,40 @@ const SubcontractorCard = ({ fullName, primaryTrade, totalRatings, yearsOfExperi
       </View>
 
       <View style={styles.metaRow}>
-            <View style={styles.ratingWrap}>
-              <Star size={RFValue(10)} color="#B45309" fill="#B45309" />
-              <Text style={styles.ratingText}>{totalRatings}</Text>
-              <Text style={styles.reviewsText}>(Exp: {yearsOfExperience})</Text>
-            </View>
-            <View style={styles.distanceWrap}>
-              <MapPin size={RFValue(10)} color="#94A3B8" />
-              <Text style={styles.distanceText}>{distance || cityLocation || "Distance not available"}</Text>
-            </View>
-          </View>
+        <View style={styles.ratingWrap}>
+          <Star size={RFValue(10)} color="#B45309" fill="#B45309" />
+          <Text style={styles.ratingText}>{totalRatings}</Text>
+          <Text style={styles.reviewsText}>(Exp: {yearsOfExperience})</Text>
+        </View>
+        <View style={styles.distanceWrap}>
+          <MapPin size={RFValue(10)} color="#94A3B8" />
+          <Text style={styles.distanceText}>
+            {distance || cityLocation || 'Distance not available'}
+          </Text>
+        </View>
+      </View>
 
       {/* About */}
-      {professionalBio && <>
-      <Text style={styles.aboutLabel}>About</Text>
-      <Text style={styles.aboutText} numberOfLines={3}>{professionalBio}</Text>
-      </>}
+      {professionalBio && (
+        <>
+          <Text style={styles.aboutLabel}>About</Text>
+          <Text style={styles.aboutText} numberOfLines={3}>
+            {professionalBio}
+          </Text>
+        </>
+      )}
 
       {/* Footer: hourly rate + view profile */}
       <View style={styles.footer}>
-        <View style={{flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginVertical: 10}}>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            width: '100%',
+            marginVertical: 10,
+          }}>
           <Text style={styles.rateLabel}>HOURLY RATE</Text>
-          <Text style={styles.rate}>{hourlyRate}</Text>
+          <Text style={styles.rate}>£{hourlyRate}/hr</Text>
         </View>
         <Button
           title="View Profile"
@@ -88,7 +115,7 @@ const styles = StyleSheet.create({
     borderRadius: RFValue(21),
     backgroundColor: '#F1F5F9',
   },
-  info: { flex: 1 },
+  info: {flex: 1},
   name: {
     fontFamily: FontFamily.bold,
     fontSize: RFValue(13),
@@ -102,12 +129,36 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     textTransform: 'capitalize',
   },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  ratingWrap: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#FFFBEB', paddingHorizontal: 5, borderRadius: 4 },
-  ratingText: { fontFamily: FontFamily.semiBold, fontSize: RFValue(10), color: '#B45309' },
-  reviewsText: { fontFamily: FontFamily.regular, fontSize: RFValue(9), color: '#B4530999' },
-  distanceWrap: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  distanceText: { fontFamily: FontFamily.regular, fontSize: RFValue(10), color: '#94A3B8' },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  ratingWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FFFBEB',
+    paddingHorizontal: 5,
+    borderRadius: 4,
+  },
+  ratingText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: RFValue(10),
+    color: '#B45309',
+  },
+  reviewsText: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(9),
+    color: '#B4530999',
+  },
+  distanceWrap: {flexDirection: 'row', alignItems: 'center', gap: 3},
+  distanceText: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10),
+    color: '#94A3B8',
+  },
   aboutLabel: {
     fontFamily: FontFamily.bold,
     fontSize: RFValue(10),

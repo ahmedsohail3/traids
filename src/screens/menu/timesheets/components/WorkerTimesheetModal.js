@@ -1,29 +1,50 @@
-import { View, StyleSheet, Modal, TouchableOpacity, TouchableWithoutFeedback, Image, ScrollView, Platform } from 'react-native';
-import { RFValue } from 'react-native-responsive-fontsize';
-import { Text} from '~components/Common';
-import { FontFamily } from '~theme/fonts';
-import { ChevronDown, Clock } from 'lucide-react-native';
-import { useTheme } from '~context/ThemeContext';
+import {
+  View,
+  StyleSheet,
+  Modal,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  Image,
+  ScrollView,
+  Platform,
+} from 'react-native';
+import {RFValue} from 'react-native-responsive-fontsize';
+import {Text} from '~components/Common';
+import {FontFamily} from '~theme/fonts';
+import {ChevronDown, Clock} from 'lucide-react-native';
+import {useTheme} from '~context/ThemeContext';
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_NAMES = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+];
 
-const formatLogDate = (iso) => {
+const formatLogDate = iso => {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 };
 
-const buildDailyLogs = (dailyLogs) =>
-  (dailyLogs ?? []).map((log) => ({
-    day:        log.date ? DAY_NAMES[new Date(log.date).getDay()] : '—',
-    hours:      log.hoursWorked != null ? `${log.hoursWorked} hrs` : '—',
-    date:       formatLogDate(log.date),
-    checkedIn:  log.checkIn  ?? '—',
+const buildDailyLogs = dailyLogs =>
+  (dailyLogs ?? []).map(log => ({
+    day: log.date ? DAY_NAMES[new Date(log.date).getDay()] : '—',
+    hours: log.hoursWorked != null ? `${log.hoursWorked} hrs` : '—',
+    date: formatLogDate(log.date),
+    checkedIn: log.checkIn ?? '—',
     checkedOut: log.checkOut ?? '—',
-    pill:       log.hoursWorked != null ? `${log.hoursWorked} hrs` : '—',
+    pill: log.hoursWorked != null ? `${log.hoursWorked} hrs` : '—',
   }));
 
-const WorkerTimesheetModal = ({ visible, onClose, worker }) => {
-  const { colors } = useTheme();
+const WorkerTimesheetModal = ({visible, onClose, worker}) => {
+  const {colors} = useTheme();
   const logs = buildDailyLogs(worker?.dailyLogs);
 
   return (
@@ -31,32 +52,44 @@ const WorkerTimesheetModal = ({ visible, onClose, worker }) => {
       visible={visible}
       transparent={true}
       animationType="slide"
-      onRequestClose={onClose}
-    >
+      onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
-          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+          <TouchableWithoutFeedback onPress={e => e.stopPropagation()}>
             <View style={styles.sheet}>
               <View style={styles.handleBar} />
 
               {/* Header */}
               <View style={styles.header}>
                 <View style={styles.headerLeft}>
-                  <Image source={{ uri: worker?.avatarUri ?? `https://i.pravatar.cc/150?u=${worker?._id || 1}` }} style={styles.avatar} />
+                  <Image
+                    source={{
+                      uri:
+                        worker?.avatarUri ??
+                        `https://i.pravatar.cc/150?u=${worker?._id || 1}`,
+                    }}
+                    style={styles.avatar}
+                  />
                   <View>
                     <Text style={styles.title}>Timesheet</Text>
-                    <Text style={styles.subtitle}>{worker?.name || 'John Smith'}'s Timesheet</Text>
+                    <Text style={styles.subtitle}>
+                      {worker?.name || 'User'}'s Timesheet
+                    </Text>
                   </View>
                 </View>
 
                 <TouchableOpacity style={styles.dropdownWrap}>
-                  <Text style={styles.dropdownText}>Week {worker?.weekNumber ?? 1}</Text>
+                  <Text style={styles.dropdownText}>
+                    Week {worker?.weekNumber ?? 1}
+                  </Text>
                   <ChevronDown size={RFValue(12)} color="#94A3B8" />
                 </TouchableOpacity>
               </View>
 
               {/* Scrollable list */}
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContainer}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.listContainer}>
                 {logs.map((item, idx) => (
                   <View key={idx} style={styles.dayCard}>
                     {/* Top row */}
@@ -68,7 +101,11 @@ const WorkerTimesheetModal = ({ visible, onClose, worker }) => {
                         </View>
                         <Text style={styles.dayDate}>{item.date}</Text>
                       </View>
-                      <View style={[styles.greenPill, {backgroundColor: colors.success}]}>
+                      <View
+                        style={[
+                          styles.greenPill,
+                          {backgroundColor: colors.success},
+                        ]}>
                         <Text style={styles.greenPillText}>{item.pill}</Text>
                       </View>
                     </View>
@@ -78,15 +115,27 @@ const WorkerTimesheetModal = ({ visible, onClose, worker }) => {
                       <View style={styles.checkinBox}>
                         <Text style={styles.checkinTitle}>Checked In</Text>
                         <View style={styles.checkinValRow}>
-                          <Text style={styles.checkinVal}>{item.checkedIn}</Text>
-                          <Clock size={RFValue(10)} color="#10375C" strokeWidth={2.5} />
+                          <Text style={styles.checkinVal}>
+                            {item.checkedIn}
+                          </Text>
+                          <Clock
+                            size={RFValue(10)}
+                            color="#10375C"
+                            strokeWidth={2.5}
+                          />
                         </View>
                       </View>
                       <View style={styles.checkinBox}>
                         <Text style={styles.checkinTitle}>Checked Out</Text>
                         <View style={styles.checkinValRow}>
-                          <Text style={styles.checkinVal}>{item.checkedOut}</Text>
-                          <Clock size={RFValue(10)} color="#10375C" strokeWidth={2.5} />
+                          <Text style={styles.checkinVal}>
+                            {item.checkedOut}
+                          </Text>
+                          <Clock
+                            size={RFValue(10)}
+                            color="#10375C"
+                            strokeWidth={2.5}
+                          />
                         </View>
                       </View>
                     </View>
@@ -159,7 +208,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    backgroundColor: '#FCFDFD'
+    backgroundColor: '#FCFDFD',
   },
   dropdownText: {
     fontFamily: FontFamily.semiBold,
