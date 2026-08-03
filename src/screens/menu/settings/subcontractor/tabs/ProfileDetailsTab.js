@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -15,6 +15,15 @@ import TradeDropdown from '~components/Job/TradeDropdown';
 import { buildSubcontractorProfileFormData } from '~utils/buildFormData';
 import { pickImageFromLibrary } from '~utils/filePicker';
 import useAlert from '~hooks/useAlert';
+import useSettingsForm from '~hooks/useSettingsForm';
+
+const seedForm = (profile) => ({
+  fullName:        profile.fullName        ?? '',
+  primaryTrade:    profile.primaryTrade    ?? '',
+  hourlyRate:      profile.hourlyRate != null ? String(profile.hourlyRate) : '',
+  professionalBio: profile.professionalBio ?? '',
+  avatar:          profile.profileImage ? { uri: profile.profileImage, isNew: false } : null,
+});
 
 // ── Shared sub-components (mirrors BusinessDetailsTab style) ───────────────────
 
@@ -45,41 +54,18 @@ const Input = ({ placeholder, val, onChange, multiline, keyboardType, error }) =
 const ProfileDetailsTab = ({ profile, updateProfile, updatingProfile }) => {
   const { showAlert } = useAlert();
 
-  const [form, setForm] = useState({
-    fullName:       '',
-    primaryTrade:   '',
-    hourlyRate:     '',
-    professionalBio: '',
-  });
-  const [errors, setErrors]       = useState({});
-  const [avatarFile, setAvatarFile] = useState(null);
-
-  // Seed form from fetched profile
-  useEffect(() => {
-    if (profile) {
-      setForm({
-        fullName:        profile.fullName        ?? '',
-        primaryTrade:    profile.primaryTrade     ?? '',
-        hourlyRate:      profile.hourlyRate != null ? String(profile.hourlyRate) : '',
-        professionalBio: profile.professionalBio  ?? '',
-      });
-      setAvatarFile(
-        profile.profileImage
-          ? { uri: profile.profileImage, isNew: false }
-          : null,
-      );
-    }
-  }, [profile]);
+  const { values: form, setValue, dirty } = useSettingsForm(profile, seedForm);
+  const [errors, setErrors] = useState({});
 
   const setItem = (k, v) => {
-    setForm((p) => ({ ...p, [k]: v }));
+    setValue(k, v);
     setErrors((p) => ({ ...p, [k]: '' }));
   };
 
   const handlePickAvatar = useCallback(async () => {
     const file = await pickImageFromLibrary();
-    if (file) setAvatarFile({ ...file, isNew: true });
-  }, []);
+    if (file) setValue('avatar', { ...file, isNew: true });
+  }, [setValue]);
 
   const validate = () => {
     const e = {};
@@ -100,14 +86,16 @@ const ProfileDetailsTab = ({ profile, updateProfile, updatingProfile }) => {
         primaryTrade:    form.primaryTrade,
         hourlyRate:      form.hourlyRate,
         professionalBio: form.professionalBio,
-        profileImage:    avatarFile,
+        profileImage:    form.avatar,
       });
       await updateProfile(formData);
       showAlert({ title: 'Success', message: 'Profile details updated.', type: 'success' });
     } catch (err) {
       showAlert({ title: 'Error', message: err?.message ?? err ?? 'Update failed.', type: 'error' });
     }
-  }, [form, avatarFile, updateProfile]);
+  }, [form, updateProfile]);
+
+  const saveDisabled = updatingProfile || !dirty;
 
   return (
     <View style={styles.container}>
@@ -115,8 +103,8 @@ const ProfileDetailsTab = ({ profile, updateProfile, updatingProfile }) => {
       {/* Avatar row */}
       <View style={styles.logoRow}>
         <TouchableOpacity style={styles.logoPicker} onPress={handlePickAvatar} activeOpacity={0.8}>
-          {avatarFile?.uri ? (
-            <Image source={{ uri: avatarFile.uri }} style={styles.logoImage} />
+          {form.avatar?.uri ? (
+            <Image source={{ uri: form.avatar.uri }} style={styles.logoImage} />
           ) : (
             <Camera size={RFValue(18)} color="#10375C" strokeWidth={1.5} />
           )}
@@ -164,9 +152,9 @@ const ProfileDetailsTab = ({ profile, updateProfile, updatingProfile }) => {
       </View>
 
       <TouchableOpacity
-        style={[styles.saveButton, updatingProfile && styles.saveButtonDisabled]}
+        style={[styles.saveButton, saveDisabled && styles.saveButtonDisabled]}
         onPress={handleSave}
-        disabled={updatingProfile}
+        disabled={saveDisabled}
         activeOpacity={0.8}
       >
         {updatingProfile ? (

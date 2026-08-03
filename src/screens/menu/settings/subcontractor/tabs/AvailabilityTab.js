@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,16 +11,17 @@ import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { buildSubcontractorProfileFormData } from '~utils/buildFormData';
 import useAlert from '~hooks/useAlert';
+import useSettingsForm from '~hooks/useSettingsForm';
+
+// Defaults to available until the profile says otherwise.
+const seedForm = (profile) => ({
+  available: profile.availability === undefined ? true : Boolean(profile.availability),
+});
 
 const AvailabilityTab = ({ profile, updateProfile, updatingProfile }) => {
   const { showAlert } = useAlert();
-  const [available, setAvailable] = useState(true);
-
-  useEffect(() => {
-    if (profile && profile.availability !== undefined) {
-      setAvailable(Boolean(profile.availability));
-    }
-  }, [profile]);
+  const { values, setValue, dirty } = useSettingsForm(profile, seedForm);
+  const available = values.available;
 
   const handleSave = useCallback(async () => {
     try {
@@ -32,6 +33,8 @@ const AvailabilityTab = ({ profile, updateProfile, updatingProfile }) => {
     }
   }, [available, updateProfile]);
 
+  const saveDisabled = updatingProfile || !dirty;
+
   return (
     <View style={styles.container}>
       <View style={styles.settingRow}>
@@ -41,16 +44,16 @@ const AvailabilityTab = ({ profile, updateProfile, updatingProfile }) => {
         </View>
         <Switch
           value={available}
-          onValueChange={setAvailable}
+          onValueChange={(v) => setValue('available', v)}
           trackColor={{ false: '#E2E8F0', true: '#10375C' }}
           thumbColor="#FFFFFF"
         />
       </View>
 
       <TouchableOpacity
-        style={[styles.saveButton, updatingProfile && styles.saveButtonDisabled]}
+        style={[styles.saveButton, saveDisabled && styles.saveButtonDisabled]}
         onPress={handleSave}
-        disabled={updatingProfile}
+        disabled={saveDisabled}
         activeOpacity={0.8}
       >
         {updatingProfile ? (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,16 +11,19 @@ import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { buildCompanyProfileFormData } from '~utils/buildFormData';
 import useAlert from '~hooks/useAlert';
+import useSettingsForm from '~hooks/useSettingsForm';
+
+// Defaults to on until the profile says otherwise.
+const seedForm = (profile) => ({
+  reminders: profile.timesheetReminders === undefined
+    ? true
+    : Boolean(profile.timesheetReminders),
+});
 
 const NotificationsTab = ({ profile, updateCompanyProfile, updatingProfile }) => {
   const { showAlert } = useAlert();
-  const [reminders, setReminders] = useState(true);
-
-  useEffect(() => {
-    if (profile && profile.timesheetReminders !== undefined) {
-      setReminders(Boolean(profile.timesheetReminders));
-    }
-  }, [profile]);
+  const { values, setValue, dirty } = useSettingsForm(profile, seedForm);
+  const reminders = values.reminders;
 
   const handleSave = useCallback(async () => {
     try {
@@ -32,6 +35,8 @@ const NotificationsTab = ({ profile, updateCompanyProfile, updatingProfile }) =>
     }
   }, [reminders, updateCompanyProfile]);
 
+  const saveDisabled = updatingProfile || !dirty;
+
   return (
     <View style={styles.container}>
       <View style={styles.settingRow}>
@@ -41,16 +46,16 @@ const NotificationsTab = ({ profile, updateCompanyProfile, updatingProfile }) =>
         </View>
         <Switch
           value={reminders}
-          onValueChange={setReminders}
+          onValueChange={(v) => setValue('reminders', v)}
           trackColor={{ false: '#E2E8F0', true: '#10375C' }}
           thumbColor="#FFFFFF"
         />
       </View>
 
       <TouchableOpacity
-        style={[styles.saveButton, updatingProfile && styles.saveButtonDisabled]}
+        style={[styles.saveButton, saveDisabled && styles.saveButtonDisabled]}
         onPress={handleSave}
-        disabled={updatingProfile}
+        disabled={saveDisabled}
         activeOpacity={0.8}>
         {updatingProfile ? (
           <ActivityIndicator size="small" color="#FFFFFF" />

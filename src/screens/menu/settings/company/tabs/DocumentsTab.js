@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -10,6 +10,7 @@ import { FontFamily } from '~theme/fonts';
 import DocumentPickerField from '~components/Common/DocumentPickerField';
 import { buildCompanyProfileFormData } from '~utils/buildFormData';
 import useAlert from '~hooks/useAlert';
+import useSettingsForm from '~hooks/useSettingsForm';
 
 /**
  * Convert an S3 URL to a file descriptor with isNew: false.
@@ -37,46 +38,26 @@ const urlToFile = (url) => {
   }
 };
 
+// The company document comes back as an array; the other two as plain URLs.
+const seedDocs = (profile) => ({
+  company: urlToFile(
+    Array.isArray(profile.companyDocuments)
+      ? profile.companyDocuments[0]
+      : profile.companyDocuments,
+  ),
+  insurance: urlToFile(profile.insuranceCertificate),
+  health:    urlToFile(profile.healthAndSafetyPolicy),
+});
+
 const DocumentsTab = ({ profile, updateCompanyProfile, updatingProfile }) => {
   const { showAlert } = useAlert();
-  const [docs, setDocs] = useState({
-    company: null,
-    insurance: null,
-    health: null,
-  });
-
-  useEffect(() => {
-    if (profile) {
-      const companyUrl = Array.isArray(profile.companyDocuments)
-        ? profile.companyDocuments[0]
-        : profile.companyDocuments;
-      setDocs({
-        company: urlToFile(companyUrl),
-        insurance: urlToFile(profile.insuranceCertificate),
-        health: urlToFile(profile.healthAndSafetyPolicy),
-      });
-    }
-  }, [profile]);
+  const { values: docs, setValue, dirty } = useSettingsForm(profile, seedDocs);
 
   const handleDocChange = useCallback((key, file) => {
-    if (!file) {
-      setDocs((p) => ({ ...p, [key]: null }));
-      return;
-    }
-    setDocs((p) => ({ ...p, [key]: { ...file, isNew: true } }));
-  }, []);
+    setValue(key, file ? { ...file, isNew: true } : null);
+  }, [setValue]);
 
   const handleSave = useCallback(async () => {
-    const hasNewFiles =
-      docs.company?.isNew === true ||
-      docs.insurance?.isNew === true ||
-      docs.health?.isNew === true;
-
-    if (!hasNewFiles) {
-      showAlert({ title: 'No Changes', message: 'No new documents to upload.', type: 'info' });
-      return;
-    }
-
     try {
       const formData = buildCompanyProfileFormData({
         companyDocuments: docs.company,
@@ -90,6 +71,7 @@ const DocumentsTab = ({ profile, updateCompanyProfile, updatingProfile }) => {
     }
   }, [docs, updateCompanyProfile]);
 
+  const saveDisabled = updatingProfile || !dirty;
 
   return (
     <View style={styles.container}>
@@ -115,9 +97,9 @@ const DocumentsTab = ({ profile, updateCompanyProfile, updatingProfile }) => {
       />
 
       <TouchableOpacity
-        style={[styles.saveButton, updatingProfile && styles.saveButtonDisabled]}
+        style={[styles.saveButton, saveDisabled && styles.saveButtonDisabled]}
         onPress={handleSave}
-        disabled={updatingProfile}
+        disabled={saveDisabled}
         activeOpacity={0.8}>
         {updatingProfile ? (
           <ActivityIndicator size="small" color="#FFFFFF" />

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,6 +11,14 @@ import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { buildCompanyProfileFormData } from '~utils/buildFormData';
 import useAlert from '~hooks/useAlert';
+import useSettingsForm from '~hooks/useSettingsForm';
+
+const seedForm = (profile) => ({
+  name:    profile.primaryContactName ?? '',
+  email:   profile.workEmail          ?? '',
+  phone:   profile.phoneNumber        ?? '',
+  address: profile.headOfficeAddress  ?? '',
+});
 
 const FormLabel = ({ text, required }) => (
   <View style={styles.labelRow}>
@@ -31,25 +39,7 @@ const Input = ({ placeholder, val, onChange }) => (
 
 const ContactInfoTab = ({ profile, updateCompanyProfile, updatingProfile }) => {
   const { showAlert } = useAlert();
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-  });
-
-  useEffect(() => {
-    if (profile) {
-      setForm({
-        name: profile.primaryContactName ?? '',
-        email: profile.workEmail ?? '',
-        phone: profile.phoneNumber ?? '',
-        address: profile.headOfficeAddress ?? '',
-      });
-    }
-  }, [profile]);
-
-  const setItem = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+  const { values: form, setValue: setItem, dirty } = useSettingsForm(profile, seedForm);
 
   const handleSave = useCallback(async () => {
     try {
@@ -66,6 +56,8 @@ const ContactInfoTab = ({ profile, updateCompanyProfile, updatingProfile }) => {
     }
   }, [form, updateCompanyProfile]);
 
+  const saveDisabled = updatingProfile || !dirty;
+
   return (
     <View style={styles.container}>
       <FormLabel text="Primary Contact Name" />
@@ -81,9 +73,9 @@ const ContactInfoTab = ({ profile, updateCompanyProfile, updatingProfile }) => {
       <Input val={form.address} onChange={(v) => setItem('address', v)} />
 
       <TouchableOpacity
-        style={[styles.saveButton, updatingProfile && styles.saveButtonDisabled]}
+        style={[styles.saveButton, saveDisabled && styles.saveButtonDisabled]}
         onPress={handleSave}
-        disabled={updatingProfile}
+        disabled={saveDisabled}
         activeOpacity={0.8}>
         {updatingProfile ? (
           <ActivityIndicator size="small" color="#FFFFFF" />

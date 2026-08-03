@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,6 +11,7 @@ import { RFValue } from 'react-native-responsive-fontsize';
 import DocumentPickerField from '~components/Common/DocumentPickerField';
 import { buildSubcontractorProfileFormData } from '~utils/buildFormData';
 import useAlert from '~hooks/useAlert';
+import useSettingsForm from '~hooks/useSettingsForm';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -32,38 +33,25 @@ const firstUrlToFile = (val) => {
   return urlToFile(arr[0] ?? null);
 };
 
+const seedDocs = (profile) => ({
+  insurance:     firstUrlToFile(profile.insurance?.documents),
+  tickets:       firstUrlToFile(profile.tickets?.documents),
+  certification: firstUrlToFile(profile.certification?.documents),
+});
+
 // ── Tab ────────────────────────────────────────────────────────────────────────
 
 const DocumentsTab = ({ profile, updateProfile, updatingProfile }) => {
   const { showAlert } = useAlert();
 
-  const [insurance,     setInsurance]     = useState(null);
-  const [tickets,       setTickets]       = useState(null);
-  const [certification, setCertification] = useState(null);
+  const { values, setValue, dirty } = useSettingsForm(profile, seedDocs);
+  const { insurance, tickets, certification } = values;
 
-  useEffect(() => {
-    if (profile) {
-      setInsurance(firstUrlToFile(profile.insurance?.documents));
-      setTickets(firstUrlToFile(profile.tickets?.documents));
-      setCertification(firstUrlToFile(profile.certification?.documents));
-    }
-  }, [profile]);
-
-  const handleDocChange = useCallback((setter, file) => {
-    setter(file ? { ...file, isNew: true } : null);
-  }, []);
+  const handleDocChange = useCallback((key, file) => {
+    setValue(key, file ? { ...file, isNew: true } : null);
+  }, [setValue]);
 
   const handleSave = useCallback(async () => {
-    const hasNewFiles =
-      insurance?.isNew === true ||
-      tickets?.isNew   === true ||
-      certification?.isNew === true;
-
-    if (!hasNewFiles) {
-      showAlert({ title: 'No Changes', message: 'No new documents to upload.', type: 'info' });
-      return;
-    }
-
     try {
       const formData = buildSubcontractorProfileFormData({
         insuranceDocuments:    insurance     ? [insurance]     : [],
@@ -77,6 +65,8 @@ const DocumentsTab = ({ profile, updateProfile, updatingProfile }) => {
     }
   }, [insurance, tickets, certification, updateProfile]);
 
+  const saveDisabled = updatingProfile || !dirty;
+
   return (
     <View style={styles.container}>
 
@@ -84,27 +74,27 @@ const DocumentsTab = ({ profile, updateProfile, updatingProfile }) => {
         label="Insurance Document"
         hint="JPG, PNG or WEBP up to 10MB"
         value={insurance}
-        onChange={(file) => handleDocChange(setInsurance, file)}
+        onChange={(file) => handleDocChange('insurance', file)}
       />
 
       <DocumentPickerField
         label="Tickets Document"
         hint="JPG, PNG or WEBP up to 10MB"
         value={tickets}
-        onChange={(file) => handleDocChange(setTickets, file)}
+        onChange={(file) => handleDocChange('tickets', file)}
       />
 
       <DocumentPickerField
         label="Certification Document"
         hint="JPG, PNG or WEBP up to 10MB"
         value={certification}
-        onChange={(file) => handleDocChange(setCertification, file)}
+        onChange={(file) => handleDocChange('certification', file)}
       />
 
       <TouchableOpacity
-        style={[styles.saveButton, updatingProfile && styles.saveButtonDisabled]}
+        style={[styles.saveButton, saveDisabled && styles.saveButtonDisabled]}
         onPress={handleSave}
-        disabled={updatingProfile}
+        disabled={saveDisabled}
         activeOpacity={0.8}
       >
         {updatingProfile ? (

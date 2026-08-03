@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -16,6 +16,16 @@ import { FontFamily } from '~theme/fonts';
 import { buildCompanyProfileFormData } from '~utils/buildFormData';
 import { pickImageFromLibrary } from '~utils/filePicker';
 import useAlert from '~hooks/useAlert';
+import useSettingsForm from '~hooks/useSettingsForm';
+
+const seedForm = (profile) => ({
+  name:     profile.companyName        ?? '',
+  regNum:   profile.registrationNumber ?? '',
+  vatNum:   profile.vatNumber          ?? '',
+  industry: profile.industryType       ?? '',
+  about:    profile.aboutUs            ?? '',
+  logo:     profile.profileImage ? { uri: profile.profileImage, isNew: false } : null,
+});
 
 const INDUSTRY_OPTIONS = [
   { label: 'Construction',          value: 'construction' },
@@ -111,38 +121,12 @@ const IndustryDropdown = ({ value, onSelect }) => {
 
 const BusinessDetailsTab = ({ profile, updateCompanyProfile, updatingProfile }) => {
   const { showAlert } = useAlert();
-  const [form, setForm] = useState({
-    name: '',
-    regNum: '',
-    vatNum: '',
-    industry: '',
-    about: '',
-  });
-  const [logoFile, setLogoFile] = useState(null);
-
-  useEffect(() => {
-    if (profile) {
-      setForm({
-        name:     profile.companyName        ?? '',
-        regNum:   profile.registrationNumber ?? '',
-        vatNum:   profile.vatNumber          ?? '',
-        industry: profile.industryType       ?? '',
-        about:    profile.aboutUs            ?? '',
-      });
-      setLogoFile(
-        profile.profileImage
-          ? { uri: profile.profileImage, isNew: false }
-          : null,
-      );
-    }
-  }, [profile]);
-
-  const setItem = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+  const { values: form, setValue: setItem, dirty } = useSettingsForm(profile, seedForm);
 
   const handlePickLogo = useCallback(async () => {
     const file = await pickImageFromLibrary();
-    if (file) setLogoFile({ ...file, isNew: true });
-  }, []);
+    if (file) setItem('logo', { ...file, isNew: true });
+  }, [setItem]);
 
   const handleSave = useCallback(async () => {
     try {
@@ -152,14 +136,16 @@ const BusinessDetailsTab = ({ profile, updateCompanyProfile, updatingProfile }) 
         vatNumber:          form.vatNum,
         industryType:       form.industry,
         aboutUs:            form.about,
-        profileImage:       logoFile,
+        profileImage:       form.logo,
       });
       await updateCompanyProfile(formData);
       showAlert({ title: 'Success', message: 'Business details updated.', type: 'success' });
     } catch (err) {
       showAlert({ title: 'Error', message: err?.message ?? 'Update failed.', type: 'error' });
     }
-  }, [form, logoFile, updateCompanyProfile]);
+  }, [form, updateCompanyProfile]);
+
+  const saveDisabled = updatingProfile || !dirty;
 
   return (
     <View style={styles.container}>
@@ -167,8 +153,8 @@ const BusinessDetailsTab = ({ profile, updateCompanyProfile, updatingProfile }) 
       {/* Logo Upload Row */}
       <View style={styles.logoRow}>
         <TouchableOpacity style={styles.logoPicker} onPress={handlePickLogo} activeOpacity={0.8}>
-          {logoFile?.uri ? (
-            <Image source={{ uri: logoFile.uri }} style={styles.logoImage} />
+          {form.logo?.uri ? (
+            <Image source={{ uri: form.logo.uri }} style={styles.logoImage} />
           ) : (
             <Camera size={RFValue(18)} color="#10375C" strokeWidth={1.5} />
           )}
@@ -199,9 +185,9 @@ const BusinessDetailsTab = ({ profile, updateCompanyProfile, updatingProfile }) 
       </View>
 
       <TouchableOpacity
-        style={[styles.saveButton, updatingProfile && styles.saveButtonDisabled]}
+        style={[styles.saveButton, saveDisabled && styles.saveButtonDisabled]}
         onPress={handleSave}
-        disabled={updatingProfile}
+        disabled={saveDisabled}
         activeOpacity={0.8}>
         {updatingProfile ? (
           <ActivityIndicator size="small" color="#FFFFFF" />

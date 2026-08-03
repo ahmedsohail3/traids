@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -11,19 +11,20 @@ import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { buildSubcontractorProfileFormData } from '~utils/buildFormData';
 import useAlert from '~hooks/useAlert';
+import useSettingsForm from '~hooks/useSettingsForm';
+
+// Both default to on until the profile says otherwise.
+const seedForm = (profile) => ({
+  jobAlerts: profile.jobAlerts === undefined ? true : Boolean(profile.jobAlerts),
+  reminders: profile.timesheetReminders === undefined
+    ? true
+    : Boolean(profile.timesheetReminders),
+});
 
 const NotificationsTab = ({ profile, updateProfile, updatingProfile }) => {
   const { showAlert } = useAlert();
-
-  const [jobAlerts,   setJobAlerts]   = useState(true);
-  const [reminders,   setReminders]   = useState(true);
-
-  useEffect(() => {
-    if (profile) {
-      if (profile.jobAlerts         !== undefined) setJobAlerts(Boolean(profile.jobAlerts));
-      if (profile.timesheetReminders !== undefined) setReminders(Boolean(profile.timesheetReminders));
-    }
-  }, [profile]);
+  const { values, setValue, dirty } = useSettingsForm(profile, seedForm);
+  const { jobAlerts, reminders } = values;
 
   const handleSave = useCallback(async () => {
     try {
@@ -38,6 +39,8 @@ const NotificationsTab = ({ profile, updateProfile, updatingProfile }) => {
     }
   }, [jobAlerts, reminders, updateProfile]);
 
+  const saveDisabled = updatingProfile || !dirty;
+
   return (
     <View style={styles.container}>
 
@@ -48,7 +51,7 @@ const NotificationsTab = ({ profile, updateProfile, updatingProfile }) => {
         </View>
         <Switch
           value={jobAlerts}
-          onValueChange={setJobAlerts}
+          onValueChange={(v) => setValue('jobAlerts', v)}
           trackColor={{ false: '#E2E8F0', true: '#10375C' }}
           thumbColor="#FFFFFF"
         />
@@ -61,16 +64,16 @@ const NotificationsTab = ({ profile, updateProfile, updatingProfile }) => {
         </View>
         <Switch
           value={reminders}
-          onValueChange={setReminders}
+          onValueChange={(v) => setValue('reminders', v)}
           trackColor={{ false: '#E2E8F0', true: '#10375C' }}
           thumbColor="#FFFFFF"
         />
       </View>
 
       <TouchableOpacity
-        style={[styles.saveButton, updatingProfile && styles.saveButtonDisabled]}
+        style={[styles.saveButton, saveDisabled && styles.saveButtonDisabled]}
         onPress={handleSave}
-        disabled={updatingProfile}
+        disabled={saveDisabled}
         activeOpacity={0.8}
       >
         {updatingProfile ? (

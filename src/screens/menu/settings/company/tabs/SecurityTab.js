@@ -7,6 +7,9 @@ import { useTheme } from '~context/ThemeContext';
 import useProfile from '~hooks/useProfile';
 import useAlert from '~hooks/useAlert';
 import { buildCompanyProfileFormData } from '~utils/buildFormData';
+import useSettingsForm from '~hooks/useSettingsForm';
+
+const seedForm = () => ({ newPw: '', confirmPw: '' });
 
 const PASSWORD_RULES = [
   { key: 'length', label: 'At least 8 characters', test: p => p.length >= 8 },
@@ -37,14 +40,14 @@ const SecurityTab = () => {
   const { updateCompanyProfile, updatingProfile } = useProfile();
   const { showAlert } = useAlert();
 
-  const [form, setForm] = useState({
-    newPw: '',
-    confirmPw: '',
-  });
+  // No profile to seed from — the baseline is a pair of empty fields, so the
+  // form is dirty exactly when the user has typed something.
+  const { values: form, setValue, setValues: setForm, dirty } =
+    useSettingsForm(null, seedForm);
   const [errors, setErrors] = useState({});
 
   const setItem = (k, v) => {
-    setForm(p => ({ ...p, [k]: v }));
+    setValue(k, v);
     setErrors(p => ({ ...p, [k]: '' }));
   };
 
@@ -67,7 +70,9 @@ const SecurityTab = () => {
     } catch (err) {
       showAlert({ title: 'Error', message: err?.message ?? 'Update failed.', type: 'error' });
     }
-  }, [form.newPw, form.confirmPw, allRulesPassed, updateCompanyProfile]);
+  }, [form.newPw, form.confirmPw, allRulesPassed, updateCompanyProfile, setForm]);
+
+  const saveDisabled = updatingProfile || !dirty;
 
   return (
     <View style={styles.container}>
@@ -100,9 +105,9 @@ const SecurityTab = () => {
       />
 
       <TouchableOpacity
-        style={[styles.saveButton, updatingProfile && styles.saveButtonDisabled, { marginTop: 24 }]}
+        style={[styles.saveButton, saveDisabled && styles.saveButtonDisabled, { marginTop: 24 }]}
         onPress={handleSave}
-        disabled={updatingProfile}
+        disabled={saveDisabled}
         activeOpacity={0.8}>
         {updatingProfile ? (
           <ActivityIndicator size="small" color="#FFFFFF" />

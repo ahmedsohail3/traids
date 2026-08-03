@@ -11,6 +11,9 @@ import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
 import { buildSubcontractorProfileFormData } from '~utils/buildFormData';
 import useAlert from '~hooks/useAlert';
+import useSettingsForm from '~hooks/useSettingsForm';
+
+const seedForm = () => ({ newPw: '', confirmPw: '' });
 
 const PASSWORD_RULES = [
   { key: 'length', label: 'At least 8 characters', test: (p) => p.length >= 8 },
@@ -31,11 +34,14 @@ const SecurityTab = ({ updateProfile, updatingProfile }) => {
   const { colors } = useTheme();
   const { showAlert } = useAlert();
 
-  const [form, setForm]     = useState({ newPw: '', confirmPw: '' });
+  // No profile to seed from — the baseline is a pair of empty fields, so the
+  // form is dirty exactly when the user has typed something.
+  const { values: form, setValue, setValues: setForm, dirty } =
+    useSettingsForm(null, seedForm);
   const [errors, setErrors] = useState({});
 
   const setItem = (k, v) => {
-    setForm((p) => ({ ...p, [k]: v }));
+    setValue(k, v);
     setErrors((p) => ({ ...p, [k]: '' }));
   };
 
@@ -58,7 +64,9 @@ const SecurityTab = ({ updateProfile, updatingProfile }) => {
     } catch (err) {
       showAlert({ title: 'Error', message: err?.message ?? err ?? 'Update failed.', type: 'error' });
     }
-  }, [form, allRulesPassed, updateProfile]);
+  }, [form, allRulesPassed, updateProfile, setForm]);
+
+  const saveDisabled = updatingProfile || !dirty;
 
   return (
     <View style={styles.container}>
@@ -91,9 +99,9 @@ const SecurityTab = ({ updateProfile, updatingProfile }) => {
       />
 
       <TouchableOpacity
-        style={[styles.saveButton, updatingProfile && styles.saveButtonDisabled]}
+        style={[styles.saveButton, saveDisabled && styles.saveButtonDisabled]}
         onPress={handleSave}
-        disabled={updatingProfile}
+        disabled={saveDisabled}
         activeOpacity={0.8}
       >
         {updatingProfile ? (
