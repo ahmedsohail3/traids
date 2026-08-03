@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "WebFetch(domain:react-native-documents.github.io)",
-      "Read(//Users/macbook/**)",
-      "Read(//Users/macbook/.claude/**)"
-    ]
-  }
-}

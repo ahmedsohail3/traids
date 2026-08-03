@@ -83,3 +83,9 @@ yarn-error.log
 
 # Claude Code agent worktrees
 .claude/worktrees/
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# Local scratch notes
+documents/
