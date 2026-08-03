@@ -63,7 +63,15 @@ export const STEP_VALIDATORS = {
     if (!cityLocation?.trim()) e.cityLocation = 'City / Location is required';
     return e;
   },
-  // Step 2 — documents are optional; no required validation
+  // All three documents are required. The *Url fields are what the signup call
+  // actually sends, so a picked-but-not-yet-uploaded file must not pass.
+  2: ({ insuranceDocumentUrl, ticketsDocumentUrl, certificationDocumentUrl }) => {
+    const e = {};
+    if (!insuranceDocumentUrl)     e.insuranceDocuments     = 'Insurance document is required';
+    if (!ticketsDocumentUrl)       e.ticketsDocuments       = 'Tickets document is required';
+    if (!certificationDocumentUrl) e.certificationDocuments = 'Certification document is required';
+    return e;
+  },
   // Step 3 — profile image, bio and work examples are optional; no required validation
 };
 

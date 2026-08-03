@@ -229,7 +229,6 @@ const parseDDMMYYYY = (str) => {
  *
  * Builds a multipart/form-data payload for POST /subcontractor/signup.
  * - Strips `confirmPassword` (validation-only).
- * - Automatically appends `utr: "5775734565"` (temporary placeholder).
  * - Converts expiry strings from DD/MM/YYYY to YYYY-MM-DD before sending.
  * - Bracket-notation keys (insurance[expiresAt]) are appended as string literals.
  *

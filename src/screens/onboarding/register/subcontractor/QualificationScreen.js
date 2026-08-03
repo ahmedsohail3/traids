@@ -56,7 +56,7 @@ const ExtractedExpiryBadge = ({ date }) => (
 // ─── DocumentSection ──────────────────────────────────────────────────────────
 
 const DocumentSection = ({ label, documentType, fileField, urlField, expiryField }) => {
-  const { formData, updateField } = useSubcontractorSignup();
+  const { formData, errors, updateField, clearError } = useSubcontractorSignup();
   const { uploading, documentUrl, expiresAt, upload, clear } =
     useUploadSubcontractorDocument(documentType);
   const { showAlert } = useAlert();
@@ -71,6 +71,7 @@ const DocumentSection = ({ label, documentType, fileField, urlField, expiryField
     try {
       const result = await upload(file);
       updateField(urlField, result.url);
+      clearError(fileField);
       if (result.expiresAt) {
         updateField(expiryField, isoToDDMMYYYY(result.expiresAt));
       }
@@ -86,7 +87,7 @@ const DocumentSection = ({ label, documentType, fileField, urlField, expiryField
         type: 'error',
       });
     }
-  }, [uploading, fileField, urlField, expiryField, updateField, upload, showAlert]);
+  }, [uploading, fileField, urlField, expiryField, updateField, clearError, upload, showAlert]);
 
   const handleRemove = useCallback(() => {
     if (uploading) return;
@@ -98,16 +99,20 @@ const DocumentSection = ({ label, documentType, fileField, urlField, expiryField
 
   const showExtractedExpiry = !!documentUrl && !!expiresAt;
   const showManualExpiry    = !!documentUrl && !expiresAt;
+  const fieldError          = errors[fileField];
 
   return (
     <>
       <UploadField
-        label={label}
+        label={`${label} *`}
         hint={uploading ? 'Uploading…' : 'JPG, PNG, PDF (max. 5MB)'}
         file={uploading ? null : formData[fileField]}
         onPress={handlePickFile}
         onRemove={handleRemove}
+        style={fieldError ? styles.fieldErrorSpacing : undefined}
       />
+
+      {fieldError ? <Text style={styles.fieldError}>{fieldError}</Text> : null}
 
       {uploading && (
         <View style={styles.uploadingRow}>
@@ -133,9 +138,12 @@ const DocumentSection = ({ label, documentType, fileField, urlField, expiryField
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 const QualificationScreen = ({ navigation }) => {
+  const { validateStep } = useSubcontractorSignup();
+
   const handleContinue = useCallback(() => {
+    if (!validateStep(2)) return;
     navigation.navigate('SubProfileSetup');
-  }, [navigation]);
+  }, [validateStep, navigation]);
 
   return (
     <RegisterContainer
@@ -194,6 +202,15 @@ const QualificationScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   heading: {
     fontFamily: FontFamily.bold,
+    marginBottom: 20,
+  },
+  // The upload card owns the usual 20 bottom margin — collapse it so the error
+  // text sits against the field it belongs to.
+  fieldErrorSpacing: { marginBottom: 4 },
+  fieldError: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10),
+    color: '#DC2626',
     marginBottom: 20,
   },
   uploadingRow: {
