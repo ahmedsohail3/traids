@@ -8,6 +8,10 @@ import TimesheetStack from './TimesheetStack';
 import ComplianceStack from './ComplianceStack';
 import FinancialStack from './FinancialStack';
 import PaymentsScreen from '~screens/menu/payments/PaymentsScreen';
+import WalletScreen from '~screens/menu/wallet/WalletScreen';
+import WithdrawAmountScreen from '~screens/menu/wallet/WithdrawAmountScreen';
+import WithdrawConfirmScreen from '~screens/menu/wallet/WithdrawConfirmScreen';
+import WithdrawSuccessScreen from '~screens/menu/wallet/WithdrawSuccessScreen';
 
 const MoreStack = ({ route }) => {
   const userType = route?.params?.userType ?? 'company';
@@ -17,6 +21,10 @@ const MoreStack = ({ route }) => {
         {() => <TimesheetStack userType={userType} />}
       </Stack.Screen>
       <Stack.Screen name="Payments" component={PaymentsScreen} />
+      <Stack.Screen name="Wallet" component={WalletScreen} />
+      <Stack.Screen name="WithdrawAmount" component={WithdrawAmountScreen} />
+      <Stack.Screen name="WithdrawConfirm" component={WithdrawConfirmScreen} />
+      <Stack.Screen name="WithdrawSuccess" component={WithdrawSuccessScreen} />
       <Stack.Screen name="Compliance" component={ComplianceStack} />
       <Stack.Screen name="Financial" component={FinancialStack} />
       <Stack.Screen name="Reports" component={ReportsScreen} />

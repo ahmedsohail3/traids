@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { useNavigation } from '@react-navigation/native';
-import { FileText, ShieldCheck, PieChart, BarChart2, CreditCard, Settings, LogOut } from 'lucide-react-native';
+import { FileText, ShieldCheck, PieChart, BarChart2, CreditCard, Wallet, Settings, LogOut } from 'lucide-react-native';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useSelector } from 'react-redux';
@@ -33,6 +33,7 @@ const COMPANY_MENU_ITEMS = [
 const SUBCONTRACTOR_MENU_ITEMS = [
   { label: 'Timesheets', icon: FileText, route: 'Timesheets' },
   { label: 'Payments', icon: CreditCard, route: 'Payments' },
+  { label: 'Wallet',     icon: Wallet,      route: 'Wallet' },
   { label: 'Settings',   icon: Settings,    route: 'Settings' },
 ];
 
