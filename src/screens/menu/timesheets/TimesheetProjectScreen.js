@@ -14,6 +14,7 @@ import RatingModal from './components/RatingModal';
 import useCompanyTimesheet from '~hooks/useCompanyTimesheet';
 import useCompanyInvoices from '~hooks/useCompanyInvoices';
 import useCompanyJobs from '~hooks/useCompanyJobs';
+import useAlert from '~hooks/useAlert';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -74,6 +75,7 @@ const DropdownLabel = ({ label }) => (
 
 const TimesheetProjectScreen = ({ route, navigation }) => {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const { projectTitle = 'Timesheets', job } = route.params ?? {};
   const jobId = job?._id ?? route.params?.jobId;
 
@@ -324,7 +326,18 @@ const TimesheetProjectScreen = ({ route, navigation }) => {
           try {
             await submitJobRating(jobId, subcontractorId, rating, comment);
             getJobRatings(jobId);
-          } catch (_) {}
+            showAlert({
+              title: 'Rating Submitted',
+              message: 'Thanks — your rating has been saved.',
+              type: 'success',
+            });
+          } catch (err) {
+            showAlert({
+              title: 'Rating Failed',
+              message: err?.message ?? err ?? 'Could not submit this rating.',
+              type: 'error',
+            });
+          }
         }}
       />
 

@@ -175,7 +175,10 @@ export const postJobRating = createAsyncThunk(
   'companyJobs/postJobRating',
   async ({ jobId, subcontractorId, rating, comment }, { rejectWithValue }) => {
     try {
-      await submitJobRatingApi(jobId, subcontractorId, { rating, comment });
+      // `comment` is optional server-side — send it only when there is one.
+      const body = { rating };
+      if (comment?.trim()) body.comment = comment.trim();
+      await submitJobRatingApi(jobId, subcontractorId, body);
     } catch (error) {
       return rejectWithValue(getErrorMessage(error));
     }
