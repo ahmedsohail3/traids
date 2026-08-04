@@ -30,12 +30,17 @@ const PAYMENT_STATUS_COLORS = {
 
 const InvoiceDetailScreen = ({ route }) => {
   const { colors } = useTheme();
-  const { invoiceId } = route.params ?? {};
+  // Callers that already hold the invoice (the Financial Tools list) pass it
+  // through, so the page paints immediately and the fetch just refreshes it.
+  const { invoiceId: routeInvoiceId, invoice: routeInvoice } = route.params ?? {};
+  const invoiceId = routeInvoiceId ?? routeInvoice?._id;
 
   const {
-    selectedInvoice: inv, loadingInvoiceDetail, getInvoiceById, resetSelectedInvoice,
+    selectedInvoice, loadingInvoiceDetail, getInvoiceById, resetSelectedInvoice,
     paying, payError, pay, dismissPayError,
   } = useCompanyInvoices();
+
+  const inv = selectedInvoice ?? routeInvoice ?? null;
 
   const { paymentMethod, loadingPaymentMethod, getPaymentMethod } = useCompanyCardSetup();
   const { showAlert } = useAlert();
@@ -88,13 +93,13 @@ const InvoiceDetailScreen = ({ route }) => {
     <View style={[styles.root, { backgroundColor: '#F8FAFC' }]}>
       <Header title="Pdf Invoice" showBackButton />
 
-      {loadingInvoiceDetail && (
+      {loadingInvoiceDetail && !inv && (
         <View style={styles.loader}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       )}
 
-      {!loadingInvoiceDetail && inv && (
+      {inv && (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContainer}>
           <View style={styles.invoiceCard}>
 

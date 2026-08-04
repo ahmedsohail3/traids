@@ -2,8 +2,10 @@ import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { handleNextAction } from '@stripe/stripe-react-native';
 import {
+  fetchCompanyInvoices,
   fetchJobInvoices,
   fetchInvoiceById,
+  clearCompanyInvoices,
   clearJobInvoices,
   clearSelectedInvoice,
   payInvoice,
@@ -15,6 +17,9 @@ import {
 const EMPTY_ARRAY = [];
 
 const selectInvoices             = (s) => s.companyInvoices?.invoices             ?? EMPTY_ARRAY;
+const selectAllInvoices          = (s) => s.companyInvoices?.allInvoices          ?? EMPTY_ARRAY;
+const selectLoadingAll           = (s) => s.companyInvoices?.loadingAll           ?? false;
+const selectAllError             = (s) => s.companyInvoices?.allError             ?? null;
 const selectLoading              = (s) => s.companyInvoices?.loading              ?? false;
 const selectError                = (s) => s.companyInvoices?.error                ?? null;
 const selectSelectedInvoice      = (s) => s.companyInvoices?.selectedInvoice      ?? null;
@@ -27,6 +32,9 @@ const useCompanyInvoices = () => {
   const dispatch = useDispatch();
 
   const invoices             = useSelector(selectInvoices);
+  const allInvoices          = useSelector(selectAllInvoices);
+  const loadingAll           = useSelector(selectLoadingAll);
+  const allError             = useSelector(selectAllError);
   const loading              = useSelector(selectLoading);
   const error                = useSelector(selectError);
   const selectedInvoice      = useSelector(selectSelectedInvoice);
@@ -34,6 +42,10 @@ const useCompanyInvoices = () => {
   const detailError          = useSelector(selectDetailError);
   const paying               = useSelector(selectPaying);
   const payError             = useSelector(selectPayError);
+
+  // Every invoice for the company — powers the Financial Tools list.
+  const getCompanyInvoices   = useCallback(()         => dispatch(fetchCompanyInvoices()),     [dispatch]);
+  const resetCompanyInvoices = useCallback(()         => dispatch(clearCompanyInvoices()),     [dispatch]);
 
   const getJobInvoices      = useCallback((jobId)     => dispatch(fetchJobInvoices(jobId)),   [dispatch]);
   const refetch             = useCallback((jobId)     => dispatch(fetchJobInvoices(jobId)),   [dispatch]);
@@ -77,7 +89,9 @@ const useCompanyInvoices = () => {
 
   return {
     invoices, loading, error,
+    allInvoices, loadingAll, allError,
     selectedInvoice, loadingInvoiceDetail, detailError,
+    getCompanyInvoices, resetCompanyInvoices,
     getJobInvoices, refetch, getInvoiceById,
     reset, resetSelectedInvoice,
     paying, payError, pay, dismissPayError,

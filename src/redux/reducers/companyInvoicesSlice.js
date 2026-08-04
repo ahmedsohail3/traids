@@ -1,6 +1,25 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { getJobInvoicesApi, getInvoiceByIdApi, payInvoiceApi } from '~services/companyInvoicesService';
+import {
+  getCompanyInvoicesApi,
+  getJobInvoicesApi,
+  getInvoiceByIdApi,
+  payInvoiceApi,
+} from '~services/companyInvoicesService';
 import { getErrorMessage } from '~utils';
+
+// Every invoice for the company (Financial Tools). Kept separate from the
+// per-job list so the two screens don't overwrite each other's data.
+export const fetchCompanyInvoices = createAsyncThunk(
+  'companyInvoices/fetchCompanyInvoices',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await getCompanyInvoicesApi();
+      return Array.isArray(res.data) ? res.data : [];
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
 
 export const fetchJobInvoices = createAsyncThunk(
   'companyInvoices/fetchJobInvoices',
@@ -55,6 +74,9 @@ const companyInvoicesSlice = createSlice({
     invoices:             [],
     loading:              false,
     error:                null,
+    allInvoices:          [],
+    loadingAll:           false,
+    allError:             null,
     selectedInvoice:      null,
     loadingInvoiceDetail: false,
     detailError:          null,
@@ -65,6 +87,10 @@ const companyInvoicesSlice = createSlice({
     clearJobInvoices: (state) => {
       state.invoices = [];
       state.error    = null;
+    },
+    clearCompanyInvoices: (state) => {
+      state.allInvoices = [];
+      state.allError    = null;
     },
     clearSelectedInvoice: (state) => {
       state.selectedInvoice      = null;
@@ -85,12 +111,29 @@ const companyInvoicesSlice = createSlice({
       if (state.selectedInvoice?._id === invoiceId) {
         state.selectedInvoice.paymentStatus = 'paid';
       }
-      const listed = state.invoices.find((i) => i._id === invoiceId);
-      if (listed) listed.paymentStatus = 'paid';
+      for (const list of [state.invoices, state.allInvoices]) {
+        const listed = list.find((i) => i._id === invoiceId);
+        if (listed) {
+          listed.paymentStatus = 'paid';
+          listed.status        = 'paid';
+        }
+      }
     },
   },
   extraReducers: (builder) => {
     builder
+      .addCase(fetchCompanyInvoices.pending, (state) => {
+        state.loadingAll = true;
+        state.allError   = null;
+      })
+      .addCase(fetchCompanyInvoices.fulfilled, (state, { payload }) => {
+        state.loadingAll  = false;
+        state.allInvoices = payload;
+      })
+      .addCase(fetchCompanyInvoices.rejected, (state, { payload }) => {
+        state.loadingAll = false;
+        state.allError   = payload ?? 'Failed to load invoices.';
+      })
       .addCase(fetchJobInvoices.pending, (state) => {
         state.loading = true;
         state.error   = null;
@@ -138,6 +181,7 @@ const companyInvoicesSlice = createSlice({
 
 export const {
   clearJobInvoices,
+  clearCompanyInvoices,
   clearSelectedInvoice,
   clearPayError,
   setPayError,

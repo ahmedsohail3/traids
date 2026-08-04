@@ -1,5 +1,13 @@
 import axiosInstance from '~utils/axiosInstance';
 
+/**
+ * GET /invoices
+ * Every invoice raised against the signed-in company, newest first.
+ * Each entry carries a populated `job` ({ _id, jobTitle, trade, siteAddress }).
+ */
+export const getCompanyInvoicesApi = () =>
+  axiosInstance.get('/invoices').then((r) => r.data);
+
 export const getJobInvoicesApi = (jobId) =>
   axiosInstance.get(`/invoices/job/${jobId}`).then((r) => r.data);
 

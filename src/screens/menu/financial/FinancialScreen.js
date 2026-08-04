@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, TextInput as RNTextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { ScrollView, Text } from '~components/Common';
 import Header from '~components/Header';
 import { useTheme } from '~context/ThemeContext';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { FontFamily } from '~theme/fonts';
-import { PoundSterling, Briefcase, Clock, Star, Search, Filter, Eye, Download } from 'lucide-react-native';
+import { PoundSterling, Briefcase, Clock, Star, Search, Filter, Eye } from 'lucide-react-native';
 import StatCard from '~components/Common/StatCard';
 import useCompanyFinancials from '~hooks/useCompanyFinancials';
+import useCompanyInvoices from '~hooks/useCompanyInvoices';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -16,24 +17,38 @@ const fmtCurrency = (amount) => {
   return `£${Number(amount).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
-// ─── Static invoice data (real data will come from invoices API) ───────────────
-
-const INVOICES = [
-  { id: 'INV-001', status: 'Pending', amount: '£1250.00', project: 'Downtown Office Renovation', date: 'Oct 24, 2023' },
-  { id: 'INV-002', status: 'Paid',    amount: '£1250.00', project: 'Downtown Office Renovation', date: 'Oct 24, 2023' },
-  { id: 'INV-003', status: 'Pending', amount: '£1250.00', project: 'Downtown Office Renovation', date: 'Oct 24, 2023' },
-  { id: 'INV-004', status: 'Paid',    amount: '£1250.00', project: 'Downtown Office Renovation', date: 'Oct 24, 2023' },
-  { id: 'INV-005', status: 'Pending', amount: '£1250.00', project: 'Downtown Office Renovation', date: 'Oct 24, 2023' },
-];
-
-const StatusPill = ({ status }) => {
-  const color = status === 'Paid' ? '#22C55E' : '#F97316';
-  return (
-    <View style={[styles.pill, { backgroundColor: color }]}>
-      <Text style={styles.pillText}>{status}</Text>
-    </View>
-  );
+const fmtDate = (iso) => {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 };
+
+const STATUS_COLORS = { Paid: '#22C55E', Overdue: '#EF4444', Pending: '#F97316' };
+
+// An unpaid invoice past its due date is called out in red, matching the
+// detail screen's payment status colours.
+const invoiceStatus = ({ paymentStatus, dueDate }) => {
+  if (paymentStatus === 'paid') return 'Paid';
+  if (dueDate && new Date(dueDate) < new Date()) return 'Overdue';
+  return 'Pending';
+};
+
+// Flattens an API invoice into the fields the row renders. `raw` is handed to
+// the detail screen so it can render straight away from this response.
+const mapInvoice = (inv) => ({
+  _id:     inv._id,
+  raw:     inv,
+  number:  inv.invoiceNumber ?? '—',
+  status:  invoiceStatus(inv),
+  amount:  fmtCurrency(inv.totalAmount),
+  project: inv.job?.jobTitle ?? 'Untitled project',
+  date:    fmtDate(inv.createdAt),
+});
+
+const StatusPill = ({ status }) => (
+  <View style={[styles.pill, { backgroundColor: STATUS_COLORS[status] ?? '#F97316' }]}>
+    <Text style={styles.pillText}>{status}</Text>
+  </View>
+);
 
 // ─── Screen ────────────────────────────────────────────────────────────────────
 
@@ -42,8 +57,27 @@ const FinancialScreen = ({ navigation }) => {
   const [search, setSearch] = useState('');
 
   const { financialSummary, loading, getFinancialSummary } = useCompanyFinancials();
+  const { allInvoices, loadingAll, allError, getCompanyInvoices } = useCompanyInvoices();
 
-  useEffect(() => { getFinancialSummary(); }, []);
+  useEffect(() => {
+    getFinancialSummary();
+    getCompanyInvoices();
+  }, []);
+
+  // Map once per fetch, then filter on the search term — invoice number,
+  // project title and amount are all searchable.
+  const invoices = useMemo(() => allInvoices.map(mapInvoice), [allInvoices]);
+
+  const visibleInvoices = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return invoices;
+    return invoices.filter(
+      (inv) =>
+        inv.number.toLowerCase().includes(term) ||
+        inv.project.toLowerCase().includes(term) ||
+        inv.amount.toLowerCase().includes(term),
+    );
+  }, [invoices, search]);
 
   const summary       = financialSummary ?? {};
   const ytdAmount     = summary.totalSpendYTD?.amount;
@@ -140,25 +174,46 @@ const FinancialScreen = ({ navigation }) => {
 
         {/* Invoice list */}
         <View style={styles.listCard}>
-          {INVOICES.map((inv, idx) => (
-            <View key={inv.id} style={[styles.invoiceRow, idx !== INVOICES.length - 1 && styles.rowDivider]}>
-              <View style={styles.invoiceTop}>
-                <Text style={styles.invoiceId}>{inv.id}</Text>
-                <StatusPill status={inv.status} />
-                <Text style={styles.invoiceAmount}>{inv.amount}</Text>
-              </View>
-              <Text style={styles.invoiceProject}>{inv.project}</Text>
-              <View style={styles.invoiceBottom}>
-                <Text style={styles.invoiceDate}>{inv.date}</Text>
-                <View style={styles.invoiceActions}>
-                  <TouchableOpacity onPress={() => navigation.navigate('InvoiceDetail', { invoice: inv })}>
+          {loadingAll && invoices.length === 0 ? (
+            <View style={styles.listState}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : visibleInvoices.length === 0 ? (
+            <View style={styles.listState}>
+              <Text style={styles.emptyText}>
+                {allError
+                  ? allError
+                  : search.trim()
+                    ? 'No invoices match your search.'
+                    : 'No invoices yet.'}
+              </Text>
+            </View>
+          ) : (
+            visibleInvoices.map((inv, idx) => (
+              <View
+                key={inv._id}
+                style={[styles.invoiceRow, idx !== visibleInvoices.length - 1 && styles.rowDivider]}
+              >
+                <View style={styles.invoiceTop}>
+                  <Text style={styles.invoiceId}>{inv.number}</Text>
+                  <StatusPill status={inv.status} />
+                  <Text style={styles.invoiceAmount}>{inv.amount}</Text>
+                </View>
+                <Text style={styles.invoiceProject} numberOfLines={1}>{inv.project}</Text>
+                <View style={styles.invoiceBottom}>
+                  <Text style={styles.invoiceDate}>{inv.date}</Text>
+                  <TouchableOpacity
+                    hitSlop={8}
+                    onPress={() =>
+                      navigation.navigate('InvoiceDetail', { invoiceId: inv._id, invoice: inv.raw })
+                    }
+                  >
                     <Eye size={RFValue(14)} color="#94A3B8" />
                   </TouchableOpacity>
-                  <Download size={RFValue(14)} color="#94A3B8" />
                 </View>
               </View>
-            </View>
-          ))}
+            ))
+          )}
         </View>
 
       </ScrollView>
@@ -203,6 +258,14 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
   },
   rowDivider: { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  listState:  { paddingVertical: 32, alignItems: 'center', justifyContent: 'center' },
+  emptyText:  {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10.5),
+    color: '#94A3B8',
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
 
   invoiceRow:     { padding: 16 },
   invoiceTop:     { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
@@ -211,7 +274,6 @@ const styles = StyleSheet.create({
   invoiceProject: { fontFamily: FontFamily.regular, fontSize: RFValue(10), color: '#64748B', marginBottom: 8 },
   invoiceBottom:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   invoiceDate:    { fontFamily: FontFamily.regular, fontSize: RFValue(9.5), color: '#94A3B8' },
-  invoiceActions: { flexDirection: 'row', gap: 14 },
 
   pill:     { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
   pillText: { fontFamily: FontFamily.bold, fontSize: RFValue(9), color: '#FFFFFF' },
