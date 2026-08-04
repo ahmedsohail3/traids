@@ -38,9 +38,10 @@ const TRADES = [
 // Sorting is applied locally to the subcontractors already in state — nothing is
 // sent to the API. "Recommended" carries no field, so it keeps the server's order.
 const SORT_OPTIONS = [
-  {label: 'Recommended', value: 'recommended'},
+  {label: 'Recommended', short: 'Default', value: 'recommended'},
   {
     label: 'Highest rated',
+    short: 'Top rated',
     value: 'rating-desc',
     field: ['averageRating', 'rating', 'totalRatings'],
     order: 'desc',
@@ -48,6 +49,7 @@ const SORT_OPTIONS = [
   },
   {
     label: 'Most experience',
+    short: 'Experience',
     value: 'exp-desc',
     field: 'yearsOfExperience',
     order: 'desc',
@@ -55,6 +57,7 @@ const SORT_OPTIONS = [
   },
   {
     label: 'Lowest hourly rate',
+    short: 'Rate: low',
     value: 'rate-asc',
     field: 'hourlyRate',
     order: 'asc',
@@ -62,6 +65,7 @@ const SORT_OPTIONS = [
   },
   {
     label: 'Highest hourly rate',
+    short: 'Rate: high',
     value: 'rate-desc',
     field: 'hourlyRate',
     order: 'desc',
@@ -69,6 +73,7 @@ const SORT_OPTIONS = [
   },
   {
     label: 'Name (A–Z)',
+    short: 'A–Z',
     value: 'name-asc',
     field: ['fullName', 'name'],
     order: 'asc',
@@ -140,16 +145,8 @@ const SubcontractorListScreen = ({navigation}) => {
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       {/* Top row: Recommended and Sort By */}
-      <View
-        style={[
-          styles.filterSection,
-          {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          },
-        ]}>
-        <Text style={[styles.sectionHeading, styles.sectionHeadingFlex]}>
+      <View style={[styles.filterSection, styles.titleRow]}>
+        <Text style={styles.sectionHeading} numberOfLines={2}>
           Recommended Subcontractors
         </Text>
         <SortBy
@@ -286,13 +283,20 @@ const styles = StyleSheet.create({
   headerContainer: {
     marginBottom: 16,
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 10,
+  },
   sectionHeading: {
     fontFamily: FontFamily.bold,
     fontSize: RFValue(10),
     color: '#10375C',
+    // Long heading wraps to a second line instead of squeezing the sort chip
+    flex: 1,
+    lineHeight: RFValue(14),
   },
-  // The heading is long — let it shrink so the sort chip keeps its width
-  sectionHeadingFlex: {flexShrink: 1, marginRight: 8},
   filterSection: {
     marginBottom: 20,
     backgroundColor: '#FFFFFF',

@@ -92,10 +92,10 @@ const TRADES = [
 
 // Sorting is applied locally to the jobs already in state — nothing is sent to the API.
 const SORT_OPTIONS = [
-  { label: 'Newest first',        value: 'newest',    field: 'createdAt',         order: 'desc', type: 'date' },
-  { label: 'Highest hourly rate', value: 'rate-desc', field: 'hourlyRate',        order: 'desc', type: 'number' },
-  { label: 'Lowest hourly rate',  value: 'rate-asc',  field: 'hourlyRate',        order: 'asc',  type: 'number' },
-  { label: 'Starting soonest',    value: 'start-asc', field: 'timelineStartDate', order: 'asc',  type: 'date' },
+  { label: 'Newest first',        short: 'Newest',     value: 'newest',    field: 'createdAt',         order: 'desc', type: 'date' },
+  { label: 'Highest hourly rate', short: 'Rate: high', value: 'rate-desc', field: 'hourlyRate',        order: 'desc', type: 'number' },
+  { label: 'Lowest hourly rate',  short: 'Rate: low',  value: 'rate-asc',  field: 'hourlyRate',        order: 'asc',  type: 'number' },
+  { label: 'Starting soonest',    short: 'Soonest',    value: 'start-asc', field: 'timelineStartDate', order: 'asc',  type: 'date' },
 ];
 
 // ── Data mapper ───────────────────────────────────────────────────────────────
@@ -416,11 +416,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 10,
   },
   sectionHeading: {
     fontFamily: FontFamily.bold,
     fontSize: RFValue(10),
     color: '#10375C',
+    flex: 1,
+    lineHeight: RFValue(14),
   },
   filterSection: {
     marginBottom: 16,

@@ -12,7 +12,9 @@
  *
  * Option shape:
  *   {
- *     label: 'Highest hourly rate',  // shown in the sheet + chip
+ *     label: 'Highest hourly rate',  // shown in the sheet
+ *     short: 'Rate: high',           // shown on the chip — keep it 2-3 words so the
+ *                                    // row never has to truncate (defaults to label)
  *     value: 'rate-desc',            // unique key
  *     field: 'hourlyRate',           // item key to sort on — a dotted path, or an
  *                                    // array of paths where the first present wins
@@ -103,19 +105,18 @@ const SortBy = ({options = [], value, onChange, title = 'Sort By'}) => {
 
   return (
     <>
+      {/* Self-contained pill so the chip reads as one tappable unit rather than
+          loose text competing with the section heading beside it. */}
       <TouchableOpacity
         style={styles.chip}
         activeOpacity={0.7}
-        onPress={() => setOpen(true)}>
-        <Text style={styles.chipLabel}>Sort By:</Text>
-        {selected ? (
-          <Text style={styles.chipValue} numberOfLines={1}>
-            {selected.label}
-          </Text>
-        ) : null}
-        <View style={styles.arrowContainer}>
-          <ArrowDownUp size={RFValue(11)} color="#94A3B8" />
-        </View>
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`Sort by, ${selected?.label ?? 'none selected'}`}>
+        <ArrowDownUp size={RFValue(10)} color="#64748B" />
+        <Text style={styles.chipValue} numberOfLines={1}>
+          {selected ? selected.short ?? selected.label : 'Sort'}
+        </Text>
       </TouchableOpacity>
 
       <Modal
@@ -123,11 +124,16 @@ const SortBy = ({options = [], value, onChange, title = 'Sort By'}) => {
         transparent
         animationType="fade"
         onRequestClose={() => setOpen(false)}>
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={() => setOpen(false)}>
+        <View style={styles.overlay}>
+          {/* Backdrop sits behind the sheet, so tapping the sheet's own padding
+              or title doesn't dismiss it — only a tap outside does. */}
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setOpen(false)}
+          />
           <SafeAreaView style={styles.sheet}>
+            <View style={styles.grabber} />
             <Text style={styles.sheetTitle}>{title}</Text>
             <FlatList
               data={options}
@@ -154,7 +160,7 @@ const SortBy = ({options = [], value, onChange, title = 'Sort By'}) => {
               }}
             />
           </SafeAreaView>
-        </TouchableOpacity>
+        </View>
       </Modal>
     </>
   );
@@ -164,26 +170,21 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    flexShrink: 1,
-  },
-  chipLabel: {
-    fontFamily: FontFamily.medium,
-    fontSize: RFValue(9),
-    color: '#94A3B8',
+    gap: 5,
+    flexShrink: 0,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
   },
   chipValue: {
     fontFamily: FontFamily.semiBold,
     fontSize: RFValue(9),
     color: '#10375C',
-    flexShrink: 1,
-  },
-  arrowContainer: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 5,
-    padding: 4,
+    // Short labels fit outright; the cap is a guard against an unusually long one
+    maxWidth: RFValue(80),
   },
   overlay: {
     flex: 1,
@@ -194,21 +195,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingTop: 20,
-    paddingBottom: 12,
-    maxHeight: 400,
+    paddingTop: 10,
+    paddingBottom: 16,
+    maxHeight: 440,
+  },
+  grabber: {
+    alignSelf: 'center',
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E2E8F0',
+    marginBottom: 14,
   },
   sheetTitle: {
     fontFamily: FontFamily.bold,
     fontSize: RFValue(13),
     color: '#10375C',
-    marginBottom: 8,
+    marginBottom: 6,
     paddingHorizontal: 20,
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 10,
     paddingVertical: 14,
     paddingHorizontal: 20,
   },
@@ -219,7 +228,7 @@ const styles = StyleSheet.create({
     color: '#10375C',
     flex: 1,
   },
-  optionTextActive: {fontFamily: FontFamily.semiBold},
+  optionTextActive: {fontFamily: FontFamily.semiBold, color: '#10375C'},
 });
 
 export default SortBy;
