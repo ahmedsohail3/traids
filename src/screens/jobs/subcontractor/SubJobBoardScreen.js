@@ -3,11 +3,11 @@ import {
   View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, Platform,
 } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { Briefcase, DollarSign, MapPin, Calendar, ArrowDownUp } from 'lucide-react-native';
+import { Briefcase, DollarSign, MapPin, Calendar } from 'lucide-react-native';
 import dayjs from 'dayjs';
 import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
-import { Text, TextInput, Checkbox, PriceSlider } from '~components/Common';
+import { Text, TextInput, Checkbox, PriceSlider, SortBy, applySort } from '~components/Common';
 import Header from '~components/Header';
 import SubJobCard from '~components/Job/SubJobCard';
 import useSubcontractorJobs from '~hooks/useSubcontractorJobs';
@@ -90,6 +90,14 @@ const TRADES = [
   { id: 4, name: 'Masonry',      key: 'masonry' },
 ];
 
+// Sorting is applied locally to the jobs already in state — nothing is sent to the API.
+const SORT_OPTIONS = [
+  { label: 'Newest first',        value: 'newest',    field: 'createdAt',         order: 'desc', type: 'date' },
+  { label: 'Highest hourly rate', value: 'rate-desc', field: 'hourlyRate',        order: 'desc', type: 'number' },
+  { label: 'Lowest hourly rate',  value: 'rate-asc',  field: 'hourlyRate',        order: 'asc',  type: 'number' },
+  { label: 'Starting soonest',    value: 'start-asc', field: 'timelineStartDate', order: 'asc',  type: 'date' },
+];
+
 // ── Data mapper ───────────────────────────────────────────────────────────────
 
 const AVATAR_COLORS = ['#10375C', '#F2A154', '#3BB273', '#6366F1', '#EC4899'];
@@ -136,12 +144,13 @@ const SubJobBoardScreen = ({ navigation }) => {
     getAvailableJobs,
   } = useSubcontractorJobs();
 
-  const [selectedTrade,      setSelectedTrade]      = useState(null);
+  const [selectedTrades,     setSelectedTrades]     = useState([]);
   const [maxRate,            setMaxRate]            = useState(500);
   const [locationInput,      setLocationInput]      = useState('');
   const [startDate,          setStartDate]          = useState('');
   const [datePickerVisible,  setDatePickerVisible]  = useState(false);
   const [currentPage,        setCurrentPage]        = useState(1);
+  const [sort,               setSort]               = useState(SORT_OPTIONS[0]);
 
   const locationTimer = useRef(null);
 
@@ -150,18 +159,19 @@ const SubJobBoardScreen = ({ navigation }) => {
   const fetchJobs = useCallback((pg = 1) => {
     getAvailableJobs({
       page:          pg,
-      trade:         selectedTrade?.key || undefined,
+      trade:         selectedTrades,
       maxHourlyRate: maxRate,
       location:      locationInput || undefined,
       startDate:     startDate     || undefined,
     });
-  }, [selectedTrade, maxRate, locationInput, startDate, getAvailableJobs]);
+  }, [selectedTrades, maxRate, locationInput, startDate, getAvailableJobs]);
 
-  // Re-fetch whenever filters change (reset to page 1)
+  // Re-fetch whenever filters change (reset to page 1). Sorting is local only,
+  // so changing it never hits the API.
   useEffect(() => {
     setCurrentPage(1);
     fetchJobs(1);
-  }, [selectedTrade, maxRate, startDate]);
+  }, [selectedTrades, maxRate, startDate]);
 
   // Location uses a 2-second debounce to avoid hammering the API on each keystroke
   const handleLocationChange = (text) => {
@@ -171,7 +181,7 @@ const SubJobBoardScreen = ({ navigation }) => {
       setCurrentPage(1);
       getAvailableJobs({
         page:          1,
-        trade:         selectedTrade?.key || undefined,
+        trade:         selectedTrades,
         maxHourlyRate: maxRate,
         location:      text || undefined,
         startDate:     startDate || undefined,
@@ -179,8 +189,13 @@ const SubJobBoardScreen = ({ navigation }) => {
     }, 2000);
   };
 
+  // Trade filter is multi-select — each tick adds another `trade` query param
   const toggleTrade = (trade) => {
-    setSelectedTrade((prev) => prev?.key === trade.key ? null : trade);
+    setSelectedTrades((prev) => (
+      prev.includes(trade.key)
+        ? prev.filter((key) => key !== trade.key)
+        : [...prev, trade.key]
+    ));
   };
 
   const goToPage = (pg) => {
@@ -191,7 +206,8 @@ const SubJobBoardScreen = ({ navigation }) => {
 
   // ── Derived data ──────────────────────────────────────────────────────────────
 
-  const jobs = (availableJobs ?? []).map(mapJob);
+  // Sorted client-side, so it reorders the jobs on the current page only
+  const jobs = applySort(availableJobs ?? [], sort).map(mapJob);
 
   // ── List header (inline filters) ─────────────────────────────────────────────
 
@@ -199,12 +215,12 @@ const SubJobBoardScreen = ({ navigation }) => {
     <View style={styles.headerContainer}>
       <View style={[styles.filterSection, styles.titleRow]}>
         <Text style={styles.sectionHeading}>Available Jobs</Text>
-        <TouchableOpacity style={styles.sortBtn} activeOpacity={0.7}>
-          <Text style={styles.sortText}>Sort By:</Text>
-          <View style={styles.arrowContainer}>
-            <ArrowDownUp size={RFValue(11)} color="#94A3B8" />
-          </View>
-        </TouchableOpacity>
+        <SortBy
+          options={SORT_OPTIONS}
+          value={sort?.value}
+          onChange={setSort}
+          title="Sort jobs by"
+        />
       </View>
 
       {/* Trade Type */}
@@ -212,12 +228,17 @@ const SubJobBoardScreen = ({ navigation }) => {
         <View style={styles.filterTitleRow}>
           <Briefcase size={RFValue(14)} color="#F2A154" />
           <Text style={styles.filterTitle}>Trade Type</Text>
+          {selectedTrades.length > 0 && (
+            <TouchableOpacity onPress={() => setSelectedTrades([])} hitSlop={8}>
+              <Text style={styles.clearTrades}>Clear</Text>
+            </TouchableOpacity>
+          )}
         </View>
         {TRADES.map((trade) => (
           <Checkbox
             key={trade.id}
             label={trade.name}
-            checked={selectedTrade?.id === trade.id}
+            checked={selectedTrades.includes(trade.key)}
             onPress={() => toggleTrade(trade)}
             style={styles.tradeCheckbox}
           />
@@ -401,15 +422,6 @@ const styles = StyleSheet.create({
     fontSize: RFValue(10),
     color: '#10375C',
   },
-  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  sortText: { fontFamily: FontFamily.medium, fontSize: RFValue(9), color: '#94A3B8' },
-  arrowContainer: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 5,
-    padding: 4,
-  },
   filterSection: {
     marginBottom: 16,
     backgroundColor: '#FFFFFF',
@@ -426,6 +438,12 @@ const styles = StyleSheet.create({
   filterTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   filterTitle: { fontFamily: FontFamily.bold, fontSize: RFValue(11), color: '#10375C' },
   tradeCheckbox: { marginBottom: 10 },
+  clearTrades: {
+    marginLeft: 'auto',
+    fontFamily: FontFamily.medium,
+    fontSize: RFValue(9),
+    color: '#F2A154',
+  },
   divider: { width: '100%', height: 1.5, backgroundColor: '#F1F5F9', marginTop: 25, marginBottom: 15 },
   inputContainer: { marginBottom: 0 },
   emptyWrap: { alignItems: 'center', paddingTop: 40 },

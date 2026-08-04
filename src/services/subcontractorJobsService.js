@@ -1,22 +1,40 @@
 import axiosInstance from '~utils/axiosInstance';
 
 // ── Params builder — only sends non-empty values ───────────────────────────────
+// Arrays are kept as arrays and serialized as repeated keys (trade=electrician&trade=plumber).
 
 const buildJobParams = (filters = {}) => {
   const params = {};
-  if (filters.page)                 params.page                 = filters.page;
-  if (filters.trade)                params.trade                = filters.trade;
-  if (filters.location)             params.location             = filters.location;
-  if (filters.maxHourlyRate)        params.maxHourlyRate        = filters.maxHourlyRate;
-  if (filters.startDate)            params.startDate            = filters.startDate;
-  if (filters.minYearsOfExperience) params.minYearsOfExperience = filters.minYearsOfExperience;
+  const add = (key, value) => {
+    if (Array.isArray(value)) {
+      const cleaned = value.filter((v) => v !== undefined && v !== null && v !== '');
+      if (cleaned.length) params[key] = cleaned;
+    } else if (value !== undefined && value !== null && value !== '') {
+      params[key] = value;
+    }
+  };
+
+  add('page',                 filters.page);
+  add('trade',                filters.trade);
+  add('location',             filters.location);
+  add('maxHourlyRate',        filters.maxHourlyRate);
+  add('startDate',            filters.startDate);
+  add('minYearsOfExperience', filters.minYearsOfExperience);
   return params;
 };
+
+// Repeat the key instead of axios' default `trade[]=` bracket notation
+const repeatedKeysSerializer = { indexes: null };
 
 // ── Available Jobs ─────────────────────────────────────────────────────────────
 
 export const getAvailableJobsApi = (filters = {}) =>
-  axiosInstance.get('/jobs/available', { params: buildJobParams(filters) }).then((r) => r.data);
+  axiosInstance
+    .get('/jobs/available', {
+      params: buildJobParams(filters),
+      paramsSerializer: repeatedKeysSerializer,
+    })
+    .then((r) => r.data);
 
 // ── Recommended Jobs ───────────────────────────────────────────────────────────
 

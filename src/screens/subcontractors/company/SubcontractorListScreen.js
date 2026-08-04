@@ -4,25 +4,82 @@
  * "Find Subcontractors" screen for Company role.
  * Shows a searchable, filterable list of subcontractors.
  */
-import { useState, useEffect, useRef } from 'react';
+import {useState, useEffect, useRef} from 'react';
 import {
-  View, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator,
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
 } from 'react-native';
-import { RFValue } from 'react-native-responsive-fontsize';
-import { Briefcase, DollarSign, MapPin, ArrowDownUp } from 'lucide-react-native';
-import { Text, TextInput, Checkbox, PriceSlider } from '~components/Common';
+import {RFValue} from 'react-native-responsive-fontsize';
+import {Briefcase, DollarSign, MapPin} from 'lucide-react-native';
+import {
+  Text,
+  TextInput,
+  Checkbox,
+  PriceSlider,
+  SortBy,
+  applySort,
+} from '~components/Common';
 import Header from '~components/Header';
-import { FontFamily } from '~theme/fonts';
-import { useTheme } from '~context/ThemeContext';
+import {FontFamily} from '~theme/fonts';
+import {useTheme} from '~context/ThemeContext';
 import SubcontractorCard from '~components/Subcontractors/SubcontractorCard';
 import useCompanySubcontractors from '~hooks/useCompanySubcontractors';
 
-const TRADES = [{id: 1, name: 'Electrician', key: 'electrician'}, {id: 2, name: 'Plumber', key: 'plumber'}, {id: 3, name: 'Carpenter', key: 'carpenter'}, {id: 4, name: 'Masonry', key: 'masonry'}];
+const TRADES = [
+  {id: 1, name: 'Electrician', key: 'electrician'},
+  {id: 2, name: 'Plumber', key: 'plumber'},
+  {id: 3, name: 'Carpenter', key: 'carpenter'},
+  {id: 4, name: 'Masonry', key: 'masonry'},
+];
+
+// Sorting is applied locally to the subcontractors already in state — nothing is
+// sent to the API. "Recommended" carries no field, so it keeps the server's order.
+const SORT_OPTIONS = [
+  {label: 'Recommended', value: 'recommended'},
+  {
+    label: 'Highest rated',
+    value: 'rating-desc',
+    field: ['averageRating', 'rating', 'totalRatings'],
+    order: 'desc',
+    type: 'number',
+  },
+  {
+    label: 'Most experience',
+    value: 'exp-desc',
+    field: 'yearsOfExperience',
+    order: 'desc',
+    type: 'number',
+  },
+  {
+    label: 'Lowest hourly rate',
+    value: 'rate-asc',
+    field: 'hourlyRate',
+    order: 'asc',
+    type: 'number',
+  },
+  {
+    label: 'Highest hourly rate',
+    value: 'rate-desc',
+    field: 'hourlyRate',
+    order: 'desc',
+    type: 'number',
+  },
+  {
+    label: 'Name (A–Z)',
+    value: 'name-asc',
+    field: ['fullName', 'name'],
+    order: 'asc',
+    type: 'string',
+  },
+];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
-const SubcontractorListScreen = ({ navigation }) => {
-  const { colors } = useTheme();
-  const { subcontractors, loading, fetch } = useCompanySubcontractors();
+const SubcontractorListScreen = ({navigation}) => {
+  const {colors} = useTheme();
+  const {subcontractors, loading, fetch} = useCompanySubcontractors();
 
   console.log('subcontractors', subcontractors);
 
@@ -30,22 +87,26 @@ const SubcontractorListScreen = ({ navigation }) => {
   const [maxRate, setMaxRate] = useState(600);
   const [locationInput, setLocationInput] = useState('');
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState(SORT_OPTIONS[0]);
   const locationTimer = useRef(null);
 
   useEffect(() => {
     fetch({
       maxHourlyRate: maxRate,
       primaryTrade: selectedTrade?.key || undefined,
+      location: locationInput || undefined,
     });
   }, [selectedTrade, maxRate]);
 
   // Clear any pending debounced fetch if the screen unmounts mid-delay
-  useEffect(() => () => {
-    if (locationTimer.current) clearTimeout(locationTimer.current);
-  }, []);
-  
+  useEffect(
+    () => () => {
+      if (locationTimer.current) clearTimeout(locationTimer.current);
+    },
+    [],
+  );
 
-  const handleLocationChange = (text) => {
+  const handleLocationChange = text => {
     setLocationInput(text);
     if (locationTimer.current) clearTimeout(locationTimer.current);
     locationTimer.current = setTimeout(() => {
@@ -57,27 +118,46 @@ const SubcontractorListScreen = ({ navigation }) => {
     }, 500);
   };
 
-  const toggleTrade = (trade) => {
-    setSelectedTrade(prev => prev?.key === trade.key ? null : trade);
+  const toggleTrade = trade => {
+    setSelectedTrade(prev => (prev?.key === trade.key ? null : trade));
   };
 
-  const filtered = subcontractors.filter(s =>
-    !search ||
-    (s.name ?? '').toLowerCase().includes(search.toLowerCase()) ||
-    (s.trade ?? s.primaryTrade ?? '').toLowerCase().includes(search.toLowerCase())
+  // Search filter then sort, both applied client-side on the fetched list
+  const filtered = applySort(
+    subcontractors.filter(
+      s =>
+        !search ||
+        (s.name ?? s.fullName ?? '')
+          .toLowerCase()
+          .includes(search.toLowerCase()) ||
+        (s.trade ?? s.primaryTrade ?? '')
+          .toLowerCase()
+          .includes(search.toLowerCase()),
+    ),
+    sort,
   );
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       {/* Top row: Recommended and Sort By */}
-      <View style={[styles.filterSection, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
-        <Text style={styles.sectionHeading}>Recommended Subcontractors</Text>
-        <TouchableOpacity style={styles.sortBtn} activeOpacity={0.7}>
-          <Text style={styles.sortText}>Sort By:</Text>
-          <View style={styles.arrowContainer}>
-            <ArrowDownUp size={RFValue(11)} color="#94A3B8" />
-          </View>
-        </TouchableOpacity>
+      <View
+        style={[
+          styles.filterSection,
+          {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          },
+        ]}>
+        <Text style={[styles.sectionHeading, styles.sectionHeadingFlex]}>
+          Recommended Subcontractors
+        </Text>
+        <SortBy
+          options={SORT_OPTIONS}
+          value={sort?.value}
+          onChange={setSort}
+          title="Sort subcontractors by"
+        />
       </View>
 
       {/* Trade Type Filter */}
@@ -127,7 +207,6 @@ const SubcontractorListScreen = ({ navigation }) => {
         />
       </View>
 
-
       {/* Search Filter */}
       <View style={styles.filterSection}>
         <TextInput
@@ -143,8 +222,11 @@ const SubcontractorListScreen = ({ navigation }) => {
   );
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <Header title="Find Subcontractors" subtitle="Discover and book top rated professionals for your project." />
+    <View style={[styles.root, {backgroundColor: colors.background}]}>
+      <Header
+        title="Find Subcontractors"
+        subtitle="Discover and book top rated professionals for your project."
+      />
       {loading && (
         <View style={styles.loader}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -157,25 +239,27 @@ const SubcontractorListScreen = ({ navigation }) => {
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={renderHeader()}
-        renderItem={({ item }) => (
+        renderItem={({item}) => (
           <SubcontractorCard
-          key={item._id}
+            key={item._id}
             {...item}
-            onViewProfile={() => navigation.navigate('SubcontractorProfile', { sub: item })}
+            onViewProfile={() =>
+              navigation.navigate('SubcontractorProfile', {sub: item})
+            }
           />
         )}
-        ListFooterComponent={
-          <View style={styles.paginationRow}>
-            <Text style={styles.paginationText}>Showing 1–4 of 32</Text>
-            <View style={styles.pageButtons}>
-              {['«', '1', '2', '3', '»'].map((p, i) => (
-                <TouchableOpacity key={i} style={[styles.pageBtn, p === '1' && styles.pageBtnActive]}>
-                  <Text style={[styles.pageText, p === '1' && { color: '#FFFFFF' }]}>{p}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        }
+        // ListFooterComponent={
+        //   <View style={styles.paginationRow}>
+        //     <Text style={styles.paginationText}>Showing 1–4 of 32</Text>
+        //     <View style={styles.pageButtons}>
+        //       {['«', '1', '2', '3', '»'].map((p, i) => (
+        //         <TouchableOpacity key={i} style={[styles.pageBtn, p === '1' && styles.pageBtnActive]}>
+        //           <Text style={[styles.pageText, p === '1' && { color: '#FFFFFF' }]}>{p}</Text>
+        //         </TouchableOpacity>
+        //       ))}
+        //     </View>
+        //   </View>
+        // }
       />
     </View>
   );
@@ -183,10 +267,16 @@ const SubcontractorListScreen = ({ navigation }) => {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: {flex: 1},
   loader: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    alignItems: 'center', justifyContent: 'center', zIndex: 10,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
   list: {
     paddingHorizontal: 16,
@@ -196,28 +286,13 @@ const styles = StyleSheet.create({
   headerContainer: {
     marginBottom: 16,
   },
-  arrowContainer: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 5,
-    padding: 4,
-  },
   sectionHeading: {
     fontFamily: FontFamily.bold,
     fontSize: RFValue(10),
     color: '#10375C',
   },
-  sortBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  sortText: {
-    fontFamily: FontFamily.medium,
-    fontSize: RFValue(9),
-    color: '#94A3B8',
-  },
+  // The heading is long — let it shrink so the sort chip keeps its width
+  sectionHeadingFlex: {flexShrink: 1, marginRight: 8},
   filterSection: {
     marginBottom: 20,
     backgroundColor: '#FFFFFF',
@@ -226,7 +301,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F1F5F9',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
@@ -267,15 +342,27 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
-  paginationText: { fontFamily: FontFamily.medium, fontSize: RFValue(10), color: '#64748B' },
-  pageButtons: { flexDirection: 'row', gap: 4 },
-  pageBtn: {
-    width: 24, height: 24, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#E2E8F0',
+  paginationText: {
+    fontFamily: FontFamily.medium,
+    fontSize: RFValue(10),
+    color: '#64748B',
   },
-  pageBtnActive: { backgroundColor: '#10375C', borderColor: '#10375C' },
-  pageText: { fontFamily: FontFamily.medium, fontSize: RFValue(10), color: '#10375C' },
+  pageButtons: {flexDirection: 'row', gap: 4},
+  pageBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  pageBtnActive: {backgroundColor: '#10375C', borderColor: '#10375C'},
+  pageText: {
+    fontFamily: FontFamily.medium,
+    fontSize: RFValue(10),
+    color: '#10375C',
+  },
 });
 
 export default SubcontractorListScreen;

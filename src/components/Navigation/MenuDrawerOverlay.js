@@ -17,6 +17,7 @@ import { FontFamily } from '~theme/fonts';
 import { useSelector } from 'react-redux';
 import useAuth from '~hooks/useAuth';
 import useProfile from '~hooks/useProfile';
+import useAlert from '~hooks/useAlert';
 
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.75;
@@ -44,15 +45,25 @@ const MenuDrawerOverlay = ({ visible, onClose }) => {
   
   const { logout } = useAuth();
   const { profile } = useProfile();
-   
+  const { showConfirm } = useAlert();
+
   const userType = useSelector((s) => s.auth?.user?.type ?? 'subcontractor');
   const ACTIVE_MENU = userType === 'subcontractor' ? SUBCONTRACTOR_MENU_ITEMS : COMPANY_MENU_ITEMS;
 
   const handleLogout = () => {
     onClose();
-    // Wait for drawer close animation before clearing state so the
-    // transition to the Auth screen looks intentional, not abrupt.
-    setTimeout(logout, 280);
+    // Wait for the drawer close animation before asking, so the confirm dialog
+    // isn't competing with the sliding panel.
+    setTimeout(() => {
+      showConfirm({
+        title:       'Log Out',
+        message:     'Are you sure you want to log out of your account?',
+        confirmText: 'Log Out',
+        cancelText:  'Cancel',
+        type:        'warning',
+        onConfirm:   logout,
+      });
+    }, 280);
   };
 
   // Local state to keep the Modal mounted during exit animations

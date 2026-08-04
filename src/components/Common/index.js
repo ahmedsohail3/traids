@@ -21,6 +21,7 @@ import DocumentPickerField from "./DocumentPickerField";
 import ImagePickerField from "./ImagePickerField";
 import StripeOnboardingModal from "./StripeOnboardingModal";
 import AddPaymentMethodModal from "./AddPaymentMethodModal";
+import SortBy, { applySort } from "./SortBy";
 
 export {
   AppText as Text,
@@ -46,5 +47,7 @@ export {
   ImagePickerField,
   StripeOnboardingModal,
   AddPaymentMethodModal,
+  SortBy,
+  applySort,
 };
 

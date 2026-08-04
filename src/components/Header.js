@@ -6,6 +6,7 @@ import {RFValue} from 'react-native-responsive-fontsize';
 import {Text} from '~components/Common';
 import {FontFamily} from '~theme/fonts';
 import {useNavigation} from '@react-navigation/native';
+import {useSelector} from 'react-redux';
 import {Images} from '~assets';
 import useProfile from '~hooks/useProfile';
 import useNotifications from '~hooks/useNotifications';
@@ -17,16 +18,29 @@ const Header = ({
   showPostButton = false,
   showBackButton = false,
   onPostPress,
+  onProfilePress,
 }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const {profile} = useProfile();
   const {unreadCount, getNotifications} = useNotifications();
   const [notifVisible, setNotifVisible] = useState(false);
+  const userType = useSelector(s => s.auth?.user?.type ?? 'company');
 
   useEffect(() => {
     getNotifications();
   }, []);
+
+  // The profile lives on the Settings screen inside the More tab, so the tap has
+  // to go through the role's tab root — 'Profile' is not a registered route.
+  const goToProfile = () => {
+    if (onProfilePress) return onProfilePress();
+    const tabsRoot = userType === 'subcontractor' ? 'SubTabs' : 'CompanyTabs';
+    navigation.navigate(tabsRoot, {
+      screen: 'More',
+      params: {screen: 'Settings'},
+    });
+  };
 
   return (
     <View style={[styles.dashCard, {paddingTop: insets.top + RFValue(12)}]}>
@@ -63,7 +77,7 @@ const Header = ({
           <TouchableOpacity
             style={styles.profileIconWrap}
             activeOpacity={0.7}
-            onPress={() => navigation.navigate?.('Profile')}>
+            onPress={goToProfile}>
             {profile?.profileImage ? (
               <Image
                 source={{uri: profile.profileImage}}
