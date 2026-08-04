@@ -15,7 +15,9 @@
 		606D5824D3DB4A5A9AEA8FEC /* Poppins-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0F59E438726847E5B785D5AE /* Poppins-Regular.ttf */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		8529BBC88CE94697B2AF9265 /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ED1B98CB65DC4D62B07FD223 /* Colors.xcassets */; };
 		944594F3740341CE84ABED19 /* Poppins-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E10DCFAE291A452A9A5D269E /* Poppins-Bold.ttf */; };
+		A8F57AB9575D4AE9B6354C2E /* BootSplash.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 830F2F6E894D4C08B39B4447 /* BootSplash.storyboard */; };
 		B48ADEA6EACD411C975AF1F1 /* Poppins-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = DF0CD661CD7E4BDABFB3E9E2 /* Poppins-SemiBold.ttf */; };
 /* End PBXBuildFile section */
 
@@ -31,8 +33,10 @@
 		66384A6ED35F49B3A1EF0E69 /* Poppins-Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Poppins-Medium.ttf"; path = "../assets/fonts/Poppins-Medium.ttf"; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Traids/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Traids/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		830F2F6E894D4C08B39B4447 /* BootSplash.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = BootSplash.storyboard; path = Traids/BootSplash.storyboard; sourceTree = "<group>"; };
 		DF0CD661CD7E4BDABFB3E9E2 /* Poppins-SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Poppins-SemiBold.ttf"; path = "../assets/fonts/Poppins-SemiBold.ttf"; sourceTree = "<group>"; };
 		E10DCFAE291A452A9A5D269E /* Poppins-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Poppins-Bold.ttf"; path = "../assets/fonts/Poppins-Bold.ttf"; sourceTree = "<group>"; };
+		ED1B98CB65DC4D62B07FD223 /* Colors.xcassets */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = folder.assetcatalog; name = Colors.xcassets; path = Traids/Colors.xcassets; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F76AB18E21B44C0A99445932 /* Poppins-Light.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Poppins-Light.ttf"; path = "../assets/fonts/Poppins-Light.ttf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -57,6 +61,8 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				830F2F6E894D4C08B39B4447 /* BootSplash.storyboard */,
+				ED1B98CB65DC4D62B07FD223 /* Colors.xcassets */,
 			);
 			name = Traids;
 			sourceTree = "<group>";
@@ -190,6 +196,8 @@
 				944594F3740341CE84ABED19 /* Poppins-Bold.ttf in Resources */,
 				B48ADEA6EACD411C975AF1F1 /* Poppins-SemiBold.ttf in Resources */,
 				14BD4D429B982B14DC49985F /* PrivacyInfo.xcprivacy in Resources */,
+				A8F57AB9575D4AE9B6354C2E /* BootSplash.storyboard in Resources */,
+				8529BBC88CE94697B2AF9265 /* Colors.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
