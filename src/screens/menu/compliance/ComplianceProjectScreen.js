@@ -1,47 +1,66 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
-import { Text } from '~components/Common';
+import {useState, useMemo, useEffect, useCallback} from 'react';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
+import {Text} from '~components/Common';
 import Header from '~components/Header';
-import { useTheme } from '~context/ThemeContext';
-import { RFValue } from 'react-native-responsive-fontsize';
-import { FontFamily } from '~theme/fonts';
-import { Folder, Settings, Share2, MapPin, File, Eye, Trash2, Calendar } from 'lucide-react-native';
+import {useTheme} from '~context/ThemeContext';
+import {RFValue} from 'react-native-responsive-fontsize';
+import {FontFamily} from '~theme/fonts';
+import {
+  Folder,
+  Settings,
+  Share2,
+  MapPin,
+  File,
+  Eye,
+  Trash2,
+  Calendar,
+} from 'lucide-react-native';
 import UploadField from '~components/Common/UploadField';
 import ShareComplianceModal from './components/ShareComplianceModal';
 import useCompanyCompliance from '~hooks/useCompanyCompliance';
-import { pickDocument } from '~utils/filePicker';
+import {pickDocument} from '~utils/filePicker';
 import useAlert from '~hooks/useAlert';
 
 const TABS = ['RAMS', 'Permits', 'Reports', 'Incidents', 'Drawings'];
 
 const TAB_KEY = {
-  RAMS:      'RAMS',
-  Permits:   'permits',
-  Reports:   'reports',
+  RAMS: 'RAMS',
+  Permits: 'permits',
+  Reports: 'reports',
   Incidents: 'incidents',
-  Drawings:  'drawings',
+  Drawings: 'drawings',
 };
 
-const formatDate = (iso) => {
+const formatDate = iso => {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 };
 
 const STATUS_COLORS = {
-  active:     { bg: '#DCFCE7', text: '#16A34A' },
-  completed:  { bg: '#F1F5F9', text: '#64748B' },
-  pending:    { bg: '#FEF9C3', text: '#CA8A04' },
-  cancelled:  { bg: '#FEE2E2', text: '#DC2626' },
+  active: {bg: '#DCFCE7', text: '#16A34A'},
+  completed: {bg: '#F1F5F9', text: '#64748B'},
+  pending: {bg: '#FEF9C3', text: '#CA8A04'},
+  cancelled: {bg: '#FEE2E2', text: '#DC2626'},
 };
 
-const statusStyle = (status) =>
-  STATUS_COLORS[status?.toLowerCase()] ?? { bg: '#F1F5F9', text: '#64748B' };
+const statusStyle = status =>
+  STATUS_COLORS[status?.toLowerCase()] ?? {bg: '#F1F5F9', text: '#64748B'};
 
-const ComplianceProjectScreen = ({ route }) => {
-  const { colors } = useTheme();
-  const { record } = route.params ?? {};
+const ComplianceProjectScreen = ({route}) => {
+  const {colors} = useTheme();
+  const {record} = route.params ?? {};
 
-  const { showAlert, showConfirm } = useAlert();
+  const {showAlert, showConfirm} = useAlert();
 
   const {
     selectedCompliance,
@@ -56,41 +75,67 @@ const ComplianceProjectScreen = ({ route }) => {
     shareDocument,
   } = useCompanyCompliance();
 
-  const [activeTab,    setActiveTab]    = useState(TABS[0]);
+  const [activeTab, setActiveTab] = useState(TABS[0]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [pendingFile,  setPendingFile]  = useState(null);
+  const [pendingFile, setPendingFile] = useState(null);
 
-  const projectId    = record?.project?._id;
+  const projectId = record?.project?._id;
   const complianceId = selectedCompliance?._id ?? record?._id;
 
   // Clear pending file when user switches tabs
-  useEffect(() => { setPendingFile(null); }, [activeTab]);
+  useEffect(() => {
+    setPendingFile(null);
+  }, [activeTab]);
 
-  const handleDelete = useCallback((fileUrl) => {
-    if (!fileUrl || deleting) return;
-    showConfirm({
-      title:       'Delete Document',
-      message:     'Are you sure you want to delete this document? This cannot be undone.',
-      type:        'error',
-      confirmText: 'Delete',
-      cancelText:  'Cancel',
-      onConfirm:   () => {
-        deleteDocument({ projectId: complianceId, tab: TAB_KEY[activeTab], fileUrl })
-          .unwrap()
-          .then(() => {
-            showAlert({ title: 'Deleted', message: 'Document removed successfully.', type: 'success' });
-            getComplianceByProjectId(projectId);
+  const handleDelete = useCallback(
+    fileUrl => {
+      if (!fileUrl || deleting) return;
+      showConfirm({
+        title: 'Delete Document',
+        message:
+          'Are you sure you want to delete this document? This cannot be undone.',
+        type: 'error',
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        onConfirm: () => {
+          deleteDocument({
+            projectId: complianceId,
+            tab: TAB_KEY[activeTab],
+            fileUrl,
           })
-          .catch((err) => {
-            showAlert({
-              title:   'Delete Failed',
-              message: typeof err === 'string' ? err : 'Failed to delete document. Please try again.',
-              type:    'error',
+            .unwrap()
+            .then(() => {
+              showAlert({
+                title: 'Deleted',
+                message: 'Document removed successfully.',
+                type: 'success',
+              });
+              getComplianceByProjectId(projectId);
+            })
+            .catch(err => {
+              showAlert({
+                title: 'Delete Failed',
+                message:
+                  typeof err === 'string'
+                    ? err
+                    : 'Failed to delete document. Please try again.',
+                type: 'error',
+              });
             });
-          });
-      },
-    });
-  }, [deleting, complianceId, projectId, activeTab, deleteDocument, getComplianceByProjectId, showAlert, showConfirm]);
+        },
+      });
+    },
+    [
+      deleting,
+      complianceId,
+      projectId,
+      activeTab,
+      deleteDocument,
+      getComplianceByProjectId,
+      showAlert,
+      showConfirm,
+    ],
+  );
 
   const handlePickAndUpload = useCallback(async () => {
     if (uploading || !complianceId) return;
@@ -98,35 +143,56 @@ const ComplianceProjectScreen = ({ route }) => {
       const file = await pickDocument();
       if (!file) return;
       setPendingFile(file);
-      await uploadDocument({ projectId: complianceId, tab: TAB_KEY[activeTab], document: file }).unwrap();
+      await uploadDocument({
+        projectId: complianceId,
+        tab: TAB_KEY[activeTab],
+        document: file,
+      }).unwrap();
       setPendingFile(null);
-      showAlert({ title: 'Success', message: `Document uploaded to ${activeTab}.`, type: 'success' });
+      showAlert({
+        title: 'Success',
+        message: `Document uploaded to ${activeTab}.`,
+        type: 'success',
+      });
       getComplianceByProjectId(projectId);
     } catch (err) {
       setPendingFile(null);
       showAlert({
-        title:   'Upload Failed',
-        message: typeof err === 'string' ? err : 'Failed to upload document. Please try again.',
-        type:    'error',
+        title: 'Upload Failed',
+        message:
+          typeof err === 'string'
+            ? err
+            : 'Failed to upload document. Please try again.',
+        type: 'error',
       });
     }
-  }, [uploading, complianceId, projectId, activeTab, uploadDocument, getComplianceByProjectId, showAlert]);
+  }, [
+    uploading,
+    complianceId,
+    projectId,
+    activeTab,
+    uploadDocument,
+    getComplianceByProjectId,
+    showAlert,
+  ]);
 
   useEffect(() => {
     if (projectId) getComplianceByProjectId(projectId);
-    return () => { resetSelectedCompliance(); };
+    return () => {
+      resetSelectedCompliance();
+    };
   }, [projectId]);
 
   // Use fetched data; fall back to route record while loading
   const compliance = selectedCompliance ?? record;
-  const project    = compliance?.project ?? {};
+  const project = compliance?.project ?? {};
 
-  const name     = project.jobTitle   ?? record?.name     ?? '—';
+  const name = project.jobTitle ?? record?.name ?? '—';
   const location = project.siteAddress ?? record?.location ?? '—';
-  const trade    = project.trade       ?? '—';
-  const status   = project.status      ?? '—';
-  const start    = project.timelineStartDate;
-  const end      = project.timelineEndDate;
+  const trade = project.trade ?? '—';
+  const status = project.status ?? '—';
+  const start = project.timelineStartDate;
+  const end = project.timelineEndDate;
 
   const activeFiles = useMemo(() => {
     if (!compliance) return [];
@@ -137,7 +203,7 @@ const ComplianceProjectScreen = ({ route }) => {
   const st = statusStyle(status);
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
+    <View style={[styles.root, {backgroundColor: colors.background}]}>
       <Header
         title="Compliance Centre"
         subtitle="Manage safety documents, permits, and regulatory requirements according to jobs"
@@ -152,32 +218,42 @@ const ComplianceProjectScreen = ({ route }) => {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContainer}
-      >
+        contentContainerStyle={styles.scrollContainer}>
         {/* Project Card Header */}
         <View style={styles.projectHeaderCard}>
           <View style={styles.projectHeaderTop}>
             <View style={styles.projectHeaderLeft}>
               <View style={styles.folderIconWrap}>
-                <Folder size={18} color="#FFFFFF" fill="#10375C" strokeWidth={1} />
+                <Folder
+                  size={18}
+                  color="#FFFFFF"
+                  fill="#10375C"
+                  strokeWidth={1}
+                />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.projectName} numberOfLines={1}>{name}</Text>
+              <View style={{flex: 1}}>
+                <Text style={styles.projectName} numberOfLines={1}>
+                  {name}
+                </Text>
                 <View style={styles.projectAddressRow}>
                   <MapPin size={RFValue(9)} color="#F2A154" />
-                  <Text style={styles.projectAddressText} numberOfLines={1}>{location}</Text>
+                  <Text style={styles.projectAddressText} numberOfLines={1}>
+                    {location}
+                  </Text>
                 </View>
               </View>
             </View>
 
             <View style={styles.projectHeaderActions}>
-              <TouchableOpacity style={styles.actionBtn}>
+              {/* <TouchableOpacity style={styles.actionBtn}>
                 <Settings size={RFValue(14)} color="#64748B" />
-              </TouchableOpacity>
+              </TouchableOpacity> */}
               <TouchableOpacity
-                style={[styles.actionBtn, { backgroundColor: '#F2A154', borderColor: '#F2A154' }]}
-                onPress={() => setModalVisible(true)}
-              >
+                style={[
+                  styles.actionBtn,
+                  {backgroundColor: '#F2A154', borderColor: '#F2A154'},
+                ]}
+                onPress={() => setModalVisible(true)}>
                 <Share2 size={RFValue(14)} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
@@ -191,8 +267,8 @@ const ComplianceProjectScreen = ({ route }) => {
               </View>
             )}
             {status !== '—' && (
-              <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
-                <Text style={[styles.statusText, { color: st.text }]}>
+              <View style={[styles.statusBadge, {backgroundColor: st.bg}]}>
+                <Text style={[styles.statusText, {color: st.text}]}>
                   {status.charAt(0).toUpperCase() + status.slice(1)}
                 </Text>
               </View>
@@ -208,7 +284,6 @@ const ComplianceProjectScreen = ({ route }) => {
               </Text>
             </View>
           )}
-
         </View>
 
         {/* Horizontal Tabs */}
@@ -216,18 +291,19 @@ const ComplianceProjectScreen = ({ route }) => {
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.tabsContainer}
-          contentContainerStyle={{ paddingRight: 16 }}
-        >
-          {TABS.map((tab) => {
+          contentContainerStyle={{paddingRight: 16}}>
+          {TABS.map(tab => {
             const isActive = tab === activeTab;
             return (
               <TouchableOpacity
                 key={tab}
                 style={[styles.tabButton, isActive && styles.tabButtonActive]}
                 onPress={() => setActiveTab(tab)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab}</Text>
+                activeOpacity={0.7}>
+                <Text
+                  style={[styles.tabText, isActive && styles.tabTextActive]}>
+                  {tab}
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -235,10 +311,14 @@ const ComplianceProjectScreen = ({ route }) => {
 
         <View style={styles.uploadSection}>
           <UploadField
-            instructions={uploading ? 'Uploading…' : `+ Upload ${activeTab} Document`}
+            instructions={
+              uploading ? 'Uploading…' : `+ Upload ${activeTab} Document`
+            }
             hint="PDF, DOC, DOCX, JPG or PNG (max. 5MB)"
             onPress={handlePickAndUpload}
-            onRemove={() => { if (!uploading) setPendingFile(null); }}
+            onRemove={() => {
+              if (!uploading) setPendingFile(null);
+            }}
             file={pendingFile}
             style={styles.uploadFieldCustom}
           />
@@ -247,12 +327,16 @@ const ComplianceProjectScreen = ({ route }) => {
         {/* File list for active tab */}
         <View style={styles.filesSection}>
           <Text style={styles.filesTitle}>Attached Files</Text>
-          <Text style={styles.filesSubtitle}>Here you can explore the uploaded files</Text>
+          <Text style={styles.filesSubtitle}>
+            Here you can explore the uploaded files
+          </Text>
 
           {activeFiles.length === 0 ? (
             <View style={styles.emptyFiles}>
               <File size={RFValue(28)} color="#CBD5E1" />
-              <Text style={styles.emptyFilesText}>No {activeTab} documents uploaded yet.</Text>
+              <Text style={styles.emptyFilesText}>
+                No {activeTab} documents uploaded yet.
+              </Text>
             </View>
           ) : (
             <View style={styles.filesList}>
@@ -267,29 +351,35 @@ const ComplianceProjectScreen = ({ route }) => {
                         {f.name ?? f.fileName ?? f.originalName ?? activeTab}
                       </Text>
                       <View style={styles.fileMetaRow}>
-                        {f.uploadedAt && <Text style={styles.fileMetaText}>
-                          {f.uploadedAt ? formatDate(f.uploadedAt) : f.date ?? '—'}
-                        </Text>}
+                        {f.uploadedAt && (
+                          <Text style={styles.fileMetaText}>
+                            {f.uploadedAt
+                              ? formatDate(f.uploadedAt)
+                              : f.date ?? '—'}
+                          </Text>
+                        )}
                         {f.size != null && (
                           <Text style={styles.fileMetaText}>{f.size}</Text>
                         )}
                       </View>
                     </View>
                   </View>
-                  
+
                   <View style={styles.fileActions}>
-                    <TouchableOpacity style={styles.iconBtn}>
+                    {/* <TouchableOpacity style={styles.iconBtn}>
                       <Eye size={RFValue(14)} color="#94A3B8" />
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
                     <TouchableOpacity
                       style={styles.iconBtn}
-                      onPress={() => handleDelete(f.url ?? f.fileUrl ?? f.path ?? f)}
-                      disabled={deleting}
-                    >
-                      {deleting
-                        ? <ActivityIndicator size="small" color="#EF4444" />
-                        : <Trash2 size={RFValue(14)} color="#EF4444" />
+                      onPress={() =>
+                        handleDelete(f.url ?? f.fileUrl ?? f.path ?? f)
                       }
+                      disabled={deleting}>
+                      {deleting ? (
+                        <ActivityIndicator size="small" color="#EF4444" />
+                      ) : (
+                        <Trash2 size={RFValue(14)} color="#EF4444" />
+                      )}
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -313,19 +403,25 @@ const ComplianceProjectScreen = ({ route }) => {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root:            { flex: 1 },
+  root: {flex: 1},
   loader: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    alignItems: 'center', justifyContent: 'center', zIndex: 10,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
-  scrollContainer:  { padding: 16, paddingBottom: 120 },
+  scrollContainer: {padding: 16, paddingBottom: 120},
   projectHeaderCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
@@ -395,7 +491,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: RFValue(9),
     color: '#3B82F6',
-    textTransform: 'capitalize'
+    textTransform: 'capitalize',
   },
   statusBadge: {
     borderRadius: 6,
@@ -417,7 +513,7 @@ const styles = StyleSheet.create({
     fontSize: RFValue(9),
     color: '#94A3B8',
   },
-  tabsContainer:    { flexGrow: 0, marginBottom: 20 },
+  tabsContainer: {flexGrow: 0, marginBottom: 20},
   tabButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -427,16 +523,16 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 10,
   },
-  tabButtonActive:  { backgroundColor: '#10375C', borderColor: '#10375C' },
+  tabButtonActive: {backgroundColor: '#10375C', borderColor: '#10375C'},
   tabText: {
     fontFamily: FontFamily.medium,
     fontSize: RFValue(11),
     color: '#64748B',
   },
-  tabTextActive:    { color: '#FFFFFF' },
-  uploadSection:    { marginBottom: 24 },
-  uploadFieldCustom:{ marginBottom: 0 },
-  filesSection:     {},
+  tabTextActive: {color: '#FFFFFF'},
+  uploadSection: {marginBottom: 24},
+  uploadFieldCustom: {marginBottom: 0},
+  filesSection: {},
   filesTitle: {
     fontFamily: FontFamily.bold,
     fontSize: RFValue(12),
@@ -459,7 +555,7 @@ const styles = StyleSheet.create({
     fontSize: RFValue(10),
     color: '#94A3B8',
   },
-  filesList:        { gap: 8 },
+  filesList: {gap: 8},
   fileCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -505,7 +601,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  iconBtn: { padding: 2 },
+  iconBtn: {padding: 2},
 });
 
 export default ComplianceProjectScreen;
