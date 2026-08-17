@@ -170,6 +170,7 @@ const styles = StyleSheet.create({
   brand: {
     fontFamily: FontFamily.bold,
     fontSize: RFValue(18),
+    lineHeight: RFValue(24),
     color: '#FFFFFF',
   },
   brandDot: {
@@ -249,11 +250,13 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: RFValue(18),
     color: '#FFFFFF',
+    lineHeight: RFValue(24),
   },
   subtitleText: {
     fontFamily: FontFamily.regular,
     fontSize: RFValue(10),
     color: '#FFFFFF',
+    lineHeight: RFValue(14),
   },
   fab: {
     width: RFValue(35),

@@ -1,10 +1,10 @@
-import { useState, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { RFValue } from 'react-native-responsive-fontsize';
-import { Text, Button, TextInput } from '~components/Common';
-import { FontFamily } from '~theme/fonts';
-import { useTheme } from '~context/ThemeContext';
-import { Images } from '~assets';
+import {useState, useCallback} from 'react';
+import {View, StyleSheet, TouchableOpacity, Image} from 'react-native';
+import {RFValue} from 'react-native-responsive-fontsize';
+import {Text, Button, TextInput} from '~components/Common';
+import {FontFamily} from '~theme/fonts';
+import {useTheme} from '~context/ThemeContext';
+import {Images} from '~assets';
 import useAuth from '~hooks/useAuth';
 import AuthContainer from './AuthContainer';
 
@@ -18,9 +18,9 @@ const Logo = () => (
 );
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
-const LoginScreen = ({ route, navigation }) => {
-  const { colors } = useTheme();
-  const { login, loading, error, clearError } = useAuth();
+const LoginScreen = ({route, navigation}) => {
+  const {colors} = useTheme();
+  const {login, loading, error, clearError} = useAuth();
   const accountType = route?.params?.accountType || 'company';
 
   const [email, setEmail] = useState('');
@@ -46,11 +46,17 @@ const LoginScreen = ({ route, navigation }) => {
       {/* Logo */}
       <View style={styles.logoRow}>
         <Logo />
-        <Text style={[styles.brand, { color: colors.textPrimary }]}>Traids.</Text>
+        <Text style={[styles.brand, {color: colors.textPrimary}]}>Traids.</Text>
       </View>
 
-      <Text variant="sectionTitle" style={{ color: colors.textPrimary, marginBottom: 6 }}>Sign in to</Text>
-      <Text variant='body' style={{ color: colors.textSecondary, marginBottom: 24 }}>
+      <Text
+        variant="sectionTitle"
+        style={{color: colors.textPrimary, marginBottom: 6}}>
+        Sign in to
+      </Text>
+      <Text
+        variant="body"
+        style={{color: colors.textSecondary, marginBottom: 24}}>
         Enter your credentials to access your account
       </Text>
 
@@ -59,7 +65,11 @@ const LoginScreen = ({ route, navigation }) => {
         <TextInput
           label="Email*"
           value={email}
-          onChangeText={v => { setEmail(v); setFieldErrors(p => ({ ...p, email: '' })); clearError(); }}
+          onChangeText={v => {
+            setEmail(v);
+            setFieldErrors(p => ({...p, email: ''}));
+            clearError();
+          }}
           placeholder="Enter your email"
           keyboardType="email-address"
           autoCapitalize="none"
@@ -68,7 +78,11 @@ const LoginScreen = ({ route, navigation }) => {
         <TextInput
           label="Password*"
           value={password}
-          onChangeText={v => { setPassword(v); setFieldErrors(p => ({ ...p, password: '' })); clearError(); }}
+          onChangeText={v => {
+            setPassword(v);
+            setFieldErrors(p => ({...p, password: ''}));
+            clearError();
+          }}
           placeholder="Enter your password"
           secureTextEntry
           error={fieldErrors.password}
@@ -76,29 +90,41 @@ const LoginScreen = ({ route, navigation }) => {
 
         {/* Forgot row */}
         <View style={styles.forgotRow}>
-          <TouchableOpacity onPress={() => navigation.navigate('ResetPassword', { userType: accountType })}>
-            <Text style={{ fontSize: RFValue(10), color: colors.secondary }}>Forgot Password?</Text>
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate('ResetPassword', {userType: accountType})
+            }>
+            <Text style={{fontSize: RFValue(10), color: colors.secondary}}>
+              Forgot Password?
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* API error */}
         {!!error && (
-          <Text style={[styles.apiError, { color: colors.error ?? '#D0342C' }]}>
+          <Text style={[styles.apiError, {color: colors.error ?? '#D0342C'}]}>
             {error}
           </Text>
         )}
       </View>
 
-      <Button title="Login" onPress={handleLogin} loading={loading} style={styles.btn} />
+      <Button
+        title="Login"
+        onPress={handleLogin}
+        loading={loading}
+        style={styles.btn}
+      />
 
       {/* Register */}
       <View style={styles.registerRow}>
-        <Text style={{ color: colors.textSecondary }}>
+        <Text style={{color: colors.textSecondary}}>
           Don't have an Account?{' '}
         </Text>
         <Text
-          style={{ color: colors.primary, fontFamily: FontFamily.bold }}
-          onPress={() => navigation.navigate('Register', { screen: 'RegisterAccountType' })}>
+          style={{color: colors.primary, fontFamily: FontFamily.bold}}
+          onPress={() =>
+            navigation.navigate('Register', {screen: 'RegisterAccountType'})
+          }>
           Register
         </Text>
       </View>
@@ -120,8 +146,9 @@ const styles = StyleSheet.create({
   brand: {
     fontFamily: FontFamily.bold,
     fontSize: RFValue(18),
+    lineHeight: RFValue(22),
   },
-  form: { marginBottom: 4 },
+  form: {marginBottom: 4},
   forgotRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -135,7 +162,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: 'center',
   },
-  btn: { marginBottom: 24 },
+  btn: {marginBottom: 24},
   registerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
