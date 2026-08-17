@@ -2,21 +2,24 @@
  * BudgetBar — horizontal budget category bar (Materials, Labor, Permits, Other).
  * Props: label, value (0-100), color
  */
-import { View, StyleSheet } from 'react-native';
-import { RFValue } from 'react-native-responsive-fontsize';
-import { Text } from '~components/Common';
-import { FontFamily } from '~theme/fonts';
-import { useTheme } from '~context/ThemeContext';
+import {View, StyleSheet} from 'react-native';
+import {RFValue} from 'react-native-responsive-fontsize';
+import {Text} from '~components/Common';
+import {FontFamily} from '~theme/fonts';
+import {useTheme} from '~context/ThemeContext';
 
-const BudgetBar = ({ label, value = 0, color = '#10375C' }) => {
-  const { colors } = useTheme();
+const BudgetBar = ({label, value = 0, color = '#10375C'}) => {
+  const {colors} = useTheme();
   const pct = Math.min(Math.max(value, 0), 100);
 
   return (
     <View style={styles.row}>
-      <Text style={[styles.label, { color: colors.textSecondary }]}>{label}</Text>
-      <View style={[styles.track, { backgroundColor: colors.border ?? '#E5E7EB' }]}>
-        <View style={[styles.fill, { width: `${pct}%`, backgroundColor: color }]} />
+      <Text style={[styles.label, {color: colors.textSecondary}]}>{label}</Text>
+      <View
+        style={[styles.track, {backgroundColor: colors.border ?? '#E5E7EB'}]}>
+        <View
+          style={[styles.fill, {width: `${pct}%`, backgroundColor: color}]}
+        />
       </View>
     </View>
   );
