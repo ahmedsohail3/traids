@@ -1,6 +1,11 @@
-import {Text, TouchableOpacity} from "react-native";
+import {StyleSheet, Text, TouchableOpacity} from 'react-native';
 import PropTypes from "prop-types";
-import {Typography} from "../../theme/typography";
+import {
+  DEFAULT_LINE_HEIGHT_RATIO,
+  LineHeightRatio,
+  Typography,
+  lineHeightFor,
+} from '../../theme/typography';
 import {useTheme} from "~context/ThemeContext";
 
 const AppText = ({
@@ -43,10 +48,26 @@ const AppText = ({
     }
   };
 
+  // A caller that overrides fontSize would otherwise keep the variant's fixed
+  // lineHeight (e.g. fontSize RFValue(22) on top of body's RFValue(16) line
+  // height), clipping the text. Rescale using the variant's own ratio, unless
+  // the caller set lineHeight explicitly — then they win.
+  const flattened = StyleSheet.flatten(style);
+  const scaledLineHeight =
+    flattened?.fontSize != null && flattened.lineHeight == null
+      ? {
+          lineHeight: lineHeightFor(
+            flattened.fontSize,
+            LineHeightRatio[variant] ?? DEFAULT_LINE_HEIGHT_RATIO,
+          ),
+        }
+      : null;
+
   const textStyle = [
     Typography[variant],
     {color: getColor(color), textAlign: align},
     style,
+    scaledLineHeight,
   ];
 
   if (onPress) {
@@ -71,12 +92,8 @@ AppText.propTypes = {
     "screenTitle",
     "sectionTitle",
     "body",
-    "bodySmall",
     "caption",
     "button",
-    "link",
-    "small",
-    "medium",
   ]),
   color: PropTypes.string,
   align: PropTypes.oneOf(["left", "center", "right"]),
