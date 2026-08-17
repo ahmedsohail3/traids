@@ -160,6 +160,14 @@ const SubcontractorProfileScreen = ({route, navigation}) => {
   // Fall back to route params while the API loads so the screen isn't blank
   const sub = profile ?? routeSub;
 
+  // `sub` is the unmapped route param until the profile request lands, so
+  // normalise here as well instead of assuming the mapped shape.
+  const workExamples = (Array.isArray(sub.workExamples) ? sub.workExamples : [])
+    .map(w =>
+      typeof w === 'string' ? w : w?.url ?? w?.uri ?? w?.image ?? null,
+    )
+    .filter(Boolean);
+
   const handleBookNow = () => {
     navigation.navigate('SendOffer', {
       subcontractorId,
@@ -299,13 +307,35 @@ const SubcontractorProfileScreen = ({route, navigation}) => {
           ))}
         </View>
 
+        {/* Work Examples */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Work Examples</Text>
+          <Text style={styles.sectionSub}>Photos from previous jobs</Text>
+          {workExamples.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.workExamplesRow}>
+              {workExamples.map((uri, i) => (
+                <Image
+                  key={`${uri}-${i}`}
+                  source={{uri}}
+                  style={styles.workExampleImage}
+                  resizeMode="cover"
+                />
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={styles.emptySectionText}>
+              This subcontractor has not added any work examples yet.
+            </Text>
+          )}
+        </View>
+
         {/* Work History */}
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionTitle}>Work History</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAll}>View All</Text>
-            </TouchableOpacity>
           </View>
           {(sub.workHistory ?? []).length > 0 ? (
             sub.workHistory.map((item, i) => (
@@ -429,7 +459,6 @@ const styles = StyleSheet.create({
     fontSize: RFValue(10),
     color: '#94A3B8',
   },
-  dot: {color: '#CBD5E1', fontSize: RFValue(10)},
   stat: {
     fontFamily: FontFamily.medium,
     fontSize: RFValue(10),
@@ -476,6 +505,23 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.semiBold,
     fontSize: RFValue(10),
     color: '#F2A154',
+  },
+  workExamplesRow: {
+    gap: 10,
+    paddingVertical: 2,
+  },
+  workExampleImage: {
+    width: RFValue(96),
+    height: RFValue(96),
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+  },
+  emptySectionText: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10.5),
+    color: '#94A3B8',
+    textAlign: 'center',
+    paddingVertical: 16,
   },
   body: {
     fontFamily: FontFamily.regular,

@@ -41,6 +41,29 @@ const buildCompliance = (raw) => {
   return entries;
 };
 
+const buildWorkHistory = (raw) => {
+  const entries = Array.isArray(raw.workHistory) ? raw.workHistory : [];
+  return entries
+    .map((w) => ({
+      title:    w.title    ?? w.jobTitle    ?? '',
+      date:     w.date     ?? w.completedAt ?? '',
+      rating:   w.rating   ?? 0,
+      review:   w.review   ?? w.comment     ?? '',
+      reviewer: w.reviewer ?? w.reviewerName ?? '',
+    }))
+    // Drop entries with nothing to show, so the screen falls through to its
+    // empty state instead of rendering a blank card.
+    .filter((w) => w.title || w.date || w.review || w.reviewer || w.rating > 0);
+};
+
+// Accepts either a plain URL string or an object wrapping one.
+const buildWorkExamples = (raw) => {
+  const entries = Array.isArray(raw.workExamples) ? raw.workExamples : [];
+  return entries
+    .map((w) => (typeof w === 'string' ? w : w?.url ?? w?.uri ?? w?.image ?? null))
+    .filter(Boolean);
+};
+
 const mapProfile = (raw) => {
   if (!raw) return null;
   return {
@@ -55,13 +78,11 @@ const mapProfile = (raw) => {
     yearsOfExperience: raw.yearsOfExperience ?? null,
     availability:      raw.availability      ?? null,
     compliance: buildCompliance(raw),
-    workHistory: (raw.workExamples ?? raw.workHistory ?? []).map((w) => ({
-      title:    w.title    ?? w.jobTitle    ?? '',
-      date:     w.date     ?? w.completedAt ?? '',
-      rating:   w.rating   ?? 0,
-      review:   w.review   ?? w.comment     ?? '',
-      reviewer: w.reviewer ?? w.reviewerName ?? '',
-    })),
+    // `workExamples` is a list of image URLs and is NOT work history — mapping
+    // it here produced one blank review card per image, which also suppressed
+    // the "no work history" empty state. The two are kept separate below.
+    workHistory: buildWorkHistory(raw),
+    workExamples: buildWorkExamples(raw),
   };
 };
 
