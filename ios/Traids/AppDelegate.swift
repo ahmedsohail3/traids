@@ -2,6 +2,7 @@ import UIKit
 import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
+import RNBootSplash
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -28,6 +29,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       in: window,
       launchOptions: launchOptions
     )
+
+    // Hand the RN root view to RNBootSplash. Without this its `hide()` promise
+    // is parked in _resolveQueue and never resolves, so the JS splash overlay
+    // never fades out and the app sits on the splash forever.
+    RNBootSplash.initWithStoryboard("BootSplash", rootView: window?.rootViewController?.view)
 
     return true
   }
