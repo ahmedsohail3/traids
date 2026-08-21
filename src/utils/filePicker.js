@@ -49,6 +49,14 @@ const normalizeAsset = (asset) => ({
   name: asset.fileName ?? `photo_${Date.now()}.jpg`,
 });
 
+// Capture/pick options for document scans. Full-res camera output routinely
+// blows past the 5MB upload cap, so bound the long edge before compressing.
+export const DOCUMENT_IMAGE_OPTIONS = {
+  maxWidth: 2400,
+  maxHeight: 2400,
+  quality: 0.8,
+};
+
 export const pickImageFromLibrary = (options = {}) =>
   new Promise((resolve) => {
     launchImageLibrary({ ...IMAGE_OPTIONS, ...options }, (response) => {

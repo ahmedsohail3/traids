@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
-import { Text, Button, TextInput, UploadField } from '~components/Common';
+import { Text, Button, TextInput, DocumentPickerField } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { CheckCircle } from 'lucide-react-native';
@@ -8,7 +8,6 @@ import RegisterContainer from '../RegisterContainer';
 import useSubcontractorSignup from '~hooks/useSubcontractorSignup';
 import useUploadSubcontractorDocument from '~hooks/useUploadSubcontractorDocument';
 import useAlert from '~hooks/useAlert';
-import { pickDocument } from '~utils/filePicker';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -61,10 +60,19 @@ const DocumentSection = ({ label, documentType, fileField, urlField, expiryField
     useUploadSubcontractorDocument(documentType);
   const { showAlert } = useAlert();
 
-  const handlePickFile = useCallback(async () => {
+  const handleRemove = useCallback(() => {
     if (uploading) return;
-    const file = await pickDocument();
-    if (!file) return;
+    updateField(fileField, null);
+    updateField(urlField, null);
+    updateField(expiryField, '');
+    clear();
+  }, [uploading, fileField, urlField, expiryField, updateField, clear]);
+
+  // DocumentPickerField owns the source choice (camera / gallery / file) and
+  // hands back the picked file, or null when the user clears it.
+  const handleFileChange = useCallback(async (file) => {
+    if (uploading) return;
+    if (!file) return handleRemove();
 
     updateField(fileField, file);
 
@@ -87,15 +95,7 @@ const DocumentSection = ({ label, documentType, fileField, urlField, expiryField
         type: 'error',
       });
     }
-  }, [uploading, fileField, urlField, expiryField, updateField, clearError, upload, showAlert]);
-
-  const handleRemove = useCallback(() => {
-    if (uploading) return;
-    updateField(fileField, null);
-    updateField(urlField, null);
-    updateField(expiryField, '');
-    clear();
-  }, [uploading, fileField, urlField, expiryField, updateField, clear]);
+  }, [uploading, fileField, urlField, expiryField, updateField, clearError, upload, showAlert, handleRemove]);
 
   const showExtractedExpiry = !!documentUrl && !!expiresAt;
   const showManualExpiry    = !!documentUrl && !expiresAt;
@@ -103,12 +103,12 @@ const DocumentSection = ({ label, documentType, fileField, urlField, expiryField
 
   return (
     <>
-      <UploadField
+      <DocumentPickerField
         label={`${label} *`}
         hint={uploading ? 'Uploading…' : 'JPG, PNG, PDF (max. 5MB)'}
-        file={uploading ? null : formData[fileField]}
-        onPress={handlePickFile}
-        onRemove={handleRemove}
+        value={uploading ? null : formData[fileField]}
+        onChange={handleFileChange}
+        disabled={uploading}
         style={fieldError ? styles.fieldErrorSpacing : undefined}
       />
 

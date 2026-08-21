@@ -1,10 +1,81 @@
-import { useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { useCallback, useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  Modal,
+  Platform,
+  ActionSheetIOS,
+  Pressable,
+} from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { Upload, FileText, X } from 'lucide-react-native';
+import { Upload, FileText, X, Camera, Image as ImageIcon, Paperclip } from 'lucide-react-native';
 import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
-import { pickDocument } from '~utils/filePicker';
+import {
+  pickDocument,
+  pickImageFromCamera,
+  pickImageFromLibrary,
+  DOCUMENT_IMAGE_OPTIONS,
+} from '~utils/filePicker';
+
+// ── Source Sheet (Android / non-iOS) ──────────────────────────────────────────
+
+const SourceSheet = ({
+  visible,
+  onClose,
+  onCamera,
+  onGallery,
+  onFile,
+  onRemove,
+  showRemove,
+  colors,
+}) => (
+  <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Pressable style={styles.sheetOverlay} onPress={onClose}>
+      <Pressable style={[styles.sheetContainer, { backgroundColor: colors.modalBackground }]}>
+
+        <TouchableOpacity
+          style={[styles.sheetOption, { borderBottomColor: colors.border }]}
+          onPress={() => { onClose(); onCamera(); }}>
+          <Camera size={RFValue(18)} color={colors.textPrimary} strokeWidth={1.5} />
+          <Text style={[styles.sheetOptionText, { color: colors.textPrimary }]}>Take Photo</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.sheetOption, { borderBottomColor: colors.border }]}
+          onPress={() => { onClose(); onGallery(); }}>
+          <ImageIcon size={RFValue(18)} color={colors.textPrimary} strokeWidth={1.5} />
+          <Text style={[styles.sheetOptionText, { color: colors.textPrimary }]}>Choose from Gallery</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.sheetOption, { borderBottomColor: colors.border }]}
+          onPress={() => { onClose(); onFile(); }}>
+          <Paperclip size={RFValue(18)} color={colors.textPrimary} strokeWidth={1.5} />
+          <Text style={[styles.sheetOptionText, { color: colors.textPrimary }]}>Choose File</Text>
+        </TouchableOpacity>
+
+        {showRemove && (
+          <TouchableOpacity
+            style={[styles.sheetOption, { borderBottomColor: colors.border }]}
+            onPress={() => { onClose(); onRemove(); }}>
+            <X size={RFValue(18)} color={colors.error} strokeWidth={1.5} />
+            <Text style={[styles.sheetOptionText, { color: colors.error }]}>Remove File</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          style={[styles.sheetCancel, { borderTopColor: colors.border }]}
+          onPress={onClose}>
+          <Text style={[styles.sheetCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+        </TouchableOpacity>
+
+      </Pressable>
+    </Pressable>
+  </Modal>
+);
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -26,6 +97,8 @@ const getFileIcon = (type = '') => {
  *   onChange      – (file: { uri, type, name } | null) => void
  *   error         – validation error string
  *   allowedTypes  – array of @react-native-documents/picker types (default: pdf + images)
+ *   showCamera    – offer Take Photo / Gallery / File instead of going straight
+ *                   to the file browser (default: true)
  *   disabled      – disables interactions
  *   style         – outer container style override
  */
@@ -36,24 +109,72 @@ const DocumentPickerField = ({
   onChange,
   error,
   allowedTypes,
+  showCamera = true,
   disabled = false,
   style,
 }) => {
   const { colors } = useTheme();
+  const [sheetVisible, setSheetVisible] = useState(false);
 
-  const handlePick = useCallback(async () => {
-    if (disabled) return;
+  const handleFile = useCallback(async () => {
     try {
       const file = await pickDocument(allowedTypes);
       if (file) onChange?.(file);
     } catch {
       // User-facing errors handled by parent via error prop
     }
-  }, [disabled, allowedTypes, onChange]);
+  }, [allowedTypes, onChange]);
+
+  const handleCamera = useCallback(async () => {
+    try {
+      const file = await pickImageFromCamera(DOCUMENT_IMAGE_OPTIONS);
+      if (file) onChange?.(file);
+    } catch {
+      // User-facing errors handled by parent via error prop
+    }
+  }, [onChange]);
+
+  const handleGallery = useCallback(async () => {
+    try {
+      const file = await pickImageFromLibrary(DOCUMENT_IMAGE_OPTIONS);
+      if (file) onChange?.(file);
+    } catch {
+      // User-facing errors handled by parent via error prop
+    }
+  }, [onChange]);
 
   const handleRemove = useCallback(() => {
     onChange?.(null);
   }, [onChange]);
+
+  // Straight to the file browser when the camera is off, otherwise let the user
+  // pick a source first — native sheet on iOS, our own modal elsewhere.
+  const handlePick = useCallback(() => {
+    if (disabled) return;
+    if (!showCamera) return handleFile();
+
+    if (Platform.OS === 'ios') {
+      const options = ['Take Photo', 'Choose from Gallery', 'Choose File'];
+      if (value) options.push('Remove File');
+      options.push('Cancel');
+
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          cancelButtonIndex: options.length - 1,
+          destructiveButtonIndex: value ? 3 : undefined,
+        },
+        (index) => {
+          if (index === 0) handleCamera();
+          else if (index === 1) handleGallery();
+          else if (index === 2) handleFile();
+          else if (index === 3 && value) handleRemove();
+        },
+      );
+    } else {
+      setSheetVisible(true);
+    }
+  }, [disabled, showCamera, value, handleFile, handleCamera, handleGallery, handleRemove]);
 
   const badge = value ? getFileIcon(value.type) : null;
 
@@ -87,7 +208,9 @@ const DocumentPickerField = ({
             },
           ]}>
           <Upload size={RFValue(22)} color={colors.textSecondary} strokeWidth={1.5} style={styles.uploadIcon} />
-          <Text style={[styles.cta, { color: colors.textSecondary }]}>Click to upload</Text>
+          <Text style={[styles.cta, { color: colors.textSecondary }]}>
+            {showCamera ? 'Take a photo or upload' : 'Click to upload'}
+          </Text>
           <Text style={[styles.hint, { color: colors.textMuted }]}>{hint}</Text>
         </TouchableOpacity>
       ) : (
@@ -121,6 +244,20 @@ const DocumentPickerField = ({
       {error ? (
         <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
       ) : null}
+
+      {/* Source sheet — iOS uses the native ActionSheet instead */}
+      {showCamera && Platform.OS !== 'ios' && (
+        <SourceSheet
+          visible={sheetVisible}
+          onClose={() => setSheetVisible(false)}
+          onCamera={handleCamera}
+          onGallery={handleGallery}
+          onFile={handleFile}
+          onRemove={handleRemove}
+          showRemove={!!value}
+          colors={colors}
+        />
+      )}
 
     </View>
   );
@@ -203,6 +340,41 @@ const styles = StyleSheet.create({
     fontSize: RFValue(10),
     fontFamily: FontFamily.regular,
     marginTop: 6,
+  },
+
+  // ── Source sheet (Android / non-iOS) ───────────────────────────────────────
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheetContainer: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 32,
+  },
+  sheetOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  sheetOptionText: {
+    fontSize: RFValue(13),
+    fontFamily: FontFamily.medium,
+  },
+  sheetCancel: {
+    alignItems: 'center',
+    paddingTop: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    marginTop: 4,
+  },
+  sheetCancelText: {
+    fontSize: RFValue(12),
+    fontFamily: FontFamily.regular,
   },
 });
 

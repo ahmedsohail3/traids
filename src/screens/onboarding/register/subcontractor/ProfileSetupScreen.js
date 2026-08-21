@@ -1,10 +1,10 @@
 import { useCallback, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Text, Button, TextInput, UploadField } from '~components/Common';
+import { Text, Button, TextInput, UploadField, DocumentPickerField } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import RegisterContainer from '../RegisterContainer';
 import useSubcontractorSignup from '~hooks/useSubcontractorSignup';
-import { pickImageFromLibrary, pickDocument } from '~utils/filePicker';
+import { pickImageFromLibrary } from '~utils/filePicker';
 import useAlert from '~hooks/useAlert';
 import useAuth from '~hooks/useAuth';
 
@@ -49,11 +49,6 @@ const ProfileSetupScreen = ({ navigation }) => {
     if (file) updateField('profileImage', file);
   }, [updateField]);
 
-  const handlePickWorkExamples = useCallback(async () => {
-    const file = await pickDocument();
-    if (file) updateField('workExamples', file);
-  }, [updateField]);
-
   const handleContinue = useCallback(() => {
     submit();
   }, [submit]);
@@ -89,12 +84,11 @@ const ProfileSetupScreen = ({ navigation }) => {
       />
 
       {/* Work Examples — optional */}
-      <UploadField
+      <DocumentPickerField
         label="Work Examples (optional)"
         hint="PDF, JPG or PNG (max. 5MB)"
-        file={formData.workExamples}
-        onPress={handlePickWorkExamples}
-        onRemove={() => updateField('workExamples', null)}
+        value={formData.workExamples}
+        onChange={(file) => updateField('workExamples', file)}
       />
 
       <View style={styles.actionRow}>
