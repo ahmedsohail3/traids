@@ -66,6 +66,24 @@ export const getUserType = async () => {
   }
 };
 
+// The plan a company picked on ChoosePlanScreen. Persisted so the picker is not
+// shown again on cold start before the profile fetch comes back.
+export const storeAccountType = async (accountType) => {
+  try {
+    if (accountType) await AsyncStorage.setItem("accountType", accountType);
+  } catch {
+    // Silent fail
+  }
+};
+
+export const getAccountType = async () => {
+  try {
+    return await AsyncStorage.getItem("accountType");
+  } catch {
+    return null;
+  }
+};
+
 
 export const stripHtml = (str) =>
   str ? str.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
@@ -77,12 +95,12 @@ export const formatErrorMsg = (err) =>
     .replace(/\bin_progress\b/gi, 'In Progress');
 
 /**
- * Clear all session data — tokens + user type.
+ * Clear all session data — tokens + user type + account type.
  * Called on logout and by the 401 interceptor on session expiry.
  */
 export const clearAllTokens = async () => {
   try {
-    await AsyncStorage.multiRemove(["accessToken", "refreshToken", "userType"]);
+    await AsyncStorage.multiRemove(["accessToken", "refreshToken", "userType", "accountType"]);
   } catch {
     // Silent fail
   }

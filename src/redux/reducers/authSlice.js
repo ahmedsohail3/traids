@@ -121,6 +121,7 @@ const initialState = {
   isAuthenticated: false,
   user: {
     type: 'company', // 'company' | 'subcontractor'
+    accountType: null, // company plan — null until picked (see ChoosePlanScreen)
     id: null,
     name: null,
     email: null,
@@ -153,6 +154,12 @@ const authSlice = createSlice({
     },
     clearAuthError: (state) => {
       state.error = null;
+    },
+
+    // Set once a company picks a plan on ChoosePlanScreen — the post-login
+    // screen shown when the auth response carries no account type.
+    setAccountType: (state, action) => {
+      state.user.accountType = action.payload;
     },
 
     clearResetFlow: (state) => {
@@ -248,5 +255,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, logout, clearAuthError, setUserType, clearResetFlow, clearResetError } = authSlice.actions;
+export const { setCredentials, logout, clearAuthError, setAccountType, setUserType, clearResetFlow, clearResetError } = authSlice.actions;
 export default authSlice.reducer;

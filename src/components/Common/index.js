@@ -22,6 +22,10 @@ import ImagePickerField from "./ImagePickerField";
 import StripeOnboardingModal from "./StripeOnboardingModal";
 import AddPaymentMethodModal from "./AddPaymentMethodModal";
 import SortBy, { applySort } from "./SortBy";
+import AccountTypeCard from "./AccountTypeCard";
+import PlanCard from "./PlanCard";
+import GradientBackground from "./GradientBackground";
+import AIAssistantFab from "./AIAssistantFab";
 
 export {
   AppText as Text,
@@ -49,5 +53,9 @@ export {
   AddPaymentMethodModal,
   SortBy,
   applySort,
+  AccountTypeCard,
+  PlanCard,
+  GradientBackground,
+  AIAssistantFab,
 };
 
