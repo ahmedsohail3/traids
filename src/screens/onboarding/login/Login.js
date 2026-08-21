@@ -11,7 +11,7 @@ import AuthContainer from './AuthContainer';
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 const Logo = () => (
   <Image
-    source={Images.logoTraids}
+    source={Images.traidsLogo}
     style={styles.logoBox}
     resizeMode="contain"
   />
@@ -46,7 +46,6 @@ const LoginScreen = ({route, navigation}) => {
       {/* Logo */}
       <View style={styles.logoRow}>
         <Logo />
-        <Text style={[styles.brand, {color: colors.textPrimary}]}>Traids.</Text>
       </View>
 
       <Text
@@ -140,13 +139,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   logoBox: {
-    width: RFValue(28),
-    height: RFValue(28),
-  },
-  brand: {
-    fontFamily: FontFamily.bold,
-    fontSize: RFValue(18),
-    lineHeight: RFValue(22),
+    width: RFValue(120),
+    height: RFValue(32),
   },
   form: {marginBottom: 4},
   forgotRow: {

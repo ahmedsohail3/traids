@@ -49,13 +49,10 @@ const Header = ({
         {/* Logo */}
         <View style={styles.logoRow}>
           <Image
-            source={Images.logoTraids}
+            source={Images.traidsLogoWhite}
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={styles.brand}>
-            Traids<Text style={styles.brandDot}>.</Text>
-          </Text>
         </View>
 
         {/* Right: bell + profile icon */}
@@ -163,20 +160,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   logo: {
-    width: RFValue(30),
-    height: RFValue(30),
-    borderRadius: 8,
-  },
-  brand: {
-    fontFamily: FontFamily.bold,
-    fontSize: RFValue(18),
-    lineHeight: RFValue(24),
-    color: '#FFFFFF',
-  },
-  brandDot: {
-    color: '#F2A154', // orange
-    fontSize: RFValue(20),
-    fontFamily: FontFamily.bold,
+    width: RFValue(120),
+    height: RFValue(32),
   },
   iconsRow: {
     flexDirection: 'row',

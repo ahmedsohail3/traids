@@ -15,7 +15,7 @@ import { Images } from '~assets';
 /**
  * RegisterContainer — shared wrapper for all company registration screens.
  *
- * Header: orange logo square + "Traids."  +  back arrow + "Company Registration"
+ * Header: Traids wordmark  +  back arrow + "Company Registration"
  * Below: StepProgressBar  →  children (no card, content sits on background)
  *
  * Props:
@@ -54,13 +54,10 @@ const RegisterContainer = ({
         {/* Top logo row */}
         <View style={styles.topRow}>
           <Image
-            source={Images.logoTraids}
+            source={Images.traidsLogo}
             style={styles.logoBox}
             resizeMode="contain"
           />
-          <Text variant="screenTitle" style={{ color: colors.textPrimary }}>
-            Traids.
-          </Text>
         </View>
 
         {/* Back nav + title */}
@@ -108,8 +105,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   logoBox: {
-    width: RFValue(28),
-    height: RFValue(28),
+    width: RFValue(120),
+    height: RFValue(32),
   },
   backRow: {
     flexDirection: 'row',

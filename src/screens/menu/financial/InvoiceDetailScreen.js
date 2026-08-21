@@ -1,5 +1,11 @@
 import {useCallback, useEffect, useState} from 'react';
-import {View, StyleSheet, ScrollView, ActivityIndicator} from 'react-native';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Image,
+} from 'react-native';
 import {Text, Button, AddPaymentMethodModal} from '~components/Common';
 import Header from '~components/Header';
 import {useTheme} from '~context/ThemeContext';
@@ -9,6 +15,7 @@ import useCompanyInvoices from '~hooks/useCompanyInvoices';
 import useCompanyCardSetup from '~hooks/useCompanyCardSetup';
 import useAlert from '~hooks/useAlert';
 import {useSelector} from 'react-redux';
+import {Images} from '~assets';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -129,14 +136,11 @@ const InvoiceDetailScreen = ({route}) => {
           <View style={styles.invoiceCard}>
             {/* Logo + Invoice tag */}
             <View style={styles.invoiceHeader}>
-              <View style={styles.logoRow}>
-                <View style={styles.logoBox}>
-                  <Text style={styles.logoText}>T</Text>
-                </View>
-                <Text style={styles.brandText}>
-                  Traids<Text style={styles.brandDot}>.</Text>
-                </Text>
-              </View>
+              <Image
+                source={Images.traidsLogo}
+                style={styles.logoBox}
+                resizeMode="contain"
+              />
               <View style={styles.invoiceTag}>
                 <Text style={styles.invoiceTagLabel}>INVOICE</Text>
                 <Text style={styles.invoiceTagNum}>
@@ -308,26 +312,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  logoRow: {flexDirection: 'row', alignItems: 'center', gap: 8},
   logoBox: {
-    width: 30,
-    height: 30,
-    borderRadius: 6,
-    backgroundColor: '#F2A154',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: RFValue(120),
+    height: RFValue(32),
   },
-  logoText: {
-    fontFamily: FontFamily.bold,
-    fontSize: RFValue(14),
-    color: '#FFFFFF',
-  },
-  brandText: {
-    fontFamily: FontFamily.bold,
-    fontSize: RFValue(16),
-    color: '#10375C',
-  },
-  brandDot: {color: '#F2A154'},
   invoiceTag: {alignItems: 'flex-end'},
   invoiceTagLabel: {
     fontFamily: FontFamily.bold,

@@ -9,7 +9,7 @@ import { Images } from '~assets';
 // ─── Logo ────────────────────────────────────────────────────────────────────
 const Logo = () => (
   <Image
-    source={Images.logoTraids}
+    source={Images.traidsLogo}
     style={styles.logoBox}
     resizeMode="contain"
   />
@@ -68,7 +68,6 @@ const RegisterAccountTypeScreen = ({ navigation }) => {
       {/* Logo header */}
       <View style={styles.header}>
         <Logo />
-        <Text variant="screenTitle">Traids.</Text>
       </View>
 
       <Text
@@ -134,7 +133,7 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   logoBox: {
-    width: RFValue(32),
+    width: RFValue(120),
     height: RFValue(32),
   },
   cardsContainer: {
