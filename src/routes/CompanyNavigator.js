@@ -4,7 +4,8 @@
  * Full navigation stack for the Company user role.
  * Contains:
  *   • Company Tab Bar (Dashboard, Subcontractors, Jobs, Chats, More)
- *   • Full-screen screens registered outside tabs (no tab bar shown)
+ *   • Full-screen screens registered outside tabs (no tab bar shown), including
+ *     the AI Help Assistant opened from the dashboard FAB
  *
  * Does NOT import or conditionally render any Subcontractor screens.
  */
@@ -35,6 +36,7 @@ import SendOfferScreen from '~screens/subcontractors/company/SendOfferScreen';
 import CompanyChatScreen from '~screens/chats/company/CompanyChatScreen';
 import CompanyJobDetailScreen from '~screens/jobs/company/CompanyJobDetailScreen';
 import NotificationsScreen from '~screens/notifications/NotificationsScreen';
+import { AIAssistantScreen } from '~screens/aiAssistant';
 
 // ─── Stack navigators for each tab ───────────────────────────────────────────
 
@@ -113,6 +115,7 @@ const CompanyNavigator = () => (
       <RootStack.Screen name="SubcontractorProfile" component={SubcontractorProfileScreen} options={{ animation: 'slide_from_right' }} />
       <RootStack.Screen name="SendOffer" component={SendOfferScreen} options={{ animation: 'slide_from_right' }} />
       <RootStack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: 'slide_from_right' }} />
+      <RootStack.Screen name="AIAssistant" component={AIAssistantScreen} options={{ animation: 'slide_from_right' }} />
     </RootStack.Navigator>
   </View>
 );
