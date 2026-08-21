@@ -1,10 +1,9 @@
 import { useCallback, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Text, Button, TextInput, UploadField, DocumentPickerField } from '~components/Common';
+import { Text, Button, TextInput, ImagePickerField, DocumentPickerField } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import RegisterContainer from '../RegisterContainer';
 import useSubcontractorSignup from '~hooks/useSubcontractorSignup';
-import { pickImageFromLibrary } from '~utils/filePicker';
 import useAlert from '~hooks/useAlert';
 import useAuth from '~hooks/useAuth';
 
@@ -44,11 +43,6 @@ const ProfileSetupScreen = ({ navigation }) => {
     if (stepWithErrors() === 1) navigation.navigate('SubPersonalDetails');
   }, [error]);
 
-  const handlePickPhoto = useCallback(async () => {
-    const file = await pickImageFromLibrary();
-    if (file) updateField('profileImage', file);
-  }, [updateField]);
-
   const handleContinue = useCallback(() => {
     submit();
   }, [submit]);
@@ -65,12 +59,11 @@ const ProfileSetupScreen = ({ navigation }) => {
       </Text>
 
       {/* Upload Photo */}
-      <UploadField
+      <ImagePickerField
         label="Upload Photo"
         hint="JPG, PNG or WEBP up to 5MB. Square image recommended."
-        file={formData.profileImage}
-        onPress={handlePickPhoto}
-        onRemove={() => updateField('profileImage', null)}
+        value={formData.profileImage}
+        onChange={(file) => updateField('profileImage', file)}
       />
 
       <TextInput

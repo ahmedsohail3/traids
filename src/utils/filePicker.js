@@ -49,6 +49,14 @@ const normalizeAsset = (asset) => ({
   name: asset.fileName ?? `photo_${Date.now()}.jpg`,
 });
 
+// Capture/pick options for profile photos. Square-ish and modest — the avatar
+// is rendered small, and full-res camera output would blow past the 5MB cap.
+export const PROFILE_IMAGE_OPTIONS = {
+  maxWidth: 1200,
+  maxHeight: 1200,
+  quality: 0.8,
+};
+
 // Capture/pick options for document scans. Full-res camera output routinely
 // blows past the 5MB upload cap, so bound the long edge before compressing.
 export const DOCUMENT_IMAGE_OPTIONS = {

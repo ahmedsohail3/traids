@@ -14,7 +14,11 @@ import { RFValue } from 'react-native-responsive-fontsize';
 import { Camera, ImageIcon, X, Pencil } from 'lucide-react-native';
 import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
-import { pickImageFromLibrary, pickImageFromCamera } from '~utils/filePicker';
+import {
+  pickImageFromLibrary,
+  pickImageFromCamera,
+  PROFILE_IMAGE_OPTIONS,
+} from '~utils/filePicker';
 
 // ── Action Sheet (cross-platform) ──────────────────────────────────────────────
 
@@ -68,6 +72,7 @@ const PickerSheet = ({ visible, onClose, onGallery, onCamera, onRemove, showRemo
  *
  * Props:
  *   label      – field label (append * for required marker)
+ *   hint       – helper text under the title (default: JPG or PNG, max 5MB)
  *   value      – { uri, type, name } | null
  *   onChange   – (image: { uri, type, name } | null) => void
  *   error      – validation error string
@@ -79,6 +84,7 @@ const PickerSheet = ({ visible, onClose, onGallery, onCamera, onRemove, showRemo
  */
 const ImagePickerField = ({
   label,
+  hint = 'JPG or PNG, max 5MB',
   value,
   onChange,
   error,
@@ -93,9 +99,28 @@ const ImagePickerField = ({
 
   const borderRadius = shape === 'circle' ? size / 2 : 12;
 
+  const handleGallery = useCallback(async () => {
+    try {
+      const image = await pickImageFromLibrary(PROFILE_IMAGE_OPTIONS);
+      if (image) onChange?.(image);
+    } catch { /* silent */ }
+  }, [onChange]);
+
+  const handleCamera = useCallback(async () => {
+    try {
+      const image = await pickImageFromCamera(PROFILE_IMAGE_OPTIONS);
+      if (image) onChange?.(image);
+    } catch { /* silent */ }
+  }, [onChange]);
+
+  const handleRemove = useCallback(() => onChange?.(null), [onChange]);
+
   const openPicker = useCallback(() => {
     if (disabled) return;
-    if (Platform.OS === 'ios' && showCamera) {
+    // Nothing to choose between without the camera — go straight to the library.
+    if (!showCamera) return handleGallery();
+
+    if (Platform.OS === 'ios') {
       const options = ['Take Photo', 'Choose from Gallery'];
       if (value) options.push('Remove Photo');
       options.push('Cancel');
@@ -104,29 +129,13 @@ const ImagePickerField = ({
         (index) => {
           if (index === 0) handleCamera();
           else if (index === 1) handleGallery();
-          else if (index === 2 && value) onChange?.(null);
+          else if (index === 2 && value) handleRemove();
         },
       );
     } else {
       setSheetVisible(true);
     }
-  }, [disabled, showCamera, value, onChange]);
-
-  const handleGallery = useCallback(async () => {
-    try {
-      const image = await pickImageFromLibrary();
-      if (image) onChange?.(image);
-    } catch { /* silent */ }
-  }, [onChange]);
-
-  const handleCamera = useCallback(async () => {
-    try {
-      const image = await pickImageFromCamera();
-      if (image) onChange?.(image);
-    } catch { /* silent */ }
-  }, [onChange]);
-
-  const handleRemove = useCallback(() => onChange?.(null), [onChange]);
+  }, [disabled, showCamera, value, handleCamera, handleGallery, handleRemove]);
 
   return (
     <View style={[styles.container, style]}>
@@ -187,7 +196,7 @@ const ImagePickerField = ({
             {value ? 'Photo selected' : 'Upload a photo'}
           </Text>
           <Text style={[styles.helperSub, { color: colors.textMuted }]}>
-            JPG or PNG, max 5MB
+            {hint}
           </Text>
           {value && (
             <TouchableOpacity onPress={handleRemove} disabled={disabled} style={styles.removeBtn}>
