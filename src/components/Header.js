@@ -8,7 +8,6 @@ import {FontFamily} from '~theme/fonts';
 import {useNavigation} from '@react-navigation/native';
 import {useSelector} from 'react-redux';
 import {Images} from '~assets';
-import useProfile from '~hooks/useProfile';
 import useNotifications from '~hooks/useNotifications';
 import NotificationDropdownModal from '~components/Notifications/NotificationDropdownModal';
 
@@ -18,11 +17,10 @@ const Header = ({
   showPostButton = false,
   showBackButton = false,
   onPostPress,
-  onProfilePress,
+  onSettingsPress,
 }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const {profile} = useProfile();
   const {unreadCount, getNotifications} = useNotifications();
   const [notifVisible, setNotifVisible] = useState(false);
   const userType = useSelector(s => s.auth?.user?.type ?? 'company');
@@ -31,10 +29,10 @@ const Header = ({
     getNotifications();
   }, []);
 
-  // The profile lives on the Settings screen inside the More tab, so the tap has
-  // to go through the role's tab root — 'Profile' is not a registered route.
-  const goToProfile = () => {
-    if (onProfilePress) return onProfilePress();
+  // Settings lives inside the More tab, so the tap has to go through the role's
+  // tab root — 'Settings' is not a top-level registered route.
+  const goToSettings = () => {
+    if (onSettingsPress) return onSettingsPress();
     const tabsRoot = userType === 'subcontractor' ? 'SubTabs' : 'CompanyTabs';
     navigation.navigate(tabsRoot, {
       screen: 'More',
@@ -55,7 +53,7 @@ const Header = ({
           />
         </View>
 
-        {/* Right: bell + profile icon */}
+        {/* Right: bell + settings */}
         <View style={styles.iconsRow}>
           {/* Notification bell */}
           <TouchableOpacity
@@ -70,21 +68,12 @@ const Header = ({
             {unreadCount > 0 && <View style={styles.notifBadge} />}
           </TouchableOpacity>
 
-          {/* Profile / avatar icon */}
+          {/* Settings */}
           <TouchableOpacity
-            style={styles.profileIconWrap}
+            style={styles.iconCircle}
             activeOpacity={0.7}
-            onPress={goToProfile}>
-            {profile?.profileImage ? (
-              <Image
-                source={{uri: profile.profileImage}}
-                style={styles.avatarImg}
-              />
-            ) : (
-              <Icon name="diamond-outline" size={RFValue(17)} color="#000000" />
-            )}
-            {/* Online dot */}
-            <View style={styles.onlineDot} />
+            onPress={goToSettings}>
+            <Icon name="settings-outline" size={RFValue(17)} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -177,21 +166,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  profileIconWrap: {
-    width: RFValue(34),
-    height: RFValue(34),
-    borderRadius: RFValue(17),
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  avatarImg: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 999,
-  },
   notifBadge: {
     position: 'absolute',
     top: 10,
@@ -200,17 +174,6 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     backgroundColor: '#EF4444',
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-  },
-  onlineDot: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#22C55E',
     borderWidth: 1,
     borderColor: '#FFFFFF',
   },
