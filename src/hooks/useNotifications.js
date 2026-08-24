@@ -63,7 +63,14 @@ export const resolveNotificationRoute = (
 
   if (notification.type === 'newMessage') {
     const { conversationId } = notification;
-    if (!conversationId) return null;
+    // Some message events arrive without a conversationId — open the chat list
+    // rather than leaving the press dead. Both roles name this tab 'Chats'.
+    if (!conversationId) {
+      return {
+        name:   isSub ? 'SubTabs' : 'CompanyTabs',
+        params: { screen: 'Chats' },
+      };
+    }
     // Fall back to a minimal conversation — the chat screen fetches its
     // messages by _id anyway.
     const conversation =
