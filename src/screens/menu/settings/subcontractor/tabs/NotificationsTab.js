@@ -13,6 +13,10 @@ import { buildSubcontractorProfileFormData } from '~utils/buildFormData';
 import useAlert from '~hooks/useAlert';
 import useSettingsForm from '~hooks/useSettingsForm';
 
+// Timesheet reminders have no backend behind them yet — shipping in phase 2.
+// Flip to true to bring the row, its saved value and its payload field back.
+const SHOW_TIMESHEET_REMINDERS = false;
+
 // Both default to on until the profile says otherwise.
 const seedForm = (profile) => ({
   jobAlerts: profile.jobAlerts === undefined ? true : Boolean(profile.jobAlerts),
@@ -29,8 +33,10 @@ const NotificationsTab = ({ profile, updateProfile, updatingProfile }) => {
   const handleSave = useCallback(async () => {
     try {
       const formData = buildSubcontractorProfileFormData({
-        jobAlerts:          jobAlerts,
-        timesheetReminders: reminders,
+        jobAlerts: jobAlerts,
+        // Omitted while hidden: the user cannot see or change it, so sending a
+        // value would silently write a preference they never chose.
+        ...(SHOW_TIMESHEET_REMINDERS ? { timesheetReminders: reminders } : {}),
       });
       await updateProfile(formData);
       showAlert({ title: 'Success', message: 'Notification preferences updated.', type: 'success' });
@@ -57,18 +63,20 @@ const NotificationsTab = ({ profile, updateProfile, updatingProfile }) => {
         />
       </View>
 
-      <View style={styles.settingRow}>
-        <View style={styles.settingTextWrap}>
-          <Text style={styles.settingTitle}>Timesheet Reminders</Text>
-          <Text style={styles.settingSub}>Weekly reminders to log your hours</Text>
+      {SHOW_TIMESHEET_REMINDERS && (
+        <View style={styles.settingRow}>
+          <View style={styles.settingTextWrap}>
+            <Text style={styles.settingTitle}>Timesheet Reminders</Text>
+            <Text style={styles.settingSub}>Weekly reminders to log your hours</Text>
+          </View>
+          <Switch
+            value={reminders}
+            onValueChange={(v) => setValue('reminders', v)}
+            trackColor={{ false: '#E2E8F0', true: '#10375C' }}
+            thumbColor="#FFFFFF"
+          />
         </View>
-        <Switch
-          value={reminders}
-          onValueChange={(v) => setValue('reminders', v)}
-          trackColor={{ false: '#E2E8F0', true: '#10375C' }}
-          thumbColor="#FFFFFF"
-        />
-      </View>
+      )}
 
       <TouchableOpacity
         style={[styles.saveButton, saveDisabled && styles.saveButtonDisabled]}
@@ -116,7 +124,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   saveButton: {
-    backgroundColor: '#10375C',
+    backgroundColor: '#F2A154',
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
