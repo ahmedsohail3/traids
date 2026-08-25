@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import {useState, useCallback} from 'react';
 import {
   View,
   StyleSheet,
@@ -8,10 +8,10 @@ import {
   FlatList,
   SafeAreaView,
 } from 'react-native';
-import { RFValue } from 'react-native-responsive-fontsize';
+import {RFValue} from 'react-native-responsive-fontsize';
 import Icon from 'react-native-vector-icons/Feather';
-import { useTheme } from '~context/ThemeContext';
-import { FontFamily } from '~theme/fonts';
+import {useTheme} from '~context/ThemeContext';
+import {FontFamily} from '~theme/fonts';
 
 /**
  * SelectDropdown — styled dropdown consistent with the Input component.
@@ -34,7 +34,7 @@ const SelectDropdown = ({
   error,
   containerStyle,
 }) => {
-  const { colors } = useTheme();
+  const {colors} = useTheme();
   const [open, setOpen] = useState(false);
 
   const selectedLabel = options.find(o => o.value === value)?.label || '';
@@ -50,11 +50,13 @@ const SelectDropdown = ({
   return (
     <View style={[styles.container, containerStyle]}>
       {label && (
-        <Text style={[styles.label, { color: colors.textPrimary }]}>
+        <Text style={[styles.label, {color: colors.textPrimary}]}>
           {label.includes('*')
             ? [
                 label.substring(0, label.indexOf('*')),
-                <Text key="star" style={{ color: colors.error }}>*</Text>,
+                <Text key="star" style={{color: colors.error}}>
+                  *
+                </Text>,
                 label.substring(label.indexOf('*') + 1),
               ]
             : label}
@@ -74,15 +76,19 @@ const SelectDropdown = ({
         <Text
           style={[
             styles.triggerText,
-            { color: selectedLabel ? colors.inputText : colors.inputPlaceholder },
+            {color: selectedLabel ? colors.inputText : colors.inputPlaceholder},
           ]}>
           {selectedLabel || placeholder}
         </Text>
-        <Icon name="chevron-down" size={RFValue(16)} color={colors.textSecondary} />
+        <Icon
+          name="chevron-down"
+          size={RFValue(16)}
+          color={colors.textSecondary}
+        />
       </TouchableOpacity>
 
       {error ? (
-        <Text style={[styles.error, { color: colors.error }]}>{error}</Text>
+        <Text style={[styles.error, {color: colors.error}]}>{error}</Text>
       ) : null}
 
       <Modal
@@ -94,31 +100,38 @@ const SelectDropdown = ({
           style={styles.overlay}
           activeOpacity={1}
           onPress={() => setOpen(false)}>
-          <SafeAreaView style={[styles.sheet, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
+          <SafeAreaView
+            style={[styles.sheet, {backgroundColor: colors.surface}]}>
+            <Text style={[styles.sheetTitle, {color: colors.textPrimary}]}>
               {label || 'Select an option'}
             </Text>
             <FlatList
               data={options}
               keyExtractor={item => item.value}
-              renderItem={({ item }) => (
+              renderItem={({item}) => (
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => handleSelect(item)}
                   style={[
                     styles.option,
-                    item.value === value && { backgroundColor: colors.backgroundSecondary },
+                    item.value === value && {
+                      backgroundColor: colors.backgroundSecondary,
+                    },
                   ]}>
                   <Text
                     style={[
                       styles.optionText,
-                      { color: colors.textPrimary },
-                      item.value === value && { fontFamily: FontFamily.semiBold },
+                      {color: colors.textPrimary},
+                      item.value === value && {fontFamily: FontFamily.semiBold},
                     ]}>
                     {item.label}
                   </Text>
                   {item.value === value && (
-                    <Icon name="check" size={RFValue(14)} color={colors.primary} />
+                    <Icon
+                      name="check"
+                      size={RFValue(14)}
+                      color={colors.primary}
+                    />
                   )}
                 </TouchableOpacity>
               )}
@@ -172,6 +185,7 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontFamily: FontFamily.semiBold,
     fontSize: RFValue(14),
+    marginTop: 8,
     marginBottom: 12,
     paddingHorizontal: 20,
   },
