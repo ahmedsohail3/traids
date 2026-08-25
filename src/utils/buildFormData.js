@@ -54,6 +54,13 @@ export const buildFormData = (textFields = {}, fileFields = {}) => {
  * @param {{uri, type, name, isNew}|null} [fields.healthAndSafetyPolicy]
  * @returns {FormData}
  */
+// Removal is signalled with its own flag rather than an empty `profileImage`.
+// In multipart/form-data every part is either a string or a file — there is no
+// null — so an empty string is indistinguishable from "unchanged" to any backend
+// that guards with a truthy check (`if (req.body.profileImage)`), which is the
+// common shape. An explicit flag cannot be misread either way.
+const REMOVE_IMAGE_FLAG = 'removeProfileImage';
+
 export const buildCompanyProfileFormData = (fields = {}) => {
   const {
     companyName,
@@ -71,6 +78,7 @@ export const buildCompanyProfileFormData = (fields = {}) => {
     insuranceCertificate,
     healthAndSafetyPolicy,
     profileImage,
+    removeProfileImage = false,
   } = fields;
 
   const textFields = {};
@@ -109,9 +117,14 @@ export const buildCompanyProfileFormData = (fields = {}) => {
     textFields.timesheetReminders = String(timesheetReminders);
   }
 
+  // Mutually exclusive: removing and uploading in one request is contradictory.
+  if (removeProfileImage) {
+    textFields[REMOVE_IMAGE_FLAG] = 'true';
+  }
+
   const fileFields = {};
 
-  if (profileImage?.isNew === true) {
+  if (!removeProfileImage && profileImage?.isNew === true) {
     fileFields.profileImage = profileImage;
   }
   if (companyDocuments?.isNew === true) {
@@ -161,6 +174,7 @@ export const buildSubcontractorProfileFormData = (fields = {}) => {
     timesheetReminders,
     password,
     profileImage,
+    removeProfileImage    = false,
     insuranceDocuments    = [],
     ticketsDocuments      = [],
     certificationDocuments = [],
@@ -186,7 +200,10 @@ export const buildSubcontractorProfileFormData = (fields = {}) => {
 
   // ── Profile image (single) ───────────────────────────────────────────────────
 
-  if (profileImage?.isNew === true && profileImage?.uri) {
+  // Mutually exclusive: removing and uploading in one request is contradictory.
+  if (removeProfileImage) {
+    fd.append(REMOVE_IMAGE_FLAG, 'true');
+  } else if (profileImage?.isNew === true && profileImage?.uri) {
     fd.append('profileImage', {
       uri:  profileImage.uri,
       type: profileImage.type ?? 'image/jpeg',

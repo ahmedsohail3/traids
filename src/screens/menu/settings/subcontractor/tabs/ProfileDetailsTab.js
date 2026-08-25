@@ -5,15 +5,12 @@ import {
   TouchableOpacity,
   TextInput as RNTextInput,
   ActivityIndicator,
-  Image,
 } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { Camera } from 'lucide-react-native';
-import { Text } from '~components/Common';
+import { Text, ImagePickerField } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import TradeDropdown from '~components/Job/TradeDropdown';
 import { buildSubcontractorProfileFormData } from '~utils/buildFormData';
-import { pickImageFromLibrary } from '~utils/filePicker';
 import useAlert from '~hooks/useAlert';
 import useSettingsForm from '~hooks/useSettingsForm';
 
@@ -62,10 +59,15 @@ const ProfileDetailsTab = ({ profile, updateProfile, updatingProfile }) => {
     setErrors((p) => ({ ...p, [k]: '' }));
   };
 
-  const handlePickAvatar = useCallback(async () => {
-    const file = await pickImageFromLibrary();
-    if (file) setValue('avatar', { ...file, isNew: true });
-  }, [setValue]);
+  // null means the user chose "Remove Photo"; a file means they picked a new one.
+  const handleAvatarChange = useCallback(
+    (file) => setValue('avatar', file ? { ...file, isNew: true } : null),
+    [setValue],
+  );
+
+  // Only a removal if there was something on the server to remove — clearing an
+  // avatar the user never had should not send a remove instruction.
+  const removingAvatar = !form.avatar && !!profile.profileImage;
 
   const validate = () => {
     const e = {};
@@ -87,35 +89,28 @@ const ProfileDetailsTab = ({ profile, updateProfile, updatingProfile }) => {
         hourlyRate:      form.hourlyRate,
         professionalBio: form.professionalBio,
         profileImage:    form.avatar,
+        removeProfileImage: removingAvatar,
       });
       await updateProfile(formData);
       showAlert({ title: 'Success', message: 'Profile details updated.', type: 'success' });
     } catch (err) {
       showAlert({ title: 'Error', message: err?.message ?? err ?? 'Update failed.', type: 'error' });
     }
-  }, [form, updateProfile]);
+  }, [form, updateProfile, removingAvatar]);
 
   const saveDisabled = updatingProfile || !dirty;
 
   return (
     <View style={styles.container}>
 
-      {/* Avatar row */}
-      <View style={styles.logoRow}>
-        <TouchableOpacity style={styles.logoPicker} onPress={handlePickAvatar} activeOpacity={0.8}>
-          {form.avatar?.uri ? (
-            <Image source={{ uri: form.avatar.uri }} style={styles.logoImage} />
-          ) : (
-            <Camera size={RFValue(18)} color="#10375C" strokeWidth={1.5} />
-          )}
-          <View style={styles.logoEditBadge}>
-            <Camera size={RFValue(8)} color="#FFFFFF" strokeWidth={2} />
-          </View>
-        </TouchableOpacity>
-        <Text style={styles.logoHint}>
-          Tap to update your profile photo.{'\n'}JPG, PNG, or WEBP up to 5MB.
-        </Text>
-      </View>
+      {/* Avatar */}
+      <ImagePickerField
+        value={form.avatar}
+        onChange={handleAvatarChange}
+        size={RFValue(72)}
+        hint="Tap to update your profile photo. JPG, PNG or WEBP up to 5MB."
+        disabled={updatingProfile}
+      />
 
       <FormLabel text="Full Name" required />
       <Input
@@ -170,48 +165,6 @@ const ProfileDetailsTab = ({ profile, updateProfile, updatingProfile }) => {
 
 const styles = StyleSheet.create({
   container: {},
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    gap: 12,
-  },
-  logoPicker: {
-    width: RFValue(56),
-    height: RFValue(56),
-    borderRadius: RFValue(28),
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'visible',
-  },
-  logoImage: {
-    width: RFValue(56),
-    height: RFValue(56),
-    borderRadius: RFValue(28),
-  },
-  logoEditBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: RFValue(18),
-    height: RFValue(18),
-    borderRadius: RFValue(9),
-    backgroundColor: '#10375C',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  logoHint: {
-    flex: 1,
-    fontFamily: FontFamily.regular,
-    fontSize: RFValue(10),
-    color: '#64748B',
-    lineHeight: RFValue(14),
-  },
   labelRow: {
     flexDirection: 'row',
     marginBottom: 6,
@@ -251,7 +204,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   saveButton: {
-    backgroundColor: '#10375C',
+    backgroundColor: '#F2A154',
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',

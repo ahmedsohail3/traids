@@ -7,14 +7,12 @@ import {
   ActivityIndicator,
   FlatList,
   Modal,
-  Image,
 } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { Camera, ChevronDown } from 'lucide-react-native';
-import { Text } from '~components/Common';
+import { ChevronDown } from 'lucide-react-native';
+import { Text, ImagePickerField } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { buildCompanyProfileFormData } from '~utils/buildFormData';
-import { pickImageFromLibrary } from '~utils/filePicker';
 import useAlert from '~hooks/useAlert';
 import useSettingsForm from '~hooks/useSettingsForm';
 
@@ -123,10 +121,15 @@ const BusinessDetailsTab = ({ profile, updateCompanyProfile, updatingProfile }) 
   const { showAlert } = useAlert();
   const { values: form, setValue: setItem, dirty } = useSettingsForm(profile, seedForm);
 
-  const handlePickLogo = useCallback(async () => {
-    const file = await pickImageFromLibrary();
-    if (file) setItem('logo', { ...file, isNew: true });
-  }, [setItem]);
+  // null means the user chose "Remove Photo"; a file means they picked a new one.
+  const handleLogoChange = useCallback(
+    (file) => setItem('logo', file ? { ...file, isNew: true } : null),
+    [setItem],
+  );
+
+  // Only a removal if there was something on the server to remove — clearing a
+  // logo the company never had should not send a remove instruction.
+  const removingLogo = !form.logo && !!profile.profileImage;
 
   const handleSave = useCallback(async () => {
     try {
@@ -137,35 +140,29 @@ const BusinessDetailsTab = ({ profile, updateCompanyProfile, updatingProfile }) 
         industryType:       form.industry,
         aboutUs:            form.about,
         profileImage:       form.logo,
+        removeProfileImage: removingLogo,
       });
       await updateCompanyProfile(formData);
       showAlert({ title: 'Success', message: 'Business details updated.', type: 'success' });
     } catch (err) {
       showAlert({ title: 'Error', message: err?.message ?? 'Update failed.', type: 'error' });
     }
-  }, [form, updateCompanyProfile]);
+  }, [form, updateCompanyProfile, removingLogo]);
 
   const saveDisabled = updatingProfile || !dirty;
 
   return (
     <View style={styles.container}>
 
-      {/* Logo Upload Row */}
-      <View style={styles.logoRow}>
-        <TouchableOpacity style={styles.logoPicker} onPress={handlePickLogo} activeOpacity={0.8}>
-          {form.logo?.uri ? (
-            <Image source={{ uri: form.logo.uri }} style={styles.logoImage} />
-          ) : (
-            <Camera size={RFValue(18)} color="#10375C" strokeWidth={1.5} />
-          )}
-          <View style={styles.logoEditBadge}>
-            <Camera size={RFValue(8)} color="#FFFFFF" strokeWidth={2} />
-          </View>
-        </TouchableOpacity>
-        <Text style={styles.logoHint}>
-          Tap to update your company logo.{'\n'}JPG, PNG, or WEBP up to 5MB.
-        </Text>
-      </View>
+      {/* Logo */}
+      <ImagePickerField
+        value={form.logo}
+        onChange={handleLogoChange}
+        size={RFValue(72)}
+        shape="square"
+        hint="Tap to update your company logo. JPG, PNG or WEBP up to 5MB."
+        disabled={updatingProfile}
+      />
 
       <FormLabel text="Company Name" required />
       <Input placeholder="Enter company name" val={form.name} onChange={(v) => setItem('name', v)} />
@@ -202,48 +199,6 @@ const BusinessDetailsTab = ({ profile, updateCompanyProfile, updatingProfile }) 
 
 const styles = StyleSheet.create({
   container: {},
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    gap: 12,
-  },
-  logoPicker: {
-    width: RFValue(56),
-    height: RFValue(56),
-    borderRadius: RFValue(28),
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'visible',
-  },
-  logoImage: {
-    width: RFValue(56),
-    height: RFValue(56),
-    borderRadius: RFValue(28),
-  },
-  logoEditBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: RFValue(18),
-    height: RFValue(18),
-    borderRadius: RFValue(9),
-    backgroundColor: '#10375C',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  logoHint: {
-    flex: 1,
-    fontFamily: FontFamily.regular,
-    fontSize: RFValue(10),
-    color: '#64748B',
-    lineHeight: RFValue(14),
-  },
   labelRow: {
     flexDirection: 'row',
     marginBottom: 6,
@@ -333,7 +288,7 @@ const styles = StyleSheet.create({
   },
   // Save button
   saveButton: {
-    backgroundColor: '#10375C',
+    backgroundColor: '#F2A154',
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
