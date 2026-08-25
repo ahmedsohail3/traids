@@ -10,7 +10,7 @@
  */
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { loginApi, forgotPasswordApi, verifyResetTokenApi, resetPasswordApi } from '~services/authService';
-import { getErrorMessage, storeAccessToken, storeRefreshToken, storeUserType } from '~utils';
+import { getErrorMessage, storeSession } from '~utils';
 
 // ── Async Thunks ───────────────────────────────────────────────────────────────
 
@@ -62,9 +62,10 @@ export const login = createAsyncThunk(
       const payload = data?.data ?? data;
       const { accessToken, refreshToken, user } = payload;
 
-      await storeAccessToken(accessToken);
-      if (refreshToken) await storeRefreshToken(refreshToken);
-      await storeUserType(userType);
+      // One batched write: a token must never be stored without its user type,
+      // or the next cold start cannot tell which app to open.
+      const stored = await storeSession({ accessToken, refreshToken, userType });
+      if (!stored) return rejectWithValue('Could not save your session. Please try again.');
 
       return { user, userType };
     } catch (error) {
@@ -95,9 +96,8 @@ export const backgroundLogin = createAsyncThunk(
 
       if (!accessToken) return rejectWithValue('Could not start your session.');
 
-      await storeAccessToken(accessToken);
-      if (refreshToken) await storeRefreshToken(refreshToken);
-      await storeUserType(userType);
+      const stored = await storeSession({ accessToken, refreshToken, userType });
+      if (!stored) return rejectWithValue('Could not start your session.');
 
       return true;
     } catch (error) {
@@ -220,6 +220,10 @@ const authSlice = createSlice({
       .addCase(forgotPassword.fulfilled, (state, { payload }) => {
         state.resetFlow.loading = false;
         state.resetFlow.email = payload.email;
+        // Issuing a new code retires the old one, so any token verified against
+        // it must go too — covers both a fresh request and Resend.
+        state.resetFlow.token = '';
+        state.resetFlow.isTokenVerified = false;
       })
       .addCase(forgotPassword.rejected, (state, { payload }) => {
         state.resetFlow.loading = false;
