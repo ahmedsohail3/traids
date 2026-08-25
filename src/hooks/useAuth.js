@@ -8,6 +8,7 @@ import {
 import { fetchProfile, clearProfile } from '~redux/reducers/profileSlice';
 import { clearAllTokens } from '~utils';
 import { disconnectSocket } from '~services/socket/socketService';
+import { clearOfflineQueue } from '~utils/axiosInstance';
 
 const useAuth = () => {
   const dispatch = useDispatch();
@@ -27,6 +28,8 @@ const useAuth = () => {
 
   const handleLogout = useCallback(async () => {
     disconnectSocket();
+    // Drop any reads held for replay — they belong to the session being ended.
+    clearOfflineQueue();
     await clearAllTokens();
     dispatch(clearProfile());
     dispatch(logout());

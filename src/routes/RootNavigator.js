@@ -11,14 +11,21 @@
  *   • SubNavigator       — authenticated subcontractor users
  */
 import { useEffect } from 'react';
+import { View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
 import useAppInit from '~hooks/useAppInit';
+import useNetworkStatus from '~hooks/useNetworkStatus';
+import OfflineBanner from '~components/Common/OfflineBanner';
 import AuthNavigator from './AuthNavigator';
 import CompanyNavigator from './CompanyNavigator';
 import SubNavigator from './SubNavigator';
 
 const Stack = createNativeStackNavigator();
+
+// Tracks connectivity for the whole app, including the auth stack — signing in
+// with no connection is exactly when the user needs to be told.
+const NetworkManager = () => { useNetworkStatus(); return null; };
 
 const RootNavigator = ({ onReady }) => {
   const ready = useAppInit();
@@ -32,15 +39,19 @@ const RootNavigator = ({ onReady }) => {
   if (!ready) return null;
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
-      {!isAuthenticated ? (
-        <Stack.Screen name="Auth" component={AuthNavigator} />
-      ) : userType === 'subcontractor' ? (
-        <Stack.Screen name="SubApp" component={SubNavigator} />
-      ) : (
-        <Stack.Screen name="CompanyApp" component={CompanyNavigator} />
-      )}
-    </Stack.Navigator>
+    <View style={{ flex: 1 }}>
+      <NetworkManager />
+      <OfflineBanner />
+      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
+        {!isAuthenticated ? (
+          <Stack.Screen name="Auth" component={AuthNavigator} />
+        ) : userType === 'subcontractor' ? (
+          <Stack.Screen name="SubApp" component={SubNavigator} />
+        ) : (
+          <Stack.Screen name="CompanyApp" component={CompanyNavigator} />
+        )}
+      </Stack.Navigator>
+    </View>
   );
 };
 

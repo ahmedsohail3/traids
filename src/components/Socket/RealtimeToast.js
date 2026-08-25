@@ -17,6 +17,11 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { clearLatestEvent } from '~redux/reducers/socketSlice';
+import { selectIsOffline } from '~redux/reducers/networkSlice';
+import {
+  OFFLINE_BANNER_HEIGHT,
+  OFFLINE_BANNER_GAP,
+} from '~components/Common/OfflineBanner';
 import useRealtimeNotifications from '~hooks/useRealtimeNotifications';
 import {
   getNotificationMeta,
@@ -34,6 +39,9 @@ const RealtimeToast = () => {
   const { latestEvent } = useRealtimeNotifications();
   const conversations   = useSelector((s) => s.chat?.conversations ?? []);
   const userType        = useSelector((s) => s.auth?.user?.type ?? 'company');
+  // Both anchor to the top of the screen, so drop below the offline bar while
+  // it is up rather than sitting hidden underneath it.
+  const isOffline       = useSelector(selectIsOffline);
 
   const translateY   = useRef(new Animated.Value(-120)).current;
   const timerRef     = useRef(null);
@@ -91,7 +99,10 @@ const RealtimeToast = () => {
     <Animated.View
       style={[
         styles.container,
-        { top: insets.top + 8, transform: [{ translateY }] },
+        {
+          top: insets.top + 8 + (isOffline ? OFFLINE_BANNER_HEIGHT + OFFLINE_BANNER_GAP : 0),
+          transform: [{ translateY }],
+        },
       ]}
       pointerEvents="box-none"
     >

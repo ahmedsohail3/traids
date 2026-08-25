@@ -50,6 +50,37 @@ export const clearRefreshToken = async () => {
   }
 };
 
+/**
+ * Writes the whole session in one commit.
+ *
+ * The tokens and the user type were previously three separate setItem calls, so
+ * a crash or kill between them could leave an access token stored with no user
+ * type. On the next cold start that reads as an authenticated session of unknown
+ * role — and the restore then defaulted it to 'company', dropping a
+ * subcontractor into the company app with a valid token.
+ *
+ * multiSet is a single batched write, so the session is either fully stored or
+ * not stored at all. Returns false if it failed, letting the caller treat the
+ * login as unsuccessful rather than half-persisted.
+ */
+export const storeSession = async ({ accessToken, refreshToken, userType }) => {
+  if (!accessToken || !userType) return false;
+
+  const pairs = [
+    ["accessToken", accessToken],
+    ["userType", userType],
+  ];
+  if (refreshToken) pairs.push(["refreshToken", refreshToken]);
+
+  try {
+    await AsyncStorage.multiSet(pairs);
+    return true;
+  } catch (error) {
+    console.warn("Error saving session:", error);
+    return false;
+  }
+};
+
 export const storeUserType = async (type) => {
   try {
     if (type) await AsyncStorage.setItem("userType", type);
@@ -85,8 +116,45 @@ export const getAccountType = async () => {
 };
 
 
-export const stripHtml = (str) =>
-  str ? str.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() : '';
+const HTML_ENTITIES = {
+  '&nbsp;': ' ',
+  '&amp;':  '&',
+  '&lt;':   '<',
+  '&gt;':   '>',
+  '&quot;': '"',
+  '&apos;': "'",
+  '&#39;':  "'",
+};
+
+/**
+ * Flattens an HTML description to plain text for display in a <Text>.
+ *
+ * Job descriptions are authored in a rich-text editor on the web side, so they
+ * reach the app as markup. Unknown entities are left as-is rather than guessed at.
+ */
+export const stripHtml = (str) => {
+  if (typeof str !== 'string' || !str) return '';
+
+  return (
+    str
+      // Drop script/style bodies whole — stripping only their tags would leave
+      // the CSS or JS behind as visible text.
+      .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, '')
+      // Block-level ends become line breaks, otherwise '<p>a</p><p>b</p>'
+      // collapses to 'ab' with the words run together.
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(p|div|li|h[1-6]|tr)>/gi, '\n')
+      .replace(/<[^>]*>/g, '')
+      // Decode after tag removal, so an encoded &lt;b&gt; is never treated as a tag.
+      .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+      .replace(/&[a-z]+;/gi, (entity) => HTML_ENTITIES[entity.toLowerCase()] ?? entity)
+      // Tidy the whitespace the tags left behind, keeping paragraph breaks.
+      .replace(/[ \t]+/g, ' ')
+      .replace(/[ \t]*\n[ \t]*/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  );
+};
 
 
 
@@ -109,8 +177,29 @@ export const clearAllTokens = async () => {
 
 // ── Error Handling ─────────────────────────────────────────────────────────────
 
+// Single wording for every offline surface — the banner, thunk errors, alerts.
+export const OFFLINE_MESSAGE =
+  "No internet connection. Please check your connection and try again.";
+
+/**
+ * True when a request never reached the server: airplane mode, no signal, DNS
+ * failure, TLS failure, timeout. Axios leaves `response` undefined for all of
+ * these, which is what separates them from a 4xx/5xx the server actually sent.
+ */
+export const isNetworkError = (error) =>
+  !!error && !error.response && (
+    error.code === "ERR_NETWORK" ||
+    error.code === "ECONNABORTED" ||
+    error.message === "Network Error" ||
+    !!error.request
+  );
+
 export const getErrorMessage = (error, firstOnly = true) => {
   if (!error) return "Something went wrong";
+
+  // Checked before anything else: a request that never landed has no response
+  // body to read a message out of, and "Network Error" is not user-facing.
+  if (isNetworkError(error)) return OFFLINE_MESSAGE;
 
   const data = error.response?.data;
   

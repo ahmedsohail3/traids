@@ -32,7 +32,9 @@ import subcontractorDocumentUploadReducer from "../reducers/subcontractorDocumen
 import subcontractorTimesheetReducer from "../reducers/subcontractorTimesheetSlice";
 import notificationsReducer from "../reducers/notificationsSlice";
 import socketReducer from "../reducers/socketSlice";
+import networkReducer from "../reducers/networkSlice";
 import { disconnectSocket } from "../../services/socket/socketService";
+import { clearOfflineQueue } from "../../utils/axiosInstance";
 // import settingsReducer from "../reducers/settingsReducer";
 
 // ─── Combined slice reducer ────────────────────────────────────────────────────
@@ -59,6 +61,7 @@ const combinedReducer = combineReducers({
   subcontractorTimesheet:        subcontractorTimesheetReducer,
   notifications:        notificationsReducer,
   socket:               socketReducer,
+  network:              networkReducer,
   theme: themeReducer,
 });
 
@@ -185,6 +188,8 @@ export const persistor = persistStore(store);
 // Bypass server — used by the 401 interceptor when the token is already expired.
 export const forceLogoutAndPurge = () => {
   disconnectSocket();
+  // Held reads belong to the expired session — drop them rather than replay.
+  clearOfflineQueue();
   store.dispatch(logout());
   persistor.purge();
 };
