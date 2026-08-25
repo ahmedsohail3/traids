@@ -42,7 +42,10 @@ const LoginScreen = ({route, navigation}) => {
   }, [validate, login, email, password, accountType]);
 
   return (
-    <AuthContainer>
+    <AuthContainer
+      showBack
+      backLabel="Back"
+      onBackPress={() => navigation.goBack()}>
       {/* Logo */}
       <View style={styles.logoRow}>
         <Logo />

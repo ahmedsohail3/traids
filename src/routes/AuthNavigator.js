@@ -34,7 +34,14 @@ const AuthNavigator = () => (
         name="TwoStepVerification"
         component={OtpVerificationScreen}
       />
-      <Stack.Screen name="NewPassword" component={NewPasswordScreen} />
+      {/* The reset token is consumed by this point, so going back would land the
+          user on a dead OTP screen. Both the iOS swipe and the Android hardware
+          back are blocked — see usePreventRemove inside the screen. */}
+      <Stack.Screen
+        name="NewPassword"
+        component={NewPasswordScreen}
+        options={{ gestureEnabled: false }}
+      />
       {/* Register — nested navigator for the full company registration flow */}
       <Stack.Screen name="Register" component={RegisterNavigator} />
     </Stack.Navigator>

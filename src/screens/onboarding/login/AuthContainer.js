@@ -5,7 +5,13 @@ import { Text } from '~components/Common';
 import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 
-const AuthContainer = ({ children, showBack, onBackPress }) => {
+const AuthContainer = ({
+  children,
+  showBack,
+  onBackPress,
+  backLabel = 'Back to Login',
+  reserveBackSpace = false,
+}) => {
   const { colors, isDark } = useTheme();
 
   return (
@@ -25,8 +31,23 @@ const AuthContainer = ({ children, showBack, onBackPress }) => {
             onPress={onBackPress}
             activeOpacity={0.7}>
             <Icon name="arrow-left" size={RFValue(14)} color={colors.textSecondary} />
-            <Text  style={[styles.backText, { color: colors.textSecondary }]}>Back to Login</Text>
+            <Text style={[styles.backText, { color: colors.textSecondary }]}>{backLabel}</Text>
           </TouchableOpacity>
+        )}
+
+        {/* Empty spacer — nothing is drawn. It copies the back row purely to
+            borrow its height, so this screen's card sits at the same level as
+            the ones that do have a back button, without hardcoding a margin
+            that would drift as RFValue scales. */}
+        {!showBack && reserveBackSpace && (
+          <View
+            style={[styles.backRow, styles.backRowSpacer]}
+            pointerEvents="none"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants">
+            <Icon name="arrow-left" size={RFValue(14)} />
+            <Text style={styles.backText}>{backLabel}</Text>
+          </View>
         )}
 
         <View style={[styles.card, { backgroundColor: colors.surface }]}>
@@ -51,6 +72,7 @@ const styles = StyleSheet.create({
     gap: 6,
     marginBottom: 20,
   },
+  backRowSpacer: { opacity: 0 },
   backText: {
     fontSize: RFValue(13),
     fontFamily: FontFamily.medium,

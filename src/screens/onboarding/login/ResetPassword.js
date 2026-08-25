@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { StyleSheet } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Text, Button, TextInput } from '~components/Common';
@@ -16,12 +16,10 @@ const ResetPasswordScreen = ({ navigation, route }) => {
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
 
-  useEffect(() => {
-    if (resetFlow.email) {
-      navigation.navigate('TwoStepVerification');
-    }
-  }, [resetFlow.email]);
-
+  // Navigate on the request succeeding, never on resetFlow.email changing:
+  // requesting a reset twice for the same address writes back an identical
+  // string, so a state-watching effect would see no change and never fire —
+  // the OTP would send but the screen would not open.
   const handleReset = useCallback(async () => {
     if (!email.trim()) {
       setEmailError('Email is required');
@@ -32,8 +30,13 @@ const ResetPasswordScreen = ({ navigation, route }) => {
       return;
     }
     clearResetError();
-    forgotPassword(email.trim(), userType);
-  }, [email, userType, forgotPassword, clearResetError]);
+    try {
+      await forgotPassword(email.trim(), userType).unwrap();
+      navigation.navigate('TwoStepVerification');
+    } catch {
+      // Rejection already lands in resetFlow.error, rendered under the field.
+    }
+  }, [email, userType, forgotPassword, clearResetError, navigation]);
 
   return (
     <AuthContainer showBack onBackPress={() => navigation.goBack()}>
