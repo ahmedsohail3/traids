@@ -26,6 +26,20 @@ export const approveTimesheet = createAsyncThunk(
   },
 );
 
+// No bulk-approve endpoint exists yet — this is a dummy success indicator.
+// Once the backend exposes one, call it here (e.g. `await approveAllTimesheetsApi(jobId)`)
+// instead of resolving immediately.
+export const approveAllTimesheets = createAsyncThunk(
+  'companyTimesheet/approveAllTimesheets',
+  async (jobId, { rejectWithValue }) => {
+    try {
+      return jobId;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
 const companyTimesheetSlice = createSlice({
   name: 'companyTimesheet',
   initialState: {
@@ -34,6 +48,8 @@ const companyTimesheetSlice = createSlice({
     error:              null,
     approvingTimesheet: false,
     approveError:       null,
+    approvingAll:       false,
+    approveAllError:    null,
   },
   reducers: {
     clearJobTimesheets: (state) => {
@@ -67,6 +83,20 @@ const companyTimesheetSlice = createSlice({
       .addCase(approveTimesheet.rejected, (state, { payload }) => {
         state.approvingTimesheet = false;
         state.approveError       = payload ?? 'Failed to approve timesheet.';
+      })
+      .addCase(approveAllTimesheets.pending, (state) => {
+        state.approvingAll    = true;
+        state.approveAllError = null;
+      })
+      .addCase(approveAllTimesheets.fulfilled, (state) => {
+        state.approvingAll = false;
+        state.jobTimesheets.forEach((ts) => {
+          if (ts.status === 'submitted') ts.status = 'approved';
+        });
+      })
+      .addCase(approveAllTimesheets.rejected, (state, { payload }) => {
+        state.approvingAll    = false;
+        state.approveAllError = payload ?? 'Failed to approve all timesheets.';
       });
   },
 });

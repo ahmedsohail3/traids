@@ -1,15 +1,8 @@
 import {
-  View,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  Image,
-  ScrollView,
-  Platform,
+  View, StyleSheet, Modal, TouchableOpacity, TouchableWithoutFeedback, ScrollView, Platform,
 } from 'react-native';
 import {RFValue} from 'react-native-responsive-fontsize';
-import {Text} from '~components/Common';
+import {Text, Avatar} from '~components/Common';
 import {FontFamily} from '~theme/fonts';
 import {ChevronDown, Clock} from 'lucide-react-native';
 import {useTheme} from '~context/ThemeContext';
@@ -62,14 +55,7 @@ const WorkerTimesheetModal = ({visible, onClose, worker}) => {
               {/* Header */}
               <View style={styles.header}>
                 <View style={styles.headerLeft}>
-                  <Image
-                    source={{
-                      uri:
-                        worker?.avatarUri ??
-                        `https://i.pravatar.cc/150?u=${worker?._id || 1}`,
-                    }}
-                    style={styles.avatar}
-                  />
+                  <Avatar uri={worker?.avatarUri} size={66} />
                   <View>
                     <Text style={styles.title}>Timesheet</Text>
                     <Text style={styles.subtitle}>
@@ -182,12 +168,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  avatar: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
-    backgroundColor: '#F1F5F9',
   },
   title: {
     fontFamily: FontFamily.semiBold,

@@ -1,13 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
-  View, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Modal,
+  View, StyleSheet, TouchableOpacity, ActivityIndicator, Modal,
 } from 'react-native';
-import { Text, ScrollView, TextInput } from '~components/Common';
+import { Text, ScrollView, TextInput, Avatar } from '~components/Common';
 import Header from '~components/Header';
 import { useTheme } from '~context/ThemeContext';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { FontFamily } from '~theme/fonts';
-import { Plus, Eye, ChevronDown, Check, Star } from 'lucide-react-native';
+import { Plus, Eye, ChevronDown, Check, Star, CheckCircle2, XCircle } from 'lucide-react-native';
 import WorkerTimesheetModal from './components/WorkerTimesheetModal';
 import InvoicesModal from './components/InvoicesModal';
 import RatingModal from './components/RatingModal';
@@ -75,11 +75,14 @@ const DropdownLabel = ({ label }) => (
 
 const TimesheetProjectScreen = ({ route, navigation }) => {
   const { colors } = useTheme();
-  const { showAlert } = useAlert();
+  const { showAlert, showConfirm } = useAlert();
   const { projectTitle = 'Timesheets', job } = route.params ?? {};
   const jobId = job?._id ?? route.params?.jobId;
 
-  const { jobTimesheets, loading, approvingTimesheet, getJobTimesheets, reset, approveTimesheet } = useCompanyTimesheet();
+  const {
+    jobTimesheets, loading, approvingTimesheet, approvingAll,
+    getJobTimesheets, reset, approveTimesheet, approveAllTimesheets,
+  } = useCompanyTimesheet();
   const { invoices, loading: invoicesLoading, getJobInvoices, reset: resetInvoices } = useCompanyInvoices();
   const { ratingsData, submittingRating, getJobRatings, submitJobRating, resetRatings } = useCompanyJobs();
 
@@ -92,6 +95,9 @@ const TimesheetProjectScreen = ({ route, navigation }) => {
   const [invoicesVisible,   setInvoicesVisible]   = useState(false);
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
   const [ratingWorker,      setRatingWorker]      = useState(null);
+  const [approvedAllVisible, setApprovedAllVisible] = useState(false);
+  const [approvedAllCount,   setApprovedAllCount]   = useState(0);
+  const approvedAllTimerRef = useRef(null);
 
   const handleApprovePress = (timesheetId) => {
     setPendingApproveId(timesheetId);
@@ -111,6 +117,40 @@ const TimesheetProjectScreen = ({ route, navigation }) => {
     setPendingApproveId(null);
   };
 
+  const dismissApprovedAllBanner = useCallback(() => {
+    clearTimeout(approvedAllTimerRef.current);
+    setApprovedAllVisible(false);
+  }, []);
+
+  useEffect(() => () => clearTimeout(approvedAllTimerRef.current), []);
+
+  const handleConfirmApproveAll = useCallback(async (count) => {
+    if (!jobId) return;
+    try {
+      await approveAllTimesheets(jobId);
+      setApprovedAllCount(count);
+      setApprovedAllVisible(true);
+      clearTimeout(approvedAllTimerRef.current);
+      approvedAllTimerRef.current = setTimeout(() => setApprovedAllVisible(false), 4000);
+    } catch (err) {
+      showAlert({
+        title: 'Approval Failed',
+        message: err?.message ?? err ?? 'Could not approve all timesheets.',
+        type: 'error',
+      });
+    }
+  }, [jobId, approveAllTimesheets, showAlert]);
+
+  const handleApproveAllPress = useCallback((count) => {
+    showConfirm({
+      title: 'Approve All Workers?',
+      message: `Are you sure you want to approve all ${count} pending worker${count === 1 ? '' : 's'}? This action cannot be undone.`,
+      type: 'success',
+      confirmText: 'Yes, Approve',
+      onConfirm: () => handleConfirmApproveAll(count),
+    });
+  }, [showConfirm, handleConfirmApproveAll]);
+
   useEffect(() => {
     if (jobId) { getJobTimesheets(jobId); getJobRatings(jobId); }
     return () => { reset(); resetInvoices(); resetRatings(); };
@@ -123,6 +163,11 @@ const TimesheetProjectScreen = ({ route, navigation }) => {
 
   const canGenerateInvoice = useMemo(
     () => mapped.length > 0 && mapped.every((t) => t.status?.toLowerCase() === 'approved'),
+    [mapped],
+  );
+
+  const pendingCount = useMemo(
+    () => mapped.filter((t) => t.status?.toLowerCase() === 'pending').length,
     [mapped],
   );
 
@@ -156,6 +201,18 @@ const TimesheetProjectScreen = ({ route, navigation }) => {
       )}
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContainer}>
+        {approvedAllVisible && (
+          <View style={[styles.successBanner, { backgroundColor: colors.successLight }]}>
+            <CheckCircle2 size={RFValue(15)} color={colors.successDark} strokeWidth={2} />
+            <Text style={[styles.successBannerText, { color: colors.successDark }]}>
+              All {approvedAllCount} worker{approvedAllCount === 1 ? '' : 's'} approved successfully
+            </Text>
+            <TouchableOpacity onPress={dismissApprovedAllBanner} hitSlop={8}>
+              <XCircle size={RFValue(15)} color={colors.successDark} strokeWidth={1.8} />
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.contentCard}>
           {/* Filter dropdowns */}
           <View style={styles.filtersTopRow}>
@@ -192,6 +249,27 @@ const TimesheetProjectScreen = ({ route, navigation }) => {
             })}
           </View>
 
+          {/* Approve all */}
+          {pendingCount > 0 && (
+            <View style={styles.approveAllRow}>
+              <Text style={styles.pendingCountText}>
+                {pendingCount} Pending Worker{pendingCount === 1 ? '' : 's'}
+              </Text>
+              <TouchableOpacity
+                style={[styles.approveAllBtn, { backgroundColor: colors.success }]}
+                onPress={() => handleApproveAllPress(pendingCount)}
+                activeOpacity={0.85}
+                disabled={approvingAll}
+              >
+                {approvingAll
+                  ? <ActivityIndicator size={RFValue(10)} color="#FFFFFF" />
+                  : <Check size={RFValue(12)} color="#FFFFFF" strokeWidth={3} />
+                }
+                <Text style={styles.approveAllBtnText}>Approve All</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* List */}
           <View style={styles.listArea}>
             {!loading && displayed.length === 0 && (
@@ -209,10 +287,7 @@ const TimesheetProjectScreen = ({ route, navigation }) => {
                   {/* Top */}
                   <View style={styles.workerTop}>
                     <View style={styles.workerLeft}>
-                      <Image
-                        source={item.avatarUri ? { uri: item.avatarUri } : { uri: `https://i.pravatar.cc/150?u=${item._id}` }}
-                        style={styles.avatar}
-                      />
+                      <Avatar uri={item.avatarUri} size={32} />
                       <View>
                         <Text style={styles.workerName}>{item.name}</Text>
                         <Text style={styles.workerMeta}>
@@ -377,6 +452,45 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', zIndex: 10,
   },
   scrollContainer: { padding: 16, paddingBottom: 120 },
+  successBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  successBannerText: {
+    flex: 1,
+    fontFamily: FontFamily.semiBold,
+    fontSize: RFValue(9.5),
+  },
+  approveAllRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginTop: 16,
+  },
+  pendingCountText: {
+    fontFamily: FontFamily.bold,
+    fontSize: RFValue(10.5),
+    color: '#10375C',
+  },
+  approveAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+  },
+  approveAllBtnText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: RFValue(9.5),
+    color: '#FFFFFF',
+  },
   contentCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -457,7 +571,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   workerLeft:   { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatar:       { width: 32, height: 32, borderRadius: 16, backgroundColor: '#E2E8F0' },
   workerName:   { fontFamily: FontFamily.semiBold, fontSize: RFValue(10.5), color: '#10375C', marginBottom: 2 },
   workerMeta:   { fontFamily: FontFamily.regular, fontSize: RFValue(9), color: '#94A3B8' },
   workerHours:  { fontFamily: FontFamily.medium },

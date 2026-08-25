@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
-  View, StyleSheet, Modal, TouchableOpacity, TouchableWithoutFeedback,
-  Image, TextInput, ActivityIndicator, Platform, KeyboardAvoidingView,
+  View, StyleSheet, Modal, TouchableOpacity, TouchableWithoutFeedback, TextInput, ActivityIndicator, Platform, KeyboardAvoidingView,
 } from 'react-native';
-import { Text } from '~components/Common';
+import { Text, Avatar } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Star } from 'lucide-react-native';
@@ -44,14 +43,7 @@ const RatingModal = ({ visible, onClose, worker, jobId, onSubmit, submitting }) 
 
                 {/* Avatar */}
                 <View style={styles.avatarWrap}>
-                  <Image
-                    source={
-                      worker?.avatarUri
-                        ? { uri: worker.avatarUri }
-                        : { uri: `https://i.pravatar.cc/150?u=${worker?._id || 1}` }
-                    }
-                    style={styles.avatar}
-                  />
+                  <Avatar uri={worker?.avatarUri} size={80} />
                 </View>
 
                 {/* Title */}
@@ -134,12 +126,6 @@ const styles = StyleSheet.create({
   },
   avatarWrap: {
     marginBottom: 16,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#F1F5F9',
   },
   title: {
     fontFamily: FontFamily.bold,
