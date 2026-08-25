@@ -114,7 +114,7 @@ const DocumentsTab = ({ profile, updateCompanyProfile, updatingProfile }) => {
 const styles = StyleSheet.create({
   container: { marginTop: 10 },
   saveButton: {
-    backgroundColor: '#10375C',
+    backgroundColor: '#F2A154',
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
