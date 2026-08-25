@@ -57,7 +57,7 @@ const BusinessDetailsScreen = ({ navigation }) => {
           value={formData.registrationNumber}
           onChangeText={v => { updateField('registrationNumber', v); clearError('registrationNumber'); }}
           placeholder="12345678"
-          keyboardType="default"
+          keyboardType="number-pad"
           error={errors.registrationNumber}
         />
       </View>
