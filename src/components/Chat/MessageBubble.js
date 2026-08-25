@@ -7,7 +7,7 @@ import {useState} from 'react';
 import {View, StyleSheet, TouchableOpacity, Image, Linking} from 'react-native';
 import {RFValue} from 'react-native-responsive-fontsize';
 import {File, FileText, Check} from 'lucide-react-native';
-import {Text} from '~components/Common';
+import {Text, Avatar} from '~components/Common';
 import {FontFamily} from '~theme/fonts';
 
 const IMAGE_EXTENSIONS =
@@ -118,16 +118,7 @@ const MessageBubble = ({message, isSent}) => {
     <>
       <View style={[styles.row, isSent ? styles.rowRight : styles.rowLeft]}>
         {/* Received: avatar on left */}
-        {!isSent &&
-          (message.avatarUri ? (
-            <Image source={{uri: message.avatarUri}} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarInitial}>
-                {(message.senderName ?? '?')[0].toUpperCase()}
-              </Text>
-            </View>
-          ))}
+        {!isSent && <Avatar uri={message.avatarUri} size={30} />}
 
         <View style={[styles.col, isSent ? styles.colRight : styles.colLeft]}>
           {/* Time row */}
@@ -192,14 +183,7 @@ const MessageBubble = ({message, isSent}) => {
         </View>
 
         {/* Sent: avatar on right */}
-        {isSent &&
-          (message.avatarUri ? (
-            <Image source={{uri: message.avatarUri}} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarInitial}>Me</Text>
-            </View>
-          ))}
+        {isSent && <Avatar uri={message.avatarUri} size={30} />}
       </View>
     </>
   );
@@ -215,17 +199,6 @@ const styles = StyleSheet.create({
   },
   rowLeft: {justifyContent: 'flex-start'},
   rowRight: {justifyContent: 'flex-end'},
-  avatar: {width: 30, height: 30, borderRadius: 15, backgroundColor: '#E2E8F0'},
-  avatarPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#10375C',
-  },
-  avatarInitial: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: RFValue(8),
-    color: '#FFFFFF',
-  },
   col: {maxWidth: '72%'},
   colLeft: {alignItems: 'flex-start'},
   colRight: {alignItems: 'flex-end'},

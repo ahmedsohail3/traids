@@ -6,11 +6,7 @@
  */
 import { useEffect } from 'react';
 import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  Image,
+  View, StyleSheet, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import {
@@ -24,7 +20,7 @@ import {
 } from 'lucide-react-native';
 
 import Header from '~components/Header';
-import { ScrollView, Text, Button } from '~components/Common';
+import { ScrollView, Text, Button, Avatar } from '~components/Common';
 import StatCard from '~components/Common/StatCard';
 import EmptyState from '~components/Common/EmptyState';
 import SubBookingCard from '~components/Job/SubBookingCard';
@@ -65,19 +61,12 @@ const mapProfileCompletion = (data) => data?.profileCompletion ?? 0;
 const ProfileCard = ({ profile, pct, colors, onPress }) => {
   const name    = profile?.fullName ?? profile?.primaryContactName ?? '—';
   const trade   = profile?.trade ?? profile?.primaryTrade ?? 'Subcontractor';
-  const initial = name[0]?.toUpperCase() ?? '?';
 
   return (
     <View style={[styles.profileCard, { backgroundColor: colors.surface }]}>
       {/* Top row: avatar | name + role | chevron */}
       <View style={styles.profileTopRow}>
-        {profile?.profileImage ? (
-          <Image source={{ uri: profile.profileImage }} style={styles.profileImg} />
-        ) : (
-          <View style={[styles.profileAvatar, { backgroundColor: NAVY }]}>
-            <Text style={styles.profileInitial}>{initial}</Text>
-          </View>
-        )}
+        <Avatar uri={profile?.profileImage} size={RFValue(42)} />
         <View style={styles.profileInfo}>
           <Text style={[styles.profileName, { color: colors.textPrimary }]}>{name}</Text>
           <Text style={[styles.profileTrade, { color: colors.textSecondary }]}>{trade}</Text>
@@ -322,24 +311,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     marginBottom: 14,
-  },
-  profileImg: {
-    width: RFValue(42),
-    height: RFValue(42),
-    borderRadius: RFValue(21),
-    resizeMode: 'cover',
-  },
-  profileAvatar: {
-    width: RFValue(42),
-    height: RFValue(42),
-    borderRadius: RFValue(21),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileInitial: {
-    color: '#FFFFFF',
-    fontFamily: FontFamily.bold,
-    fontSize: RFValue(16),
   },
   profileInfo:  { flex: 1 },
   profileName:  { fontFamily: FontFamily.semiBold, fontSize: RFValue(13), marginBottom: 2 },

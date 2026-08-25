@@ -12,10 +12,10 @@
  *   avatarUri   string
  *   onViewProfile function
  */
-import {View, StyleSheet, TouchableOpacity, Image} from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import {RFValue} from 'react-native-responsive-fontsize';
 import {MapPin, Star} from 'lucide-react-native';
-import {Text, Button} from '~components/Common';
+import {Text, Button, Avatar} from '~components/Common';
 import {FontFamily} from '~theme/fonts';
 
 const SubcontractorCard = ({
@@ -34,14 +34,7 @@ const SubcontractorCard = ({
     <View style={styles.card}>
       {/* Top row: avatar + info */}
       <View style={styles.topRow}>
-        <Image
-          source={
-            profileImage
-              ? {uri: profileImage}
-              : {uri: `https://i.pravatar.cc/150?u=${fullName}`}
-          }
-          style={styles.avatar}
-        />
+        <Avatar uri={profileImage} size={RFValue(42)} />
         <View style={styles.info}>
           <Text style={styles.name}>{fullName}</Text>
           <Text style={styles.trade}>{primaryTrade}</Text>
@@ -108,12 +101,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginBottom: 10,
-  },
-  avatar: {
-    width: RFValue(42),
-    height: RFValue(42),
-    borderRadius: RFValue(21),
-    backgroundColor: '#F1F5F9',
   },
   info: {flex: 1},
   name: {

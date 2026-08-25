@@ -14,9 +14,9 @@
  *   onAccept    function
  *   onMessage   function
  */
-import { View, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { Text, Button } from '~components/Common';
+import { Text, Button, Avatar } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
 import { CheckCircle2 } from 'lucide-react-native';
@@ -48,10 +48,7 @@ const ApplicantCard = ({
       <View style={styles.topRow}>
         <View style={styles.profileSection}>
           <View style={styles.avatarWrap}>
-            <Image
-              source={avatarUri ? { uri: avatarUri } : { uri: 'https://i.pravatar.cc/150' }}
-              style={styles.avatar}
-            />
+            <Avatar uri={avatarUri} size={RFValue(36)} />
             {isVerified && (
               <View style={styles.verifiedBadge}>
                 <CheckCircle2 size={RFValue(10)} color="#10375C" fill="#FFFFFF" />
@@ -158,12 +155,6 @@ const styles = StyleSheet.create({
   },
   avatarWrap: {
     position: 'relative',
-  },
-  avatar: {
-    width: RFValue(36),
-    height: RFValue(36),
-    borderRadius: RFValue(18),
-    backgroundColor: '#F1F5F9',
   },
   verifiedBadge: {
     position: 'absolute',

@@ -26,6 +26,10 @@ import AccountTypeCard from "./AccountTypeCard";
 import PlanCard from "./PlanCard";
 import GradientBackground from "./GradientBackground";
 import AIAssistantFab from "./AIAssistantFab";
+import Avatar from "./Avatar";
+import AttachmentThumb from "./AttachmentThumb";
+import AttachmentViewer from "./AttachmentViewer";
+import OfflineBanner from "./OfflineBanner";
 
 export {
   AppText as Text,
@@ -57,5 +61,9 @@ export {
   PlanCard,
   GradientBackground,
   AIAssistantFab,
+  Avatar,
+  AttachmentThumb,
+  AttachmentViewer,
+  OfflineBanner,
 };
 

@@ -8,12 +8,7 @@
  */
 import {useEffect, useCallback, useState} from 'react';
 import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  Image,
-  Linking,
+  View, StyleSheet, TouchableOpacity, ActivityIndicator, Linking,
 } from 'react-native';
 import {RFValue} from 'react-native-responsive-fontsize';
 import {
@@ -29,7 +24,7 @@ import {
 } from 'lucide-react-native';
 import {useTheme} from '~context/ThemeContext';
 import {FontFamily} from '~theme/fonts';
-import {ScrollView, Text} from '~components/Common';
+import {ScrollView, Text, Avatar} from '~components/Common';
 import Header from '~components/Header';
 import useSubcontractorJobs from '~hooks/useSubcontractorJobs';
 import useSubcontractorBookings from '~hooks/useSubcontractorBookings';
@@ -41,7 +36,6 @@ import {stripHtml} from '~utils';
 
 const NAVY = '#10375C';
 const ORANGE = '#F2A154';
-const AVATAR_COLORS = ['#10375C', '#F2A154', '#3BB273', '#6366F1', '#EC4899'];
 
 const STATUS_STYLE = {
   in_progress: {bg: '#1E3A8A', text: '#FFFFFF', label: 'In Progress'},
@@ -251,9 +245,6 @@ const SubBookingDetailScreen = ({navigation, route}) => {
 
   const offerResponse = OFFER_RESPONSE[offerStatus] ?? null;
 
-  const companyInitial = (company.companyName ?? 'C')[0].toUpperCase();
-  const avatarColor = AVATAR_COLORS[0];
-
   // Duration label
   const durationLabel = (() => {
     if (!job?.timelineStartDate || !job?.timelineEndDate) return '—';
@@ -305,20 +296,7 @@ const SubBookingDetailScreen = ({navigation, route}) => {
             </View>
 
             <View style={styles.companyCenter}>
-              {company.profileImage ? (
-                <Image
-                  source={{uri: company.profileImage}}
-                  style={styles.companyAvatar}
-                />
-              ) : (
-                <View
-                  style={[
-                    styles.companyAvatarPlaceholder,
-                    {backgroundColor: avatarColor},
-                  ]}>
-                  <Text style={styles.companyAvatarText}>{companyInitial}</Text>
-                </View>
-              )}
+              <Avatar uri={company.profileImage} size={RFValue(64)} style={styles.companyAvatar} />
               <Text style={[styles.companyName, {color: colors.textPrimary}]}>
                 {company.companyName ?? '—'}
               </Text>
@@ -570,19 +548,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     resizeMode: 'cover',
     marginBottom: 4,
-  },
-  companyAvatarPlaceholder: {
-    width: RFValue(64),
-    height: RFValue(64),
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  companyAvatarText: {
-    color: '#FFFFFF',
-    fontFamily: FontFamily.bold,
-    fontSize: RFValue(24),
   },
   companyName: {
     fontFamily: FontFamily.bold,

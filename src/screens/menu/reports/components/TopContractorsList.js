@@ -1,5 +1,5 @@
-import { View, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { Text } from '~components/Common';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { Text, Avatar } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Filter, BadgeCheck, Users } from 'lucide-react-native';
@@ -22,10 +22,7 @@ const TopContractorsList = ({ data }) => {
             <View key={item._id ?? item.id ?? idx} style={styles.itemRow}>
               <View style={styles.contractorInfoRow}>
                 <View style={styles.avatarWrap}>
-                  <Image
-                    source={{ uri: item.avatar ?? item.profileImage ?? `https://i.pravatar.cc/150?u=${item._id ?? idx}` }}
-                    style={styles.avatar}
-                  />
+                  <Avatar uri={item.avatar ?? item.profileImage} size={36} />
                   {item.verified && (
                     <View style={styles.verifiedBadge}>
                       <BadgeCheck size={RFValue(10)} color="#3B82F6" fill="#fff" />
@@ -114,12 +111,6 @@ const styles = StyleSheet.create({
     height: 36,
     marginRight: 12,
     position: 'relative',
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 18,
-    backgroundColor: '#F1F5F9',
   },
   verifiedBadge: {
     position: 'absolute',

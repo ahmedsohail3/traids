@@ -2,8 +2,8 @@
  * ViewProfileModal — shared bottom-sheet modal to view a contact's profile.
  * Used from within a chat conversation.
  */
-import { View, StyleSheet, Modal, TouchableWithoutFeedback, Platform, Image } from 'react-native';
-import { Text } from '~components/Common';
+import { View, StyleSheet, Modal, TouchableWithoutFeedback, Platform } from 'react-native';
+import { Text, Avatar } from '~components/Common';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { FontFamily } from '~theme/fonts';
 
@@ -20,13 +20,7 @@ const ViewProfileModal = ({ visible, onClose, profile }) => {
 
               {/* Profile header */}
               <View style={styles.profileHeader}>
-                {profile.avatarUri ? (
-                  <Image source={{ uri: profile.avatarUri }} style={styles.profileAvatar} />
-                ) : (
-                  <View style={[styles.profileAvatar, styles.profileAvatarFallback]}>
-                    <Text style={styles.profileAvatarIcon}>{profile.logoEmoji ?? '🏢'}</Text>
-                  </View>
-                )}
+                <Avatar uri={profile.avatarUri} size={60} style={styles.profileAvatar} />
                 <View style={styles.profileInfo}>
                   <Text style={styles.profileName}>{profile.name}</Text>
                   <Text style={styles.profileRole}>{profile.role}</Text>
@@ -72,10 +66,6 @@ const styles = StyleSheet.create({
     width: 60, height: 60, borderRadius: 14,
     backgroundColor: '#F1F5F9',
   },
-  profileAvatarFallback: {
-    alignItems: 'center', justifyContent: 'center',
-  },
-  profileAvatarIcon: { fontSize: RFValue(30) },
   profileInfo: { flex: 1 },
   profileName: {
     fontFamily: FontFamily.bold,

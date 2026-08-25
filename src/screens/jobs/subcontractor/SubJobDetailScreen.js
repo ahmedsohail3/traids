@@ -5,12 +5,7 @@
  */
 import { useEffect, useState, useCallback } from 'react';
 import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Linking,
-  ActivityIndicator,
-  Image,
+  View, StyleSheet, TouchableOpacity, Linking, ActivityIndicator,
 } from 'react-native';
 import { RFValue } from 'react-native-responsive-fontsize';
 import {
@@ -28,7 +23,7 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
-import { ScrollView, Text } from '~components/Common';
+import { ScrollView, Text, Avatar } from '~components/Common';
 import Header from '~components/Header';
 import ApplyJobModal from '~components/Job/ApplyJobModal';
 import useSubcontractorJobs from '~hooks/useSubcontractorJobs';
@@ -134,8 +129,6 @@ const SubJobDetailScreen = ({ navigation, route }) => {
   const job     = selectedJob;
   const company = job?.company ?? {};
 
-  const companyInitial = (company.companyName ?? 'C')[0].toUpperCase();
-
   // Duration in days between timeline dates
   const durationLabel = (() => {
     if (!job?.timelineStartDate || !job?.timelineEndDate) return '—';
@@ -171,13 +164,7 @@ const SubJobDetailScreen = ({ navigation, route }) => {
             </Text>
 
             <View style={styles.companyRow}>
-              {company.profileImage ? (
-                <Image source={{ uri: company.profileImage }} style={styles.companyLogo} />
-              ) : (
-                <View style={[styles.avatar, { backgroundColor: NAVY }]}>
-                  <Text style={styles.avatarText}>{companyInitial}</Text>
-                </View>
-              )}
+              <Avatar uri={company.profileImage} size={RFValue(40)} style={styles.companyLogo} />
               <View style={styles.companyMeta}>
                 <Text style={[styles.companyName, { color: colors.textPrimary }]}>
                   {company.companyName ?? '—'}
@@ -301,19 +288,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     resizeMode: 'cover',
     flexShrink: 0,
-  },
-  avatar: {
-    width: RFValue(40),
-    height: RFValue(40),
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  avatarText: {
-    color: '#FFFFFF',
-    fontFamily: FontFamily.bold,
-    fontSize: RFValue(15),
   },
   companyMeta:  { flex: 1, gap: 3 },
   companyName:  { fontFamily: FontFamily.semiBold, fontSize: RFValue(12) },
