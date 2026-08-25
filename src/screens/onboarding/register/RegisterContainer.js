@@ -45,8 +45,20 @@ const RegisterContainer = ({
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={colors.background}
       />
+      {/* No KeyboardAvoidingView here. The shared ScrollView wraps one by
+          default with keyboardVerticalOffset={80}, a header height these screens
+          do not have — their title row scrolls with the content — so iOS padded
+          the keyboard's height plus a phantom 80pt. Android is worse: the
+          manifest is already adjustResize, so the KAV's behavior="height" shrank
+          a window the platform had shrunk once already. Both left a block of
+          empty space above the keyboard, over the Save button.
+
+          Instead: Android's adjustResize handles it alone, and iOS uses the
+          ScrollView's own keyboard insets, which measure the real overlap. */}
       <ScrollView
         ref={scrollRef}
+        includeAvoidingView={false}
+        automaticallyAdjustKeyboardInsets
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
