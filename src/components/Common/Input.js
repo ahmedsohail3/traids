@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, forwardRef } from "react";
 import {
   View,
   StyleSheet,
@@ -25,11 +25,13 @@ const lightModeColors = {
   error: "#EF4444",
 };
 
-const Input = ({
+const Input = forwardRef(({
   type = 1,
   label,
   value,
   onChangeText,
+  onFocus,
+  onBlur,
   placeholder,
   keyboardType = "default",
   autoCapitalize = "none",
@@ -45,7 +47,7 @@ const Input = ({
   maxLength = 120,
   numberOfLines = 1,
   forceLight = false,
-}) => {
+}, ref) => {
   const { colors, isDark } = useTheme();
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = secureTextEntry;
@@ -114,9 +116,12 @@ const Input = ({
         )}
 
         <TextInput
+          ref={ref}
           value={value}
           maxLength={maxLength}
           onChangeText={handleChangeText}
+          onFocus={onFocus}
+          onBlur={onBlur}
           placeholder={placeholder}
           placeholderTextColor={activeColors.inputPlaceholder}
           keyboardType={keyboardType}
@@ -154,7 +159,9 @@ const Input = ({
       )}
     </View>
   );
-};
+});
+
+Input.displayName = "Input";
 
 Input.propTypes = {
   label: PropTypes.string,

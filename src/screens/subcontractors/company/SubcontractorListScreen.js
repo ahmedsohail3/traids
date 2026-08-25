@@ -4,7 +4,7 @@
  * "Find Subcontractors" screen for Company role.
  * Shows a searchable, filterable list of subcontractors.
  */
-import {useState, useEffect, useRef} from 'react';
+import {useState, useEffect, useRef, useCallback} from 'react';
 import {
   View,
   StyleSheet,
@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {RFValue} from 'react-native-responsive-fontsize';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Briefcase, DollarSign, MapPin} from 'lucide-react-native';
 import {
   Text,
@@ -27,6 +28,13 @@ import {FontFamily} from '~theme/fonts';
 import {useTheme} from '~context/ThemeContext';
 import SubcontractorCard from '~components/Subcontractors/SubcontractorCard';
 import useCompanySubcontractors from '~hooks/useCompanySubcontractors';
+import useKeyboardInset from '~hooks/useKeyboardInset';
+
+// Breathing room kept between a focused field and the top of the keyboard.
+const FIELD_GAP = 52;
+
+// Clears the floating tab bar; the keyboard inset is added on top when open.
+const LIST_BOTTOM_PADDING = 130;
 
 const TRADES = [
   {id: 1, name: 'Electrician', key: 'electrician'},
@@ -95,6 +103,126 @@ const SubcontractorListScreen = ({navigation}) => {
   const [sort, setSort] = useState(SORT_OPTIONS[0]);
   const locationTimer = useRef(null);
 
+  // ── Keyboard avoidance ─────────────────────────────────────────────────────
+  // Both filter inputs live inside the FlatList header, so a focus near the
+  // bottom of the screen would otherwise sit under the keyboard. Same approach
+  // as PostJobScreen: measure in window coordinates and scroll by the overlap.
+  const insets = useSafeAreaInsets();
+  const {
+    keyboardInset,
+    keyboardVisible,
+    onLayout: onViewportLayout,
+  } = useKeyboardInset(insets.bottom);
+
+  const listRef = useRef(null);
+  // Root view — its bottom edge is the list's bottom edge, so it is the viewport.
+  const viewportRef = useRef(null);
+  const scrollYRef = useRef(0);
+  const focusedRef = useRef(null);
+  const insetRef = useRef(0);
+  // Offset of the FlatList inside the root view — i.e. the height of Header.
+  const listTopRef = useRef(0);
+
+  // These wrap the whole bordered field. Measuring the inner TextInput instead
+  // reads ~18px short: it is flex:1 with no vertical padding, centred inside a
+  // 56px box, so the box hangs below it and the keyboard clips that overhang.
+  const locationFieldRef = useRef(null);
+  const searchFieldRef = useRef(null);
+  // The whole filter block, measured so sorting can scroll exactly past it.
+  const headerRef = useRef(null);
+
+  useEffect(() => {
+    insetRef.current = keyboardInset;
+  }, [keyboardInset]);
+
+  const handleScroll = useCallback(({nativeEvent}) => {
+    scrollYRef.current = nativeEvent.contentOffset.y;
+  }, []);
+
+  const handleListLayout = useCallback(({nativeEvent}) => {
+    listTopRef.current = nativeEvent.layout.y;
+  }, []);
+
+  /**
+   * Scrolls just enough to bring `node` fully into the space left above the
+   * keyboard, then back down if it ended up above the visible area.
+   */
+  const revealNode = useCallback(node => {
+    const viewport = viewportRef.current;
+    if (!node?.measureInWindow || !viewport || !listRef.current) return;
+
+    viewport.measureInWindow((_vx, viewportY, _vw, viewportH) => {
+      node.measureInWindow((_x, y, _w, h) => {
+        if (h === 0) return; // not laid out yet
+
+        const visibleBottom = viewportY + viewportH - insetRef.current;
+        const overlap = y + h + FIELD_GAP - visibleBottom;
+        if (overlap > 1) {
+          listRef.current?.scrollToOffset({
+            offset: scrollYRef.current + overlap,
+            animated: true,
+          });
+          return;
+        }
+
+        const visibleTop = viewportY + listTopRef.current;
+        const above = visibleTop + FIELD_GAP - y;
+        if (above > 1) {
+          listRef.current?.scrollToOffset({
+            offset: Math.max(0, scrollYRef.current - above),
+            animated: true,
+          });
+        }
+      });
+    });
+  }, []);
+
+  /**
+   * Scrolls so the results start at the top of the list viewport. Measured in
+   * window coordinates rather than left to scrollToIndex, which needs row layout
+   * metrics that aren't dependable underneath a header this tall.
+   */
+  const scrollToResults = useCallback(() => {
+    const viewport = viewportRef.current;
+    const header = headerRef.current;
+    if (!header?.measureInWindow || !viewport || !listRef.current) return;
+
+    viewport.measureInWindow((_vx, viewportY) => {
+      header.measureInWindow((_x, y, _w, h) => {
+        if (h === 0) return; // not laid out yet
+
+        // How far the header's bottom sits below the top of the list.
+        const delta = y + h - (viewportY + listTopRef.current);
+        if (delta <= 1) return; // already scrolled past the filters
+
+        listRef.current?.scrollToOffset({
+          offset: scrollYRef.current + delta,
+          animated: true,
+        });
+      });
+    });
+  }, []);
+
+  const handleFocus = useCallback(
+    node => {
+      focusedRef.current = node;
+      revealNode(node);
+    },
+    [revealNode],
+  );
+
+  const handleBlur = useCallback(node => {
+    if (focusedRef.current === node) focusedRef.current = null;
+  }, []);
+
+  // Re-reveal once the keyboard has actually opened, and again whenever its
+  // height changes.
+  useEffect(() => {
+    if (!keyboardVisible) return;
+    const frame = requestAnimationFrame(() => revealNode(focusedRef.current));
+    return () => cancelAnimationFrame(frame);
+  }, [keyboardVisible, keyboardInset, revealNode]);
+
   useEffect(() => {
     fetch({
       maxHourlyRate: maxRate,
@@ -142,8 +270,19 @@ const SubcontractorListScreen = ({navigation}) => {
     sort,
   );
 
+  // Sorting reorders the list underneath the filters, which are tall enough to
+  // hide the result of the sort entirely. Drop the user at the first entry so
+  // the new order is actually visible.
+  const handleSortChange = option => {
+    setSort(option);
+    if (!filtered.length) return;
+    // One frame is enough for the reordered list to commit; the header's height
+    // doesn't change with sort order, so the measurement is stable either way.
+    requestAnimationFrame(scrollToResults);
+  };
+
   const renderHeader = () => (
-    <View style={styles.headerContainer}>
+    <View ref={headerRef} collapsable={false} style={styles.headerContainer}>
       {/* Top row: Recommended and Sort By */}
       <View style={[styles.filterSection, styles.titleRow]}>
         <Text style={styles.sectionHeading} numberOfLines={2}>
@@ -152,7 +291,7 @@ const SubcontractorListScreen = ({navigation}) => {
         <SortBy
           options={SORT_OPTIONS}
           value={sort?.value}
-          onChange={setSort}
+          onChange={handleSortChange}
           title="Sort subcontractors by"
         />
       </View>
@@ -195,31 +334,42 @@ const SubcontractorListScreen = ({navigation}) => {
           <MapPin size={RFValue(14)} color="#F2A154" />
           <Text style={styles.filterTitle}>Location</Text>
         </View>
-        <TextInput
-          value={locationInput}
-          onChangeText={handleLocationChange}
-          placeholder="Enter Location"
-          forceLight
-          containerStyle={styles.inputContainer}
-        />
+        <View ref={locationFieldRef} collapsable={false}>
+          <TextInput
+            value={locationInput}
+            onChangeText={handleLocationChange}
+            onFocus={() => handleFocus(locationFieldRef.current)}
+            onBlur={() => handleBlur(locationFieldRef.current)}
+            placeholder="Enter Location"
+            forceLight
+            containerStyle={styles.inputContainer}
+          />
+        </View>
       </View>
 
       {/* Search Filter */}
       <View style={styles.filterSection}>
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search name or skill..."
-          leftIcon="search"
-          forceLight
-          containerStyle={styles.inputContainer}
-        />
+        <View ref={searchFieldRef} collapsable={false}>
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            onFocus={() => handleFocus(searchFieldRef.current)}
+            onBlur={() => handleBlur(searchFieldRef.current)}
+            placeholder="Search name or skill..."
+            leftIcon="search"
+            forceLight
+            containerStyle={styles.inputContainer}
+          />
+        </View>
       </View>
     </View>
   );
 
   return (
-    <View style={[styles.root, {backgroundColor: colors.background}]}>
+    <View
+      ref={viewportRef}
+      onLayout={onViewportLayout}
+      style={[styles.root, {backgroundColor: colors.background}]}>
       <Header
         title="Find Subcontractors"
         subtitle="Discover and book top rated professionals for your project."
@@ -231,10 +381,22 @@ const SubcontractorListScreen = ({navigation}) => {
       )}
 
       <FlatList
+        ref={listRef}
         data={filtered}
         keyExtractor={item => item._id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[
+          styles.list,
+          // Room to scroll a bottom-most field clear of the keyboard.
+          {paddingBottom: LIST_BOTTOM_PADDING + keyboardInset},
+        ]}
         showsVerticalScrollIndicator={false}
+        onLayout={handleListLayout}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        // Without this the first tap on the sort chip is swallowed just to
+        // dismiss the keyboard while a filter field is focused.
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         ListHeaderComponent={renderHeader()}
         renderItem={({item}) => (
           <SubcontractorCard
@@ -277,7 +439,7 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 16,
-    paddingBottom: 130,
+    paddingBottom: LIST_BOTTOM_PADDING,
     paddingTop: 16,
   },
   headerContainer: {
