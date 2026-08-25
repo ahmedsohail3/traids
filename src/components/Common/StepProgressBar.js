@@ -4,17 +4,24 @@ import { Text } from '~components/Common';
 import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 
+// Arriving at the last step would otherwise read 100% with a full bar while its
+// form is still unsubmitted. Figma labels that step 96%, deliberately short of
+// complete, so hold the bar just below the end until the flow is actually done.
+const MAX_IN_PROGRESS_PERCENT = 96;
+
 /**
  * StepProgressBar — shows "Step X of N · YY% Complete" with a filled progress track.
  *
  * Props:
  *   currentStep  – 1-based current step number
  *   totalSteps   – total number of steps
+ *   isComplete   – the flow is finished; only then may the bar reach 100%
  *   style        – optional outer style override
  */
-const StepProgressBar = ({ currentStep, totalSteps, style }) => {
+const StepProgressBar = ({ currentStep, totalSteps, isComplete = false, style }) => {
   const { colors } = useTheme();
-  const percent = Math.round((currentStep / totalSteps) * 100);
+  const raw = Math.round((currentStep / totalSteps) * 100);
+  const percent = isComplete ? 100 : Math.min(raw, MAX_IN_PROGRESS_PERCENT);
   const fillWidth = `${percent}%`;
 
   return (
