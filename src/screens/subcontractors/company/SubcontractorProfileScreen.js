@@ -21,7 +21,7 @@ import {
   XCircle,
   MapPin,
 } from 'lucide-react-native';
-import {Text, Button} from '~components/Common';
+import {Text, Button, AttachmentThumb, AttachmentViewer} from '~components/Common';
 import Header from '~components/Header';
 import {FontFamily} from '~theme/fonts';
 import {useTheme} from '~context/ThemeContext';
@@ -148,6 +148,9 @@ const SubcontractorProfileScreen = ({route, navigation}) => {
     getProfile,
   } = useCompanySubcontractors();
   const {rawConversations, getConversations} = useChat();
+
+  // Index of the work example being viewed full-screen; null when closed.
+  const [viewerIndex, setViewerIndex] = useState(null);
 
   useEffect(() => {
     getConversations();
@@ -306,22 +309,21 @@ const SubcontractorProfileScreen = ({route, navigation}) => {
             <ComplianceRow key={`${item.label}-${i}`} item={item} />
           ))}
         </View>
-
         {/* Work Examples */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Work Examples</Text>
-          <Text style={styles.sectionSub}>Photos from previous jobs</Text>
+          <Text style={styles.sectionSub}>Photos and documents from previous jobs</Text>
           {workExamples.length > 0 ? (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.workExamplesRow}>
               {workExamples.map((uri, i) => (
-                <Image
+                <AttachmentThumb
                   key={`${uri}-${i}`}
-                  source={{uri}}
-                  style={styles.workExampleImage}
-                  resizeMode="cover"
+                  uri={uri}
+                  size={RFValue(96)}
+                  onPress={() => setViewerIndex(i)}
                 />
               ))}
             </ScrollView>
@@ -363,6 +365,14 @@ const SubcontractorProfileScreen = ({route, navigation}) => {
           )}
         </View>
       </ScrollView>
+
+      <AttachmentViewer
+        visible={viewerIndex !== null}
+        items={workExamples}
+        initialIndex={viewerIndex ?? 0}
+        title="Work Examples"
+        onClose={() => setViewerIndex(null)}
+      />
     </View>
   );
 };
@@ -509,12 +519,6 @@ const styles = StyleSheet.create({
   workExamplesRow: {
     gap: 10,
     paddingVertical: 2,
-  },
-  workExampleImage: {
-    width: RFValue(96),
-    height: RFValue(96),
-    borderRadius: 10,
-    backgroundColor: '#F1F5F9',
   },
   emptySectionText: {
     fontFamily: FontFamily.regular,
