@@ -14,9 +14,10 @@ import { useTheme } from '~context/ThemeContext';
 import { FontFamily } from '~theme/fonts';
 import Header from '~components/Header';
 import MessageBubble from '~components/Chat/MessageBubble';
+import DaySeparator from '~components/Chat/DaySeparator';
 import MessageInput from '~components/Chat/MessageInput';
 import ViewProfileModal from '~components/Chat/ViewProfileModal';
-import useChat from '~hooks/useChat';
+import useChat, { withDaySeparators, DAY_SEPARATOR } from '~hooks/useChat';
 import useAlert from '~hooks/useAlert';
 import useKeyboardInset from '~hooks/useKeyboardInset';
 import useConversationSocket from '~hooks/useConversationSocket';
@@ -100,6 +101,9 @@ const CompanyChatScreen = ({ route }) => {
     () => getMessagesForChat(activeChatId, activeConversation),
     [getMessagesForChat, activeChatId, activeConversation],
   );
+
+  // Message rows plus a "Today"/"Yesterday"/date header before each day group.
+  const listData = useMemo(() => withDaySeparators(apiMessages), [apiMessages]);
 
   const pagination = getPaginationForChat(activeChatId);
 
@@ -198,11 +202,15 @@ const CompanyChatScreen = ({ route }) => {
 
   const renderItem = useCallback(
     ({ item }) => (
-      <MessageBubble
-        message={item}
-        isSent={item.isSent}
-        onDelete={handleDelete}
-      />
+      item.type === DAY_SEPARATOR
+        ? <DaySeparator label={item.label} />
+        : (
+          <MessageBubble
+            message={item}
+            isSent={item.isSent}
+            onDelete={handleDelete}
+          />
+        )
     ),
     [handleDelete],
   );
@@ -278,7 +286,7 @@ const CompanyChatScreen = ({ route }) => {
           {(!loadingMessages || apiMessages.length > 0) && (
             <FlatList
               ref={listRef}
-              data={apiMessages}
+              data={listData}
               keyExtractor={keyExtractor}
               renderItem={renderItem}
               ListHeaderComponent={ListHeader}

@@ -37,22 +37,78 @@ const formatChatTime = (dateStr) => {
 };
 
 /**
- * Long format for message bubbles: "10:44 AM", "Yesterday at 10:44 AM", "Mon at 10:44 AM"
+ * Whole-day difference by the calendar, not by elapsed 24h blocks. A message
+ * sent at 23:50 must still read as "Yesterday" when the app is opened at 00:10 —
+ * subtracting timestamps would call that 0 days and label it "Today".
+ */
+const startOfDay = (value) => {
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return NaN;
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+};
+
+const calendarDaysAgo = (dateStr) => {
+  const then = startOfDay(dateStr);
+  if (isNaN(then)) return NaN;
+  return Math.round((startOfDay(new Date()) - then) / 86400000);
+};
+
+/**
+ * Time for a message bubble: "10:44 AM".
+ *
+ * Just the clock time, whatever the age. Every group of messages now sits under
+ * a day separator naming its date, so repeating "Yesterday"/"Monday" on each
+ * bubble underneath only restates the header.
  */
 export const formatMessageTime = (dateStr) => {
   if (!dateStr) return '';
   const date = new Date(dateStr);
   if (isNaN(date.getTime())) return '';
 
-  const now      = new Date();
-  const diffMs   = now - date;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const timeStr  = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
 
-  if (diffDays === 0) return timeStr;
-  if (diffDays === 1) return `Yesterday at ${timeStr}`;
-  if (diffDays < 7)   return `${date.toLocaleDateString([], { weekday: 'long' })} at ${timeStr}`;
-  return `${date.toLocaleDateString([], { day: 'numeric', month: 'short' })} at ${timeStr}`;
+// ── Day separators ─────────────────────────────────────────────────────────────
+
+export const DAY_SEPARATOR = 'day-separator';
+
+/** Header text for a day group: "Today", "Yesterday", "Monday", "12 Jan 2025". */
+export const formatDaySeparator = (dateStr) => {
+  const days = calendarDaysAgo(dateStr);
+  if (isNaN(days)) return '';
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+
+  const date = new Date(dateStr);
+  if (days < 7) return date.toLocaleDateString([], { weekday: 'long' });
+  return date.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+/**
+ * Injects a separator row before the first message of each calendar day.
+ * Expects messages sorted oldest → newest, which getMessagesForChat guarantees.
+ */
+export const withDaySeparators = (messages = []) => {
+  const rows = [];
+  let lastDay = null;
+
+  for (const message of messages) {
+    const createdAt = message._raw?.createdAt ?? message.createdAt;
+    const day       = startOfDay(createdAt);
+
+    if (!isNaN(day) && day !== lastDay) {
+      lastDay = day;
+      rows.push({
+        type:  DAY_SEPARATOR,
+        id:    `${DAY_SEPARATOR}-${day}`,
+        label: formatDaySeparator(createdAt),
+      });
+    }
+    rows.push(message);
+  }
+
+  return rows;
 };
 
 // ── Adapters ───────────────────────────────────────────────────────────────────

@@ -69,8 +69,19 @@ const useConversationSocket = (conversationId, { onNewMessage } = {}) => {
       const msgConvId = payload?.conversationId;
       if (msgConvId && msgConvId !== conversationId) return;
 
+      const id = payload.messageId ?? payload._id ?? null;
+
+      // A synthesised id could never match the REST copy of the same message, so
+      // the two would sit in the list side by side. Without one, re-fetch instead
+      // of pushing a stub we can't dedup.
+      if (!id) {
+        dispatch(fetchMessages({ chatId: conversationId, limit: 50, skip: 0 }));
+        if (onNewMessageRef.current) onNewMessageRef.current(null);
+        return;
+      }
+
       const rawMessage = {
-        _id:         payload.messageId ?? payload._id ?? `socket_${Date.now()}`,
+        _id:         id,
         sender:      payload.senderId  ?? payload.sender,
         senderType:  payload.senderType,
         content:     payload.content ?? payload.text ?? '',

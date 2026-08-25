@@ -5,6 +5,32 @@ import { getErrorMessage } from '~utils';
 
 const DEFAULT_LIMIT = 50;
 
+/**
+ * Adds a message to a chat's cache, or merges it into the copy already there.
+ *
+ * Every message we send arrives twice: the server echoes `message:new` into the
+ * room the sender is also joined to, and the POST resolves with the same record.
+ * Whichever lands second must not append a second copy — identical `_id`s in the
+ * list are what produce React's "two children with the same key" warning.
+ *
+ * Merging rather than ignoring means the richer payload wins whichever order
+ * they arrive in: the socket stub carries no attachments, the REST record does.
+ */
+const upsertMessage = (entry, message) => {
+  if (!entry || !message) return;
+
+  const id  = message._id ?? message.id;
+  const idx = id ? entry.messages.findIndex((m) => (m._id ?? m.id) === id) : -1;
+
+  if (idx !== -1) {
+    entry.messages[idx] = { ...entry.messages[idx], ...message };
+    return;
+  }
+
+  entry.messages.push(message);
+  entry.pagination.skip = (entry.pagination.skip ?? 0) + 1;
+};
+
 // ── Thunks ────────────────────────────────────────────────────────────────────
 
 export const fetchConversations = createAsyncThunk(
@@ -137,18 +163,9 @@ const chatSlice = createSlice({
       state.messagesByChatId = {};
       state.messagesError    = null;
     },
-    // Socket: append a realtime message to its chat (dedup by _id)
+    // Socket: append a realtime message to its chat (deduped by _id)
     prependMessage: (state, { payload: { chatId, message } }) => {
-      const entry = state.messagesByChatId[chatId];
-      if (!entry) return;
-      const id = message._id ?? message.id;
-      const alreadyExists = id
-        ? entry.messages.some((m) => (m._id ?? m.id) === id)
-        : false;
-      if (!alreadyExists) {
-        entry.messages.push(message);
-        entry.pagination.skip = (entry.pagination.skip ?? 0) + 1;
-      }
+      upsertMessage(state.messagesByChatId[chatId], message);
     },
   },
   extraReducers: (builder) => {
@@ -225,12 +242,10 @@ const chatSlice = createSlice({
         const { conversationId, message } = payload;
         state.sendingMessage = false;
 
-        // Insert the returned message into the per-chat cache
-        const entry = state.messagesByChatId[conversationId];
-        if (entry) {
-          entry.messages.push(message);
-          entry.pagination.skip += 1;
-        }
+        // Insert the returned message into the per-chat cache. Must go through
+        // upsertMessage: the socket echo of this same message usually beats the
+        // HTTP response back, and a blind push would duplicate it.
+        upsertMessage(state.messagesByChatId[conversationId], message);
 
         // Update the matching conversation's last-message fields
         const conv = state.conversations.find((c) => c._id === conversationId);
