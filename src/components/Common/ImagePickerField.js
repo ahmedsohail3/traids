@@ -13,10 +13,12 @@ import {
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Camera, ImageIcon, X, Pencil } from 'lucide-react-native';
 import { useTheme } from '~context/ThemeContext';
+import useAlert from '~hooks/useAlert';
 import { FontFamily } from '~theme/fonts';
 import {
   pickImageFromLibrary,
   pickImageFromCamera,
+  afterSheetDismiss,
   PROFILE_IMAGE_OPTIONS,
 } from '~utils/filePicker';
 
@@ -95,23 +97,38 @@ const ImagePickerField = ({
   style,
 }) => {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const [sheetVisible, setSheetVisible] = useState(false);
 
   const borderRadius = shape === 'circle' ? size / 2 : 12;
 
-  const handleGallery = useCallback(async () => {
+  // A failure here used to be swallowed, so a picker that would not open looked
+  // identical to the user changing their mind. Cancelling still resolves null
+  // and shows nothing; a genuine failure now says so.
+  const runPicker = useCallback(async (pick) => {
+    // Covers both entry points: the iOS action sheet and the Android modal.
+    await afterSheetDismiss();
     try {
-      const image = await pickImageFromLibrary(PROFILE_IMAGE_OPTIONS);
+      const image = await pick(PROFILE_IMAGE_OPTIONS);
       if (image) onChange?.(image);
-    } catch { /* silent */ }
-  }, [onChange]);
+    } catch (err) {
+      showAlert({
+        title: 'Could Not Open',
+        message: err?.message ?? 'Something went wrong opening the picker.',
+        type: 'error',
+      });
+    }
+  }, [onChange, showAlert]);
 
-  const handleCamera = useCallback(async () => {
-    try {
-      const image = await pickImageFromCamera(PROFILE_IMAGE_OPTIONS);
-      if (image) onChange?.(image);
-    } catch { /* silent */ }
-  }, [onChange]);
+  const handleGallery = useCallback(
+    () => runPicker(pickImageFromLibrary),
+    [runPicker],
+  );
+
+  const handleCamera = useCallback(
+    () => runPicker(pickImageFromCamera),
+    [runPicker],
+  );
 
   const handleRemove = useCallback(() => onChange?.(null), [onChange]);
 
@@ -127,6 +144,10 @@ const ImagePickerField = ({
       ActionSheetIOS.showActionSheetWithOptions(
         { options, cancelButtonIndex: options.length - 1, destructiveButtonIndex: value ? 2 : undefined },
         (index) => {
+          // The action sheet is still dismissing when this fires. Presenting the
+          // photo picker mid-dismissal fails on iOS — UIKit refuses to present
+          // from a controller that is already presenting — and the picker simply
+          // never appears. Wait for the dismissal to finish first.
           if (index === 0) handleCamera();
           else if (index === 1) handleGallery();
           else if (index === 2 && value) handleRemove();

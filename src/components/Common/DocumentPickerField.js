@@ -12,10 +12,12 @@ import {
 import { RFValue } from 'react-native-responsive-fontsize';
 import { Upload, FileText, X, Camera, Image as ImageIcon, Paperclip } from 'lucide-react-native';
 import { useTheme } from '~context/ThemeContext';
+import useAlert from '~hooks/useAlert';
 import { FontFamily } from '~theme/fonts';
 import {
   pickDocument,
   pickImageFromCamera,
+  afterSheetDismiss,
   pickImageFromLibrary,
   DOCUMENT_IMAGE_OPTIONS,
 } from '~utils/filePicker';
@@ -114,34 +116,40 @@ const DocumentPickerField = ({
   style,
 }) => {
   const { colors } = useTheme();
+  const { showAlert } = useAlert();
   const [sheetVisible, setSheetVisible] = useState(false);
 
-  const handleFile = useCallback(async () => {
+  // Waits for the sheet to finish dismissing before presenting, and surfaces a
+  // real failure instead of leaving the screen looking unresponsive. Cancelling
+  // still resolves null and shows nothing.
+  const runPicker = useCallback(async (pick) => {
+    await afterSheetDismiss();
     try {
-      const file = await pickDocument(allowedTypes);
+      const file = await pick();
       if (file) onChange?.(file);
-    } catch {
-      // User-facing errors handled by parent via error prop
+    } catch (err) {
+      showAlert({
+        title: 'Could Not Open',
+        message: err?.message ?? 'Something went wrong opening the picker.',
+        type: 'error',
+      });
     }
-  }, [allowedTypes, onChange]);
+  }, [onChange, showAlert]);
 
-  const handleCamera = useCallback(async () => {
-    try {
-      const file = await pickImageFromCamera(DOCUMENT_IMAGE_OPTIONS);
-      if (file) onChange?.(file);
-    } catch {
-      // User-facing errors handled by parent via error prop
-    }
-  }, [onChange]);
+  const handleFile = useCallback(
+    () => runPicker(() => pickDocument(allowedTypes)),
+    [runPicker, allowedTypes],
+  );
 
-  const handleGallery = useCallback(async () => {
-    try {
-      const file = await pickImageFromLibrary(DOCUMENT_IMAGE_OPTIONS);
-      if (file) onChange?.(file);
-    } catch {
-      // User-facing errors handled by parent via error prop
-    }
-  }, [onChange]);
+  const handleCamera = useCallback(
+    () => runPicker(() => pickImageFromCamera(DOCUMENT_IMAGE_OPTIONS)),
+    [runPicker],
+  );
+
+  const handleGallery = useCallback(
+    () => runPicker(() => pickImageFromLibrary(DOCUMENT_IMAGE_OPTIONS)),
+    [runPicker],
+  );
 
   const handleRemove = useCallback(() => {
     onChange?.(null);

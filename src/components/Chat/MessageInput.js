@@ -22,60 +22,11 @@ import {
 } from 'lucide-react-native';
 import {Text} from '~components/Common';
 import {
-  pick,
-  keepLocalCopy,
-  types,
-  isErrorWithCode,
-  errorCodes,
-} from '@react-native-documents/picker';
-import {launchImageLibrary} from 'react-native-image-picker';
-
-// ── Pickers ───────────────────────────────────────────────────────────────────
-
-const pickImages = () =>
-  new Promise(resolve => {
-    launchImageLibrary(
-      {mediaType: 'mixed', selectionLimit: 5, quality: 0.85},
-      res => {
-        if (res.didCancel || res.errorCode) return resolve([]);
-        resolve(
-          (res.assets ?? []).map(a => ({
-            uri: a.uri,
-            type: a.type ?? 'image/jpeg',
-            name: a.fileName ?? `photo_${Date.now()}.jpg`,
-          })),
-        );
-      },
-    );
-  });
-
-const pickDocuments = async () => {
-  try {
-    const results = await pick({
-      allowMultiSelection: true,
-      type: [types.allFiles],
-    });
-    const copies = await keepLocalCopy({
-      files: results.map(r => ({uri: r.uri, fileName: r.name ?? 'file'})),
-      destination: 'cachesDirectory',
-    });
-    return copies
-      .map((c, i) =>
-        c.status !== 'error'
-          ? {
-              uri: c.localUri,
-              type: results[i].type ?? 'application/octet-stream',
-              name: results[i].name ?? 'document',
-            }
-          : null,
-      )
-      .filter(Boolean);
-  } catch (err) {
-    if (isErrorWithCode(err) && err.code === errorCodes.OPERATION_CANCELED)
-      return [];
-    return [];
-  }
-};
+  pickImagesFromLibrary,
+  pickDocuments,
+  afterSheetDismiss,
+} from '~utils/filePicker';
+import useAlert from '~hooks/useAlert';
 
 // ── Attachment preview chip ───────────────────────────────────────────────────
 
@@ -110,6 +61,7 @@ const AttachmentChip = ({file, onRemove}) => (
 // ── Main component ────────────────────────────────────────────────────────────
 
 const MessageInput = ({onSend, sendingMessage}) => {
+  const {showAlert} = useAlert();
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState([]);
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -117,17 +69,28 @@ const MessageInput = ({onSend, sendingMessage}) => {
   const removeAttachment = idx =>
     setAttachments(prev => prev.filter((_, i) => i !== idx));
 
-  const handlePickImages = async () => {
+  // The sheet is still dismissing when this runs; presenting the picker before
+  // it finishes fails silently on iOS, which is why attachments would not open
+  // on release builds. Failures now surface instead of looking unresponsive.
+  const runPicker = async pick => {
     setSheetVisible(false);
-    const files = await pickImages();
-    if (files.length) setAttachments(prev => [...prev, ...files]);
+    await afterSheetDismiss();
+    try {
+      const files = await pick();
+      if (files.length) setAttachments(prev => [...prev, ...files]);
+    } catch (err) {
+      showAlert({
+        title: 'Could Not Open',
+        message: err?.message ?? 'Something went wrong opening the picker.',
+        type: 'error',
+      });
+    }
   };
 
-  const handlePickDocuments = async () => {
-    setSheetVisible(false);
-    const files = await pickDocuments();
-    if (files.length) setAttachments(prev => [...prev, ...files]);
-  };
+  const handlePickImages = () =>
+    runPicker(() => pickImagesFromLibrary({ mediaType: 'mixed', selectionLimit: 5 }));
+
+  const handlePickDocuments = () => runPicker(() => pickDocuments());
 
   const handleSend = () => {
     const trimmed = text.trim();
@@ -409,13 +372,13 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingVertical: 14,
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#e8ebed',
     borderRadius: 12,
   },
   sheetCancelText: {
     fontFamily: FontFamily.semiBold,
     fontSize: RFValue(11),
-    color: '#64748B',
+    color: '#505c6f',
   },
 });
 

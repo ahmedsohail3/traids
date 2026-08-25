@@ -47,7 +47,7 @@ import {
   validateJobForm,
   formatDateForDisplay,
 } from '~config/createJobFormConfig';
-import {pickDocument, pickImageFromLibrary} from '~utils/filePicker';
+import {pickDocument, pickImageFromLibrary, afterSheetDismiss} from '~utils/filePicker';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const NAVY = '#10375C';
@@ -217,17 +217,31 @@ const PostJobScreen = ({navigation}) => {
     setForm(p => ({...p, documents: p.documents.filter((_, i) => i !== idx)}));
   }, []);
 
-  const handlePickDocument = useCallback(async () => {
+  // The picker sheet is still dismissing when these run. Presenting before it
+  // finishes fails silently on iOS, so wait it out — see afterSheetDismiss.
+  const runPicker = useCallback(async pick => {
     setDocSheetVisible(false);
-    const doc = await pickDocument();
-    addDocument(doc);
-  }, [addDocument]);
+    await afterSheetDismiss();
+    try {
+      addDocument(await pick());
+    } catch (err) {
+      showAlert({
+        title: 'Could Not Open',
+        message: err?.message ?? 'Something went wrong opening the picker.',
+        type: 'error',
+      });
+    }
+  }, [addDocument, showAlert]);
 
-  const handlePickImage = useCallback(async () => {
-    setDocSheetVisible(false);
-    const img = await pickImageFromLibrary({selectionLimit: 1});
-    addDocument(img);
-  }, [addDocument]);
+  const handlePickDocument = useCallback(
+    () => runPicker(() => pickDocument()),
+    [runPicker],
+  );
+
+  const handlePickImage = useCallback(
+    () => runPicker(() => pickImageFromLibrary({selectionLimit: 1})),
+    [runPicker],
+  );
 
   // ── Submission ────────────────────────────────────────────────────────────
   const handlePublish = useCallback(async () => {
