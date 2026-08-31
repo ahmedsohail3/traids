@@ -3,11 +3,15 @@
  * Data comes from GET /jobs/{jobId} via useSubcontractorJobs.getJobDetails.
  * Registered outside the tab navigator so no bottom tab bar is shown.
  */
-import { useEffect, useState, useCallback } from 'react';
+import {useEffect, useState, useCallback} from 'react';
 import {
-  View, StyleSheet, TouchableOpacity, Linking, ActivityIndicator,
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Linking,
+  ActivityIndicator,
 } from 'react-native';
-import { RFValue } from 'react-native-responsive-fontsize';
+import {RFValue} from 'react-native-responsive-fontsize';
 import {
   MapPin,
   Clock,
@@ -21,60 +25,73 @@ import {
   DollarSign,
   Image as ImageIcon,
 } from 'lucide-react-native';
-import { useTheme } from '~context/ThemeContext';
-import { FontFamily } from '~theme/fonts';
-import { ScrollView, Text, Avatar } from '~components/Common';
+import {useTheme} from '~context/ThemeContext';
+import {FontFamily} from '~theme/fonts';
+import {ScrollView, Text, Avatar} from '~components/Common';
 import Header from '~components/Header';
 import ApplyJobModal from '~components/Job/ApplyJobModal';
 import useSubcontractorJobs from '~hooks/useSubcontractorJobs';
 import useAlert from '~hooks/useAlert';
-import { stripHtml } from '~utils';
+import {stripHtml} from '~utils';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const NAVY   = '#10375C';
+const NAVY = '#10375C';
 const ORANGE = '#F2A154';
 
-const fmtDate = (iso) => {
+const fmtDate = iso => {
   if (!iso) return '—';
   const d = new Date(iso);
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 };
 
 const isImageUrl = (url = '') => /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-const OverviewItem = ({ icon: Icon, label, value, colors }) => (
-  <View style={[styles.overviewItem, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+const OverviewItem = ({icon: Icon, label, value, colors}) => (
+  <View
+    style={[
+      styles.overviewItem,
+      {backgroundColor: colors.surface, borderColor: colors.border},
+    ]}>
     <View style={styles.overviewIcon}>
       <Icon size={RFValue(14)} color={NAVY} strokeWidth={2} />
     </View>
-    <Text style={[styles.overviewLabel, { color: colors.textSecondary }]}>{label}</Text>
-    <Text style={[styles.overviewValue, { color: colors.textPrimary }]} numberOfLines={2}>
+    <Text style={[styles.overviewLabel, {color: colors.textSecondary}]}>
+      {label}
+    </Text>
+    <Text
+      style={[styles.overviewValue, {color: colors.textPrimary}]}
+      numberOfLines={2}>
       {value ?? '—'}
     </Text>
   </View>
 );
 
-const DocumentRow = ({ url, index }) => {
-  const isImg  = isImageUrl(url);
-  const Icon   = isImg ? ImageIcon : FileText;
-  const label  = url.split('/').pop() ?? `Document ${index + 1}`;
+const DocumentRow = ({url, index}) => {
+  const isImg = isImageUrl(url);
+  const Icon = isImg ? ImageIcon : FileText;
+  const label = url.split('/').pop() ?? `Document ${index + 1}`;
 
   return (
     <TouchableOpacity
       style={styles.docRow}
       activeOpacity={0.75}
-      onPress={() => Linking.openURL(url).catch(() => {})}
-    >
+      onPress={() => Linking.openURL(url).catch(() => {})}>
       <Icon size={RFValue(14)} color={NAVY} strokeWidth={2} />
-      <Text style={styles.docText} numberOfLines={1}>{label}</Text>
+      <Text style={styles.docText} numberOfLines={1}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 };
 
-const CompanyInfoRow = ({ icon: Icon, value }) => {
+const CompanyInfoRow = ({icon: Icon, value}) => {
   if (!value) return null;
   return (
     <View style={styles.companyInfoRow}>
@@ -86,10 +103,10 @@ const CompanyInfoRow = ({ icon: Icon, value }) => {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-const SubJobDetailScreen = ({ navigation, route }) => {
-  const { colors } = useTheme();
-  const { showAlert } = useAlert();
-  const { jobId, openApply } = route?.params ?? {};
+const SubJobDetailScreen = ({navigation, route}) => {
+  const {colors} = useTheme();
+  const {showAlert} = useAlert();
+  const {jobId, openApply} = route?.params ?? {};
 
   const {
     selectedJob,
@@ -119,30 +136,34 @@ const SubJobDetailScreen = ({ navigation, route }) => {
   useEffect(() => {
     if (jobDetailsError) {
       showAlert({
-        title:   'Unable to Load Job',
+        title: 'Unable to Load Job',
         message: jobDetailsError,
-        type:    'error',
+        type: 'error',
       });
     }
   }, [jobDetailsError, showAlert]);
 
-  const job     = selectedJob;
+  const job = selectedJob;
   const company = job?.company ?? {};
 
   // Duration in days between timeline dates
   const durationLabel = (() => {
     if (!job?.timelineStartDate || !job?.timelineEndDate) return '—';
-    const ms   = new Date(job.timelineEndDate) - new Date(job.timelineStartDate);
+    const ms = new Date(job.timelineEndDate) - new Date(job.timelineStartDate);
     const days = Math.round(ms / 86_400_000);
     if (days <= 0) return '—';
-    if (days < 7)  return `${days} day${days !== 1 ? 's' : ''}`;
+    if (days < 7) return `${days} day${days !== 1 ? 's' : ''}`;
     const weeks = Math.round(days / 7);
     return `${weeks} week${weeks !== 1 ? 's' : ''}`;
   })();
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <Header title="Job Details" subtitle="View full job information." showBackButton />
+    <View style={[styles.root, {backgroundColor: colors.background}]}>
+      <Header
+        title="Job Details"
+        subtitle="View full job information."
+        showBackButton
+      />
 
       {/* ── Loading ── */}
       {loadingJobDetails && (
@@ -154,25 +175,40 @@ const SubJobDetailScreen = ({ navigation, route }) => {
       {!loadingJobDetails && job && (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
+          contentContainerStyle={styles.scrollContent}>
           {/* ── Company + Apply ── */}
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View
+            style={[
+              styles.card,
+              {backgroundColor: colors.surface, borderColor: colors.border},
+            ]}>
             {/* Job title */}
-            <Text style={[styles.jobTitle, { color: colors.textPrimary }]}>
+            <Text style={[styles.jobTitle, {color: colors.textPrimary}]}>
               {job.jobTitle ?? '—'}
             </Text>
 
             <View style={styles.companyRow}>
-              <Avatar uri={company.profileImage} size={RFValue(40)} style={styles.companyLogo} />
+              <Avatar
+                uri={company.profileImage}
+                size={RFValue(40)}
+                style={styles.companyLogo}
+              />
               <View style={styles.companyMeta}>
-                <Text style={[styles.companyName, { color: colors.textPrimary }]}>
+                <Text style={[styles.companyName, {color: colors.textPrimary}]}>
                   {company.companyName ?? '—'}
                 </Text>
                 {company.headOfficeAddress ? (
                   <View style={styles.locationRow}>
-                    <MapPin size={RFValue(9)} color={colors.textSecondary} strokeWidth={2} />
-                    <Text style={[styles.locationText, { color: colors.textSecondary }]}>
+                    <MapPin
+                      size={RFValue(9)}
+                      color={colors.textSecondary}
+                      strokeWidth={2}
+                    />
+                    <Text
+                      style={[
+                        styles.locationText,
+                        {color: colors.textSecondary},
+                      ]}>
                       {company.headOfficeAddress}
                     </Text>
                   </View>
@@ -186,45 +222,101 @@ const SubJobDetailScreen = ({ navigation, route }) => {
             <TouchableOpacity
               style={styles.applyBtn}
               onPress={() => setApplyVisible(true)}
-              activeOpacity={0.85}
-            >
+              activeOpacity={0.85}>
               <Text style={styles.applyBtnText}>Apply Now</Text>
             </TouchableOpacity>
           </View>
 
-          {/* ── Job Overview ── */}
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Job Overview</Text>
-            <View style={styles.overviewGrid}>
-              <OverviewItem icon={Briefcase}    label="Trade"        value={job.trade ? job.trade.charAt(0).toUpperCase() + job.trade.slice(1) : '—'} colors={colors} />
-              <OverviewItem icon={DollarSign}   label="Hourly Rate"  value={`£${job.hourlyRate}/hr`}           colors={colors} />
-              <OverviewItem icon={Users}        label="Workers"      value={String(job.workersRequired ?? 1)}  colors={colors} />
-              <OverviewItem icon={Clock}        label="Duration"     value={durationLabel}                     colors={colors} />
-              <OverviewItem icon={Calendar}     label="Start Date"   value={fmtDate(job.timelineStartDate)}    colors={colors} />
-              <OverviewItem icon={Calendar}     label="End Date"     value={fmtDate(job.timelineEndDate)}      colors={colors} />
-              <OverviewItem icon={MapPin}       label="Location"     value={job.siteAddress}                   colors={colors} />
-            </View>
-          </View>
-
           {/* ── Job Description ── */}
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Job Description</Text>
-            <Text style={[styles.bodyText, { color: colors.textSecondary }]}>
+          <View
+            style={[
+              styles.card,
+              {backgroundColor: colors.surface, borderColor: colors.border},
+            ]}>
+            <Text style={[styles.sectionTitle, {color: colors.textPrimary}]}>
+              Job Description
+            </Text>
+            <Text style={[styles.bodyText, {color: colors.textSecondary}]}>
               {stripHtml(job.description) || '—'}
             </Text>
           </View>
 
           {/* ── Documents ── */}
-          {Array.isArray(job.projectDocuments) && job.projectDocuments.length > 0 && (
-            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                Site Maps &amp; Documents
-              </Text>
-              {job.projectDocuments.map((url, i) => (
-                <DocumentRow key={i} url={url} index={i} />
-              ))}
+          {Array.isArray(job.projectDocuments) &&
+            job.projectDocuments.length > 0 && (
+              <View
+                style={[
+                  styles.card,
+                  {backgroundColor: colors.surface, borderColor: colors.border},
+                ]}>
+                <Text
+                  style={[styles.sectionTitle, {color: colors.textPrimary}]}>
+                  Site Maps &amp; Documents
+                </Text>
+                {job.projectDocuments.map((url, i) => (
+                  <DocumentRow key={i} url={url} index={i} />
+                ))}
+              </View>
+            )}
+
+          {/* ── Job Overview ── */}
+          <View
+            style={[
+              styles.card,
+              {backgroundColor: colors.surface, borderColor: colors.border},
+            ]}>
+            <Text style={[styles.sectionTitle, {color: colors.textPrimary}]}>
+              Job Overview
+            </Text>
+            <View style={styles.overviewGrid}>
+              <OverviewItem
+                icon={Briefcase}
+                label="Trade"
+                value={
+                  job.trade
+                    ? job.trade.charAt(0).toUpperCase() + job.trade.slice(1)
+                    : '—'
+                }
+                colors={colors}
+              />
+              <OverviewItem
+                icon={DollarSign}
+                label="Hourly Rate"
+                value={`£${job.hourlyRate}/hr`}
+                colors={colors}
+              />
+              <OverviewItem
+                icon={Users}
+                label="Workers"
+                value={String(job.workersRequired ?? 1)}
+                colors={colors}
+              />
+              <OverviewItem
+                icon={Clock}
+                label="Duration"
+                value={durationLabel}
+                colors={colors}
+              />
+              <OverviewItem
+                icon={Calendar}
+                label="Start Date"
+                value={fmtDate(job.timelineStartDate)}
+                colors={colors}
+              />
+              <OverviewItem
+                icon={Calendar}
+                label="End Date"
+                value={fmtDate(job.timelineEndDate)}
+                colors={colors}
+              />
+              <OverviewItem
+                icon={MapPin}
+                label="Location"
+                value={job.siteAddress}
+                colors={colors}
+              />
             </View>
-          )}
+          </View>
 
           {/* ── About the Company ── */}
           <View style={styles.aboutCard}>
@@ -233,11 +325,10 @@ const SubJobDetailScreen = ({ navigation, route }) => {
               <Text style={styles.aboutTitle}>About the Company</Text>
             </View>
             <Text style={styles.aboutName}>{company.companyName ?? '—'}</Text>
-            <CompanyInfoRow icon={Mail}  value={company.workEmail} />
+            <CompanyInfoRow icon={Mail} value={company.workEmail} />
             <CompanyInfoRow icon={Phone} value={company.phoneNumber} />
             <CompanyInfoRow icon={MapPin} value={company.headOfficeAddress} />
           </View>
-
         </ScrollView>
       )}
 
@@ -248,7 +339,7 @@ const SubJobDetailScreen = ({ navigation, route }) => {
         jobTitle={job?.jobTitle}
         onSeeMyJobs={() => {
           setApplyVisible(false);
-          navigation.navigate('SubTabs', { screen: 'Bookings' });
+          navigation.navigate('SubTabs', {screen: 'Bookings'});
         }}
       />
     </View>
@@ -257,9 +348,9 @@ const SubJobDetailScreen = ({ navigation, route }) => {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root:          { flex: 1 },
-  loader:        { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  scrollContent: { padding: 16, paddingBottom: 40 },
+  root: {flex: 1},
+  loader: {flex: 1, alignItems: 'center', justifyContent: 'center'},
+  scrollContent: {padding: 16, paddingBottom: 40},
 
   card: {
     borderRadius: 16,
@@ -289,10 +380,10 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
     flexShrink: 0,
   },
-  companyMeta:  { flex: 1, gap: 3 },
-  companyName:  { fontFamily: FontFamily.semiBold, fontSize: RFValue(12) },
-  locationRow:  { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  locationText: { fontFamily: FontFamily.regular, fontSize: RFValue(9), flex: 1 },
+  companyMeta: {flex: 1, gap: 3},
+  companyName: {fontFamily: FontFamily.semiBold, fontSize: RFValue(12)},
+  locationRow: {flexDirection: 'row', alignItems: 'center', gap: 3},
+  locationText: {fontFamily: FontFamily.regular, fontSize: RFValue(9), flex: 1},
   rateBadge: {
     backgroundColor: ORANGE,
     paddingHorizontal: 10,
@@ -337,9 +428,9 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 4,
   },
-  overviewIcon:  { marginBottom: 2 },
-  overviewLabel: { fontFamily: FontFamily.regular, fontSize: RFValue(9) },
-  overviewValue: { fontFamily: FontFamily.semiBold, fontSize: RFValue(11) },
+  overviewIcon: {marginBottom: 2},
+  overviewLabel: {fontFamily: FontFamily.regular, fontSize: RFValue(9)},
+  overviewValue: {fontFamily: FontFamily.semiBold, fontSize: RFValue(11)},
 
   // Description
   bodyText: {
