@@ -7,7 +7,7 @@
  *
  * Stat cards always render; chart / budget / jobs sections gate on real values.
  */
-import {useEffect} from 'react';
+import {useCallback, useEffect} from 'react';
 import {
   View,
   StyleSheet,
@@ -35,6 +35,8 @@ import {FontFamily} from '~theme/fonts';
 import {Images} from '~assets';
 import useDashboard from '~hooks/useDashboard';
 import useCompanyJobs from '~hooks/useCompanyJobs';
+import useAlert from '~hooks/useAlert';
+import {formatErrorMsg} from '~utils';
 
 // ─── Data mapping ─────────────────────────────────────────────────────────────
 
@@ -116,12 +118,56 @@ const fmtPct = n =>
 const CompanyDashboardScreen = ({navigation}) => {
   const {colors} = useTheme();
   const {dashboard, loading, hasData, getDashboard} = useDashboard();
-  const {jobs, getJobs} = useCompanyJobs();
+  const {jobs, getJobs, deleteJob} = useCompanyJobs();
+  const {showConfirm, showAlert} = useAlert();
 
   useEffect(() => {
     getDashboard();
     getJobs();
   }, []);
+
+  // The edit form lives on the Jobs tab; hand the job over to it instead of
+  // duplicating the modal here.
+  const handleEditJob = useCallback(
+    jobId => {
+      navigation.getParent()?.navigate('Jobs', {
+        screen: 'CompanyJobsList',
+        params: {editJobId: jobId},
+      });
+    },
+    [navigation],
+  );
+
+  const handleDeleteJob = useCallback(
+    jobId => {
+      showConfirm({
+        title: 'Delete Job',
+        message:
+          'Are you sure you want to delete this job? This action cannot be undone.',
+        confirmText: 'Delete',
+        type: 'error',
+        onConfirm: async () => {
+          try {
+            await deleteJob(jobId);
+            showAlert({
+              title: 'Deleted',
+              message: 'Job deleted successfully.',
+              type: 'success',
+            });
+            // Stats and budget are derived from the job list server-side.
+            getDashboard();
+          } catch (err) {
+            showAlert({
+              title: 'Error',
+              message: formatErrorMsg(err),
+              type: 'error',
+            });
+          }
+        },
+      });
+    },
+    [deleteJob, getDashboard, showConfirm, showAlert],
+  );
 
   const stats = mapStats(dashboard);
   const trend = mapTrend(dashboard);
@@ -274,8 +320,8 @@ const CompanyDashboardScreen = ({navigation}) => {
                 onPress={() =>
                   navigation.navigate('CompanyJobDetail', {job: job._raw})
                 }
-                onEdit={() => {}}
-                onDelete={() => {}}
+                onEdit={() => handleEditJob(job._id)}
+                onDelete={() => handleDeleteJob(job._id)}
               />
             ))}
           </View>

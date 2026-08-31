@@ -154,6 +154,19 @@ const CompanyJobsScreen = ({ navigation, route }) => {
     setEditDocuments([]);
   }, []);
 
+  // An `editJobId` route param (sent from the dashboard's job cards) opens this
+  // screen's edit modal, so the form lives in one place only. It waits for the
+  // job to be present in the list, since `openEdit` reads from it.
+  const requestedEditId = route?.params?.editJobId;
+
+  useEffect(() => {
+    if (!requestedEditId) return;
+    if (!jobs.some((j) => j._id === requestedEditId)) return;
+    openEdit(requestedEditId);
+    // Consume the param so re-visiting the tab doesn't reopen the modal.
+    navigation.setParams({ editJobId: undefined });
+  }, [requestedEditId, jobs, openEdit, navigation]);
+
   const handlePickDoc = useCallback(async () => {
     const file = await pickDocument();
     if (file) setEditDocuments((prev) => [...prev, { ...file, isNew: true }]);
