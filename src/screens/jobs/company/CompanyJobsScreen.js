@@ -33,10 +33,13 @@ const formatDate = (iso) => {
   return `Starts ${new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
 };
 
+// A job is only displayed when it actually has a title.
+const hasTitle = (job) => typeof job?.jobTitle === 'string' && job.jobTitle.trim().length > 0;
+
 const mapJob = (raw, index) => ({
   _id:       raw._id,
   jobId:     `Job #${index + 1}`,
-  title:     raw.jobTitle    ?? '—',
+  title:     raw.jobTitle,
   trade:     raw.trade       ?? '—',
   location:  raw.siteAddress ?? '—',
   assignee:  raw.assignedTo?.length > 0 ? (raw.assignedTo[0]?.fullName ?? 'Assigned') : 'Unassigned',
@@ -75,7 +78,7 @@ const CompanyJobsScreen = ({ navigation, route }) => {
 
   useEffect(() => { getJobs(); }, []);
 
-  const mapped = useMemo(() => jobs.map(mapJob), [jobs]);
+  const mapped = useMemo(() => jobs.filter(hasTitle).map(mapJob), [jobs]);
 
   const filterTabs = useMemo(() => {
     const counts = mapped.reduce((acc, j) => {

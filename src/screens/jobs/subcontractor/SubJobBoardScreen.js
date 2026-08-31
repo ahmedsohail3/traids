@@ -115,6 +115,12 @@ const formatDate = (iso) => {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
+// A job is only displayed when it actually has a title.
+const hasTitle = (job) => {
+  const title = job?.jobTitle ?? job?.title;
+  return typeof title === 'string' && title.trim().length > 0;
+};
+
 const mapJob = (raw, index) => {
   const company = typeof raw.company === 'object' ? (raw.company ?? {}) : {};
   const name    = company.companyName ?? raw.companyName ?? '—';
@@ -127,7 +133,7 @@ const mapJob = (raw, index) => {
     location:          raw.siteAddress   ?? raw.location  ?? '—',
     distance:          raw.distance      ?? '',
     rate:              raw.hourlyRate    != null ? `£${raw.hourlyRate}/hr` : (raw.rate ?? '—'),
-    title:             raw.jobTitle      ?? raw.title      ?? '—',
+    title:             raw.jobTitle      ?? raw.title,
     description:       raw.description   ?? '',
     startDate:         formatDate(raw.timelineStartDate ?? raw.startDate),
     workersRequired:   raw.workersRequired ?? 1,
@@ -326,7 +332,7 @@ const SubJobBoardScreen = ({ navigation }) => {
   // ── Derived data ──────────────────────────────────────────────────────────────
 
   // Sorted client-side, so it reorders the jobs on the current page only
-  const jobs = applySort(availableJobs ?? [], sort).map(mapJob);
+  const jobs = applySort((availableJobs ?? []).filter(hasTitle), sort).map(mapJob);
 
   // Sorting reorders the list underneath the filters, which are tall enough to
   // hide the result of the sort entirely. Drop the user at the first entry so
