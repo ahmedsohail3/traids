@@ -63,6 +63,9 @@ const fromOffer = o => {
     isVerified: sub.isVerified ?? false,
     message: sub?.professionalBio ?? '',
     status: o.status ?? 'pending',
+    // The company sent this offer — the subcontractor accepts or rejects it,
+    // not us.
+    canRespond: false,
   };
 };
 
@@ -83,6 +86,8 @@ const fromApplication = a => {
     isVerified: sub.isVerified ?? false,
     message: a.message ?? sub?.professionalBio ?? '',
     status: a.status ?? 'pending',
+    // The subcontractor applied — this is the company's decision to make.
+    canRespond: true,
   };
 };
 
@@ -96,6 +101,7 @@ const fromAssignedTo = s => ({
   isVerified: s.isVerified ?? false,
   message: s?.professionalBio ?? '',
   status: 'accepted',
+  canRespond: false,
 });
 
 const normaliseApplicants = job => {
@@ -637,6 +643,7 @@ const CompanyJobDetailScreen = ({route, navigation}) => {
               isVerified={a.isVerified}
               message={a.message || a.professionalBio || ''}
               status={a.status}
+              canRespond={a.canRespond}
               loading={processingApplication}
               onReject={() => handleReject(a._id)}
               onAccept={() => handleAccept(a._id)}

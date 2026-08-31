@@ -12,6 +12,8 @@
  *   status      'pending' | 'accepted'
  *   onCancel    function
  *   onAccept    function
+ *   canRespond  boolean — false hides Accept/Reject (offers, where the
+ *               subcontractor is the one who responds)
  *   onMessage   function
  */
 import { View, StyleSheet } from 'react-native';
@@ -34,6 +36,7 @@ const ApplicantCard = ({
   avatarUri,
   isVerified,
   status = 'pending',
+  canRespond = true,
   loading = false,
   onReject,
   onAccept,
@@ -89,8 +92,10 @@ const ApplicantCard = ({
         <Text style={[styles.messageBody, { color: '#64748B' }]}>{message}</Text>
       </View>}
 
-      {/* Bottom Actions */}
-      {status === 'pending' ? (
+      {/* Bottom Actions — Accept/Reject only where the company is the one
+          deciding, i.e. a subcontractor applied. An offer is the company's own
+          booking, so there is nothing for it to accept or reject. */}
+      {status === 'pending' && canRespond ? (
         <>
           <View style={styles.actionsRow}>
             <Button
