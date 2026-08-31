@@ -21,52 +21,91 @@ if (Platform.OS === 'android') {
   DateTimePicker = require('@react-native-community/datetimepicker').default;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const formatDayDate = (iso) => {
-  if (!iso) return { weekday: '—', date: '—' };
-  const d = new Date(iso);
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+// Per the backend's timesheet spec (documents/TIMESHEET_MOBILE_HANDOVER.md §2).
+// Every date is anchored at local noon before any day arithmetic: adding or
+// subtracting days at midnight across a DST boundary shifts the calendar day.
+
+const atNoon = (date) => {
+  const d = new Date(date);
+  d.setHours(12, 0, 0, 0);
+  return d;
+};
+
+// "2026-08-12T00:00:00.000Z" or "2026-08-12" → local Date at noon.
+// Never `new Date(iso)` then read local getters: an instant at UTC midnight is
+// already the previous day for anyone behind UTC.
+const parseISODate = (value) => {
+  if (!value) return null;
+  const [ymd] = String(value).split('T');
+  const [y, m, d] = ymd.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d, 12, 0, 0, 0);
+};
+
+// Local calendar date out — never a UTC conversion. This is what the API's
+// `date` field carries, and what the server derives the week number from.
+const toISODate = (date) => {
+  const d = atNoon(date);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+};
+
+const addDays = (date, days) => {
+  const d = atNoon(date);
+  d.setDate(d.getDate() + days);
+  return d;
+};
+
+// Monday of the week containing this date; Sunday counts back six days.
+const mondayOf = (date) => {
+  const d = atNoon(date);
+  const dow = d.getDay();
+  return addDays(d, dow === 0 ? -6 : 1 - dow);
+};
+
+const weeksBetween = (a, b) => Math.round((atNoon(b) - atNoon(a)) / (7 * 86400000));
+
+// ─── Week model ───────────────────────────────────────────────────────────────
+// Weeks are Monday-based and anchored to the job's start week — not the ISO
+// calendar week, and not a rolling seven days from the start date. A job
+// starting on a Wednesday has a Week 1 that is only five days long. The backend
+// derives week numbers the same way, so any deviation here files hours under a
+// week the server disagrees with.
+
+const firstMondayOf = (timelineStart) => (timelineStart ? mondayOf(timelineStart) : null);
+
+const getTotalWeeks = (timelineStart, timelineEnd) => {
+  if (!timelineStart || !timelineEnd) return 1;
+  return Math.max(1, weeksBetween(mondayOf(timelineStart), mondayOf(timelineEnd)) + 1);
+};
+
+const mondayOfWeek = (firstMonday, weekNum) => addDays(firstMonday, (weekNum - 1) * 7);
+
+// The week the job is in today — null when today falls outside the timeline.
+const getCurrentWeekNumber = (firstMonday, totalWeeks, today = new Date()) => {
+  if (!firstMonday) return null;
+  const n = weeksBetween(firstMonday, mondayOf(today)) + 1;
+  return n >= 1 && n <= totalWeeks ? n : null;
+};
+
+// ─── Display helpers ──────────────────────────────────────────────────────────
+const formatDayDate = (date) => {
+  if (!date) return { weekday: '—', date: '—' };
   return {
-    weekday: d.toLocaleDateString('en-GB', { weekday: 'long' }),
-    date:    d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+    weekday: date.toLocaleDateString('en-GB', { weekday: 'long' }),
+    date:    date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
   };
 };
+
+// "27 Aug 2026" — used in the job lifecycle and submit-blocked messages.
+const formatLongDate = (date) =>
+  date ? date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
 const money = (n) => `£${Number(n ?? 0).toFixed(2)}`;
 
 const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-
-// Date-only key (UTC) so day comparisons aren't affected by local timezone drift.
-const dateKey = (d) => d.toISOString().slice(0, 10);
-
-const addDaysUTC = (date, days) => {
-  const d = new Date(date);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d;
-};
-
-// How many 7-day weeks the project spans, based on its timeline dates.
-const getProjectTotalWeeks = (startIso, endIso) => {
-  if (!startIso || !endIso) return 1;
-  const start = new Date(startIso);
-  const end   = new Date(endIso);
-  const diffDays = Math.floor((end - start) / 86400000) + 1;
-  return Math.max(1, Math.ceil(diffDays / 7));
-};
-
-// Every calendar day in the given week of the project — Week 1 starts on the
-// project's own timeline start date, not a calendar Monday.
-const getWeekDates = (startIso, endIso, weekNumber) => {
-  const start = new Date(startIso);
-  const end   = endIso ? new Date(endIso) : null;
-  const weekStart = addDaysUTC(start, (weekNumber - 1) * 7);
-  const days = [];
-  for (let i = 0; i < 7; i++) {
-    const d = addDaysUTC(weekStart, i);
-    if (end && d > end) break;
-    days.push(d);
-  }
-  return days;
-};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 const SummaryRow = ({ label, value }) => (
@@ -197,6 +236,20 @@ const parseTimeString = (str) => {
   return dayjs().hour(hh).minute(mm).second(0).toDate();
 };
 
+// What the subcontractor is told about a week once it leaves their hands.
+// Mirrors the company side's vocabulary: the API's `submitted` reads as
+// "Pending" there because it is awaiting the company's review.
+const STATUS_PILL = {
+  submitted: { label: 'Submitted', bg: '#FEF3C7', color: '#CA8A04' },
+  approved:  { label: 'Approved',  bg: '#DCFCE7', color: '#16A34A' },
+  rejected:  { label: 'Rejected',  bg: '#FEE2E2', color: '#DC2626' },
+};
+
+// A week can only be sent once. Anything past `draft` is already with the
+// company, so the summary becomes read-only.
+const isLockedStatus = (status) =>
+  Object.prototype.hasOwnProperty.call(STATUS_PILL, (status ?? '').toLowerCase());
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const SubTimesheetScreen = () => {
   const { colors } = useTheme();
@@ -242,11 +295,18 @@ const SubTimesheetScreen = () => {
     [inProgress, selectedJobId],
   );
 
-  const timelineStart = selectedBooking?.timelineStartDate ?? selectedBooking?.job?.timelineStartDate ?? null;
-  const timelineEnd   = selectedBooking?.timelineEndDate   ?? selectedBooking?.job?.timelineEndDate   ?? null;
+  const timelineStart = useMemo(
+    () => parseISODate(selectedBooking?.timelineStartDate ?? selectedBooking?.job?.timelineStartDate),
+    [selectedBooking],
+  );
+  const timelineEnd = useMemo(
+    () => parseISODate(selectedBooking?.timelineEndDate ?? selectedBooking?.job?.timelineEndDate),
+    [selectedBooking],
+  );
 
-  const totalWeeks = useMemo(
-    () => getProjectTotalWeeks(timelineStart, timelineEnd),
+  const firstMonday = useMemo(() => firstMondayOf(timelineStart), [timelineStart]);
+  const totalWeeks  = useMemo(
+    () => getTotalWeeks(timelineStart, timelineEnd),
     [timelineStart, timelineEnd],
   );
   const weekNumbers = useMemo(
@@ -254,8 +314,23 @@ const SubTimesheetScreen = () => {
     [totalWeeks],
   );
 
-  // Reset to Week 1 whenever a different project is selected
-  useEffect(() => { setWeekNumber(1); }, [selectedJobId]);
+  // Recomputed on every render rather than memoised: the app can sit open across
+  // midnight, and a stale "today" would keep yesterday loggable.
+  const today         = atNoon(new Date());
+  const todayISO      = toISODate(today);
+  const currentWeekNum = getCurrentWeekNumber(firstMonday, totalWeeks, today);
+  const isCurrentWeek  = currentWeekNum !== null && weekNumber === currentWeekNum;
+
+  // Both bounds inclusive — on the end date itself the job is still active.
+  const isJobEnded      = Boolean(timelineEnd   && today > timelineEnd);
+  const isJobNotStarted = Boolean(timelineStart && today < timelineStart);
+
+  // Open on the week the job is actually in — landing on Week 1 of a job in its
+  // fourth week shows a read-only week and hides the one that can be logged.
+  // A finished job opens on its last week, which is the one worth reading back.
+  useEffect(() => {
+    setWeekNumber(currentWeekNum ?? (isJobEnded ? totalWeeks : 1));
+  }, [selectedJobId, currentWeekNum, isJobEnded, totalWeeks]);
 
   // Reset the inline check-in/check-out editor whenever the job or week changes
   useEffect(() => {
@@ -266,28 +341,88 @@ const SubTimesheetScreen = () => {
   }, [selectedJobId, weekNumber]);
 
   // Opens the inline editor for a given day, prefilled from its existing log (if any).
-  const startEdit = (date, log) => {
+  const startEdit = (iso, log) => {
     setEditCheckIn(log ? parseTimeString(log.checkIn) : defaultCheckInTime());
     setEditCheckOut(log ? parseTimeString(log.checkOut) : defaultCheckOutTime());
     setEditPickerField(null);
-    setEditingDate(dateKey(date));
+    setEditingDate(iso);
   };
 
-  const dailyLogs = timesheet?.dailyLogs ?? [];
+  const dailyLogs = useMemo(() => timesheet?.dailyLogs ?? [], [timesheet]);
 
-  // Every calendar day in the selected week, merged with any logged hours for that day —
-  // so days with no logged hours still render (the subcontractor can see what's outstanding).
+  // Scoped to the selected week: switching weeks reloads `timesheet`, so a
+  // submitted Week 1 does not lock an unsubmitted Week 2.
+  const weekStatus = (timesheet?.status ?? '').toLowerCase();
+  const weekLocked = isLockedStatus(weekStatus);
+  const statusPill = STATUS_PILL[weekStatus] ?? null;
+
+  // The seven days of the selected week, each merged with its own log. Logs are
+  // matched by date — never by weekday name, which is what let one week's hours
+  // appear in another week's grid.
+  //
+  // Days outside the job's timeline are dropped, so a job ending on a Thursday
+  // does not offer Friday to Sunday. An out-of-range day that already has hours
+  // on it is kept: the visible rows have to account for every hour the server
+  // holds, or the week total and the invoice stop reconciling.
   const weekDays = useMemo(() => {
-    if (!timelineStart) {
-      return dailyLogs.map((log) => ({ date: new Date(log.date), log }));
+    const logsByDate = new Map(
+      dailyLogs.map((log) => [toISODate(parseISODate(log.date) ?? new Date(log.date)), log]),
+    );
+
+    if (!firstMonday) {
+      return [...logsByDate.entries()].map(([iso, log]) => ({
+        iso,
+        date:       parseISODate(iso),
+        log,
+        inTimeline: true,
+        isFuture:   false,
+      }));
     }
-    const dates = getWeekDates(timelineStart, timelineEnd, weekNumber);
-    const logsByDate = new Map(dailyLogs.map((log) => [dateKey(new Date(log.date)), log]));
-    return dates.map((d) => ({ date: d, log: logsByDate.get(dateKey(d)) ?? null }));
-  }, [timelineStart, timelineEnd, weekNumber, dailyLogs]);
+
+    const monday    = mondayOfWeek(firstMonday, weekNumber);
+    const todayDate = parseISODate(todayISO);
+    return Array.from({ length: 7 }, (_, i) => addDays(monday, i))
+      .map((date) => {
+        const iso = toISODate(date);
+        return {
+          date,
+          iso,
+          log:        logsByDate.get(iso) ?? null,
+          inTimeline: (!timelineStart || date >= timelineStart) && (!timelineEnd || date <= timelineEnd),
+          isFuture:   date > todayDate,
+        };
+      })
+      .filter((row) => row.inTimeline || row.log);
+  }, [firstMonday, timelineStart, timelineEnd, weekNumber, dailyLogs, todayISO]);
+
+  // ── What can be logged / submitted (spec §4 and §5) ─────────────────────────
+  // Every date restriction here is a client rule: the server accepts a log
+  // against any date as long as the week is still a draft.
+
+  const canLogRow = (row) => (
+    isCurrentWeek          // past and future weeks are read-only
+    && row.inTimeline
+    && !row.isFuture       // you cannot log hours you have not worked yet
+    && !row.log?.isLocked
+    && !weekLocked         // already submitted or approved
+  );
+
+  const totalHours = timesheet?.totalHours ?? 0;
+  const canSubmit  = isCurrentWeek && totalHours > 0 && Boolean(timesheet?._id) && !weekLocked;
+
+  // Says why the button is unavailable rather than leaving a dead control.
+  const submitBlockedReason = (() => {
+    if (canSubmit || weekLocked) return null;
+    if (isJobEnded)              return `This job ended on ${formatLongDate(timelineEnd)}.`;
+    if (isJobNotStarted)         return `This job starts on ${formatLongDate(timelineStart)}.`;
+    if (currentWeekNum === null) return 'This project has no active week right now.';
+    if (!isCurrentWeek)          return `Only Week ${currentWeekNum} can be submitted.`;
+    if (totalHours <= 0)         return 'Log at least one day before submitting.';
+    return null;
+  })();
 
   const handleConfirm = async () => {
-    if (!timesheet?._id) return;
+    if (!canSubmit) return;
     try {
       const result = await submitWeekTimesheet(timesheet._id);
       setSubmitMessage(result?.message ?? null);
@@ -303,14 +438,20 @@ const SubTimesheetScreen = () => {
   };
   const handleClose = () => { setModalVisible(false); setSubmitted(false); setSubmitMessage(null); };
 
-  const handleSubmitLogHours = async (date) => {
+  const handleSubmitLogHours = async (row) => {
     if (!selectedJobId) return;
     try {
+      // `weekNumber` is derived from the row's own date rather than the selected
+      // week, so a kept out-of-range row still posts the week it belongs to.
+      // The new backend derives it from `date` and ignores this, but the old one
+      // falls back to a creation counter when it is absent — which drifts from
+      // the calendar as soon as a week is skipped. Deprecated, still required.
       await logHours(
         selectedJobId,
-        dateKey(date),
+        row.iso,
         dayjs(editCheckIn).format('hh:mm A'),
         dayjs(editCheckOut).format('hh:mm A'),
+        firstMonday ? weeksBetween(firstMonday, mondayOf(row.date)) + 1 : weekNumber,
       );
       setEditingDate(null);
       getMyJobTimesheet(selectedJobId, weekNumber);
@@ -357,6 +498,22 @@ const SubTimesheetScreen = () => {
           </View>
         ) : (
           <>
+            {/* ── Job lifecycle notice ── */}
+            {(isJobEnded || isJobNotStarted) && (
+              <View style={styles.lifecycleNotice}>
+                <Text style={styles.lifecycleTitle}>
+                  {isJobEnded
+                    ? `Job completed on ${formatLongDate(timelineEnd)}.`
+                    : `This job starts on ${formatLongDate(timelineStart)}.`}
+                </Text>
+                <Text style={styles.lifecycleBody}>
+                  {isJobEnded
+                    ? 'This project has finished, so no more hours can be logged or submitted. Previous weeks are shown here for your records.'
+                    : 'You can start logging hours once the job begins. Weeks are shown here so you can see the schedule.'}
+                </Text>
+              </View>
+            )}
+
             {/* ── Week Selector ── */}
             <Text style={styles.sectionTitle}>Project Progress</Text>
             <WeekStepper weekNumbers={weekNumbers} weekNumber={weekNumber} onSelect={setWeekNumber} />
@@ -378,18 +535,20 @@ const SubTimesheetScreen = () => {
                 {weekDays.length === 0 ? (
                   <View style={styles.emptyWrap}>
                     <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                      No days found for Week {weekNumber}.
+                      Week {weekNumber} falls outside this project's timeline.
                     </Text>
                   </View>
                 ) : (
-                  weekDays.map(({ date, log }, idx) => {
-                    const { weekday, date: dateLabel } = formatDayDate(date.toISOString());
-                    const isToday = dateKey(date) === dateKey(new Date());
-                    const isEditingThisDay = editingDate === dateKey(date);
-                    const showEditor = isEditingThisDay || (!log && isToday);
+                  weekDays.map((row) => {
+                    const { date, iso, log } = row;
+                    const { weekday, date: dateLabel } = formatDayDate(date);
+                    const isToday    = iso === todayISO;
+                    const loggable   = canLogRow(row);
+                    // Editors open on tap only — never auto-opened for a row.
+                    const showEditor = editingDate === iso && loggable;
 
                     return (
-                      <View key={idx} style={styles.dayBlock}>
+                      <View key={iso} style={styles.dayBlock}>
                         <View style={styles.dayHeader}>
                           <View>
                             <Text style={styles.dayName}>{weekday}</Text>
@@ -401,12 +560,12 @@ const SubTimesheetScreen = () => {
                                 <View style={styles.pillGreen}>
                                   <Text style={styles.pillText}>{log.hoursWorked}h</Text>
                                 </View>
-                                {log.isLocked ? (
+                                {log.isLocked || !loggable ? (
                                   <Lock size={RFValue(13)} color="#94A3B8" strokeWidth={2} />
                                 ) : (
                                   <TouchableOpacity
                                     style={styles.editLink}
-                                    onPress={() => startEdit(date, log)}
+                                    onPress={() => startEdit(iso, log)}
                                     activeOpacity={0.7}
                                   >
                                     <Pencil size={RFValue(11)} color="#64748B" strokeWidth={2} />
@@ -414,14 +573,30 @@ const SubTimesheetScreen = () => {
                                   </TouchableOpacity>
                                 )}
                               </>
-                            ) : isToday ? (
-                              <View style={styles.pillToday}>
-                                <Text style={styles.pillTodayText}>Today</Text>
-                              </View>
                             ) : (
-                              <View style={styles.pillMuted}>
-                                <Text style={styles.pillMutedText}>Not logged</Text>
-                              </View>
+                              <>
+                                {isToday && (
+                                  <View style={styles.pillToday}>
+                                    <Text style={styles.pillTodayText}>Today</Text>
+                                  </View>
+                                )}
+                                {/* Any past day of the current week can still be
+                                    logged, and saves against its own date. */}
+                                {loggable && !showEditor ? (
+                                  <TouchableOpacity
+                                    style={styles.editLink}
+                                    onPress={() => startEdit(iso, null)}
+                                    activeOpacity={0.7}
+                                  >
+                                    <Clock size={RFValue(11)} color="#64748B" strokeWidth={2} />
+                                    <Text style={styles.editLinkText}>Log</Text>
+                                  </TouchableOpacity>
+                                ) : !isToday && (
+                                  <View style={styles.pillMuted}>
+                                    <Text style={styles.pillMutedText}>Not logged</Text>
+                                  </View>
+                                )}
+                              </>
                             )}
                           </View>
                         </View>
@@ -453,10 +628,18 @@ const SubTimesheetScreen = () => {
 
                             {Platform.OS === 'ios' && editPickerField && (
                               <View style={styles.iosTimePickerWrap}>
+                                {/* The spinner otherwise takes its colours from
+                                    the system appearance, so on a device in dark
+                                    mode it draws light text — invisible against
+                                    this card, which is always white. Pin both:
+                                    themeVariant stops iOS restyling it for dark
+                                    mode, textColor matches the Done button below. */}
                                 <DateTimePicker
                                   value={editPickerField === 'checkIn' ? editCheckIn : editCheckOut}
                                   mode="time"
                                   display="spinner"
+                                  themeVariant="light"
+                                  textColor="#10375C"
                                   onChange={(_, d) => {
                                     if (!d) return;
                                     if (editPickerField === 'checkIn') setEditCheckIn(d);
@@ -470,18 +653,16 @@ const SubTimesheetScreen = () => {
                             )}
 
                             <View style={styles.dayEditActions}>
-                              {log && (
-                                <TouchableOpacity
-                                  style={styles.editCancelBtn}
-                                  onPress={() => setEditingDate(null)}
-                                  disabled={logging}
-                                >
-                                  <Text style={styles.editCancelText}>Cancel</Text>
-                                </TouchableOpacity>
-                              )}
+                              <TouchableOpacity
+                                style={styles.editCancelBtn}
+                                onPress={() => setEditingDate(null)}
+                                disabled={logging}
+                              >
+                                <Text style={styles.editCancelText}>Cancel</Text>
+                              </TouchableOpacity>
                               <TouchableOpacity
                                 style={[styles.daySubmitBtn, logging && { opacity: 0.7 }]}
-                                onPress={() => handleSubmitLogHours(date)}
+                                onPress={() => handleSubmitLogHours(row)}
                                 activeOpacity={0.85}
                                 disabled={logging}
                               >
@@ -524,6 +705,13 @@ const SubTimesheetScreen = () => {
                     <View style={styles.summarySectionTitleContainer}>
                       <Eye size={RFValue(14)} color={colors.secondary} />
                       <Text style={styles.summarySectionTitle}>SUBMISSION SUMMARY</Text>
+                      {statusPill && (
+                        <View style={[styles.pillStatus, { backgroundColor: statusPill.bg }]}>
+                          <Text style={[styles.pillStatusText, { color: statusPill.color }]}>
+                            {statusPill.label}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                     <View style={styles.summarySection}>
                       <View style={styles.summaryAccentBar} />
@@ -543,14 +731,34 @@ const SubTimesheetScreen = () => {
                         <Text style={styles.summaryNote}>CIS tax will be applied upon acceptance</Text>
                       </View>
                     </View>
+                  </>
+                )}
 
-                    {/* ── Submit Timesheet ── */}
+                {/* ── Submit Timesheet ──
+                    Outside the summary block on purpose: a week with no hours
+                    has no timesheet record yet — it is created by the first log
+                    — and that is exactly when the user needs to be told why they
+                    cannot submit. */}
+                {weekLocked ? (
+                  <Text style={styles.submittedNote}>
+                    {weekStatus === 'approved'
+                      ? 'This week has been approved.'
+                      : weekStatus === 'rejected'
+                        ? 'This week was rejected. Contact the company for details.'
+                        : 'This week has been submitted and is awaiting review.'}
+                  </Text>
+                ) : (
+                  <>
                     <Button
                       title="Submit Timesheet"
                       variant="primary"
                       style={styles.submitInvoiceBtn}
                       onPress={() => setModalVisible(true)}
+                      disabled={submitting || !canSubmit}
                     />
+                    {submitBlockedReason && (
+                      <Text style={styles.submitBlockedText}>{submitBlockedReason}</Text>
+                    )}
                   </>
                 )}
               </>
@@ -890,6 +1098,51 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF3C7', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12,
   },
   pillTodayText: { fontFamily: FontFamily.bold, fontSize: RFValue(9), color: '#CA8A04' },
+  // Week status beside the summary heading — colours come from STATUS_PILL.
+  pillStatus: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  pillStatusText: { fontFamily: FontFamily.bold, fontSize: RFValue(9) },
+  submittedNote: {
+    fontFamily: FontFamily.medium,
+    fontSize: RFValue(10),
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  // Why the submit button is unavailable — a dead control with no explanation
+  // reads as a broken screen.
+  submitBlockedText: {
+    fontFamily: FontFamily.medium,
+    fontSize: RFValue(10),
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  lifecycleNotice: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 16,
+  },
+  lifecycleTitle: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: RFValue(11),
+    color: '#92400E',
+    marginBottom: 4,
+  },
+  lifecycleBody: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10),
+    color: '#92400E',
+    lineHeight: RFValue(15),
+  },
   iosTimePickerWrap: {
     marginTop: 8,
     marginBottom: 4,

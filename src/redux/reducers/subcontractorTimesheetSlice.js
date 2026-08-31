@@ -16,9 +16,9 @@ export const fetchMyJobTimesheet = createAsyncThunk(
 
 export const logTimesheetHours = createAsyncThunk(
   'subcontractorTimesheet/logTimesheetHours',
-  async ({ jobId, date, checkIn, checkOut }, { rejectWithValue }) => {
+  async ({ jobId, date, checkIn, checkOut, weekNumber }, { rejectWithValue }) => {
     try {
-      const res = await logTimesheetHoursApi({ jobId, date, checkIn, checkOut });
+      const res = await logTimesheetHoursApi({ jobId, date, checkIn, checkOut, weekNumber });
       return res.data ?? res;
     } catch (error) {
       return rejectWithValue(getErrorMessage(error));

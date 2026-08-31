@@ -43,8 +43,8 @@ const useSubcontractorTimesheet = () => {
   const reset = useCallback(() => dispatch(clearMyJobTimesheet()), [dispatch]);
 
   const logHours = useCallback(
-    (jobId, date, checkIn, checkOut) =>
-      dispatch(logTimesheetHours({ jobId, date, checkIn, checkOut })).unwrap(),
+    (jobId, date, checkIn, checkOut, weekNumber) =>
+      dispatch(logTimesheetHours({ jobId, date, checkIn, checkOut, weekNumber })).unwrap(),
     [dispatch],
   );
 
