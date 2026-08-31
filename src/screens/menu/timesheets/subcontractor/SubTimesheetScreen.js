@@ -5,7 +5,7 @@ import Header from '~components/Header';
 import { useTheme } from '~context/ThemeContext';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { FontFamily } from '~theme/fonts';
-import { ChevronDown, Clock, Pencil, Lock, Eye } from 'lucide-react-native';
+import { ChevronDown, Clock, Pencil, Lock, LockOpen, Check, Eye } from 'lucide-react-native';
 import { Button } from '~components/Common';
 import SubmitInvoiceModal from './SubmitInvoiceModal';
 import useSubcontractorBookings from '~hooks/useSubcontractorBookings';
@@ -174,21 +174,73 @@ const ProjectPicker = ({ bookings, selectedBooking, onSelect }) => {
   );
 };
 
+// A week's place in the job, independent of which one is being viewed.
+//
+// `isPast` is measured against the CURRENT week, never the selected one —
+// comparing against the selection makes whichever week you tap look current and
+// every earlier one look complete. With no current week (today outside the
+// timeline) nothing is past, so every week reads as not-yet-reached.
+const weekStateFor = (wk, selectedWeek, currentWeekNum) => ({
+  isSelected: wk === selectedWeek,
+  isCurrent:  currentWeekNum !== null && wk === currentWeekNum,
+  isPast:     currentWeekNum !== null && wk < currentWeekNum,
+});
+
+// The dot carries the week's state; the number gives way to a tick once the
+// week is behind us and to a lock while it is still out of reach.
+const WeekDot = ({ wk, state }) => {
+  const { isSelected, isCurrent, isPast } = state;
+  return (
+    <View
+      style={[
+        styles.stepDot,
+        isPast && styles.stepDotPast,
+        isSelected && styles.stepDotSelected,
+        isCurrent && styles.stepDotCurrentRing,
+      ]}>
+      {isPast && !isSelected ? (
+        <Check size={RFValue(12)} color="#FFFFFF" strokeWidth={3} />
+      ) : !isCurrent && !isPast && !isSelected ? (
+        <Lock size={RFValue(11)} color="#94A3B8" strokeWidth={2} />
+      ) : (
+        <Text style={[styles.stepDotText, (isSelected || isPast) && styles.stepDotTextActive]}>
+          {wk}
+        </Text>
+      )}
+    </View>
+  );
+};
+
+// "Current" earns the extra line: only that week can be logged or submitted.
+const WeekLabel = ({ wk, state }) => (
+  <>
+    <View style={styles.stepLabelRow}>
+      {state.isCurrent && <LockOpen size={RFValue(9)} color="#F2A154" strokeWidth={2.4} />}
+      <Text
+        style={[
+          styles.stepLabel,
+          (state.isSelected || state.isCurrent) && styles.stepLabelCompleted,
+        ]}>
+        Week {wk}
+      </Text>
+    </View>
+    {state.isCurrent && <Text style={styles.stepCurrentTag}>Current</Text>}
+  </>
+);
+
 // Week selector — plain row of dots for short projects; horizontal scroll for
 // longer ones so the week numbers don't feel clustered together.
-const WeekStepper = ({ weekNumbers, weekNumber, onSelect }) => {
+const WeekStepper = ({ weekNumbers, weekNumber, currentWeekNum, onSelect }) => {
   if (weekNumbers.length <= 4) {
     return (
       <View style={styles.stepper}>
         {weekNumbers.map((wk, idx) => {
-          const active = wk === weekNumber;
+          const state = weekStateFor(wk, weekNumber, currentWeekNum);
           return (
             <React.Fragment key={wk}>
               <TouchableOpacity style={styles.stepItem} onPress={() => onSelect(wk)} activeOpacity={0.7}>
-                <View style={[styles.stepDot, active && styles.stepDotCompleted]}>
-                  <Text style={[styles.stepDotText, active && styles.stepDotTextActive]}>{wk}</Text>
-                </View>
-                <Text style={[styles.stepLabel, active && styles.stepLabelCompleted]}>Week {wk}</Text>
+                <WeekDot wk={wk} state={state} />
+                <WeekLabel wk={wk} state={state} />
               </TouchableOpacity>
               {idx < weekNumbers.length - 1 && <View style={styles.stepLine} />}
             </React.Fragment>
@@ -207,13 +259,11 @@ const WeekStepper = ({ weekNumbers, weekNumber, onSelect }) => {
       style={styles.stepperScroll}
       contentContainerStyle={styles.stepperScrollContent}
       renderItem={({ item: wk }) => {
-        const active = wk === weekNumber;
+        const state = weekStateFor(wk, weekNumber, currentWeekNum);
         return (
           <TouchableOpacity style={styles.stepItemScroll} onPress={() => onSelect(wk)} activeOpacity={0.7}>
-            <Text style={[styles.stepLabel, active && styles.stepLabelCompleted]}>Week {wk}</Text>
-            <View style={[styles.stepDot, active && styles.stepDotCompleted]}>
-              <Text style={[styles.stepDotText, active && styles.stepDotTextActive]}>{wk}</Text>
-            </View>
+            <WeekLabel wk={wk} state={state} />
+            <WeekDot wk={wk} state={state} />
           </TouchableOpacity>
         );
       }}
@@ -516,7 +566,12 @@ const SubTimesheetScreen = () => {
 
             {/* ── Week Selector ── */}
             <Text style={styles.sectionTitle}>Project Progress</Text>
-            <WeekStepper weekNumbers={weekNumbers} weekNumber={weekNumber} onSelect={setWeekNumber} />
+            <WeekStepper
+              weekNumbers={weekNumbers}
+              weekNumber={weekNumber}
+              currentWeekNum={currentWeekNum}
+              onSelect={setWeekNumber}
+            />
 
             {loading && (
               <View style={styles.loaderWrap}>
@@ -930,7 +985,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: '#E2E8F0'
   },
-  stepDotCompleted: { backgroundColor: '#10375C', borderColor: '#10375C' },
+  // Selected wins the fill; a past week keeps its green underneath so the
+  // stepper still reads as progress when an earlier week is being viewed.
+  stepDotSelected:    { backgroundColor: '#10375C', borderColor: '#10375C' },
+  stepDotPast:        { backgroundColor: '#3BB273', borderColor: '#3BB273' },
+  stepDotCurrentRing: { borderColor: '#F2A154', borderWidth: 2 },
   stepDotText: { fontFamily: FontFamily.bold, fontSize: RFValue(10), color: '#94A3B8' },
   stepDotTextActive: { color: '#FFFFFF' },
   stepLabel: {
@@ -939,6 +998,14 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
   },
   stepLabelCompleted: { color: '#10375C' },
+  stepLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  stepCurrentTag: {
+    fontFamily: FontFamily.bold,
+    fontSize: RFValue(7.5),
+    color: '#F2A154',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
   stepLine: {
     width: 16, height: 1.5, backgroundColor: '#E2E8F0', marginBottom: 22,
   },
