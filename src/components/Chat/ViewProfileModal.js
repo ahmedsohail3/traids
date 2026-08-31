@@ -23,13 +23,20 @@ const ViewProfileModal = ({ visible, onClose, profile }) => {
                 <Avatar uri={profile.avatarUri} size={60} style={styles.profileAvatar} />
                 <View style={styles.profileInfo}>
                   <Text style={styles.profileName}>{profile.name}</Text>
-                  <Text style={styles.profileRole}>{profile.role}</Text>
+                  {!!profile.role && (
+                    <Text style={styles.profileRole}>{profile.role}</Text>
+                  )}
                 </View>
               </View>
 
-              {/* About section */}
+              {/* About section — say so plainly when there is no bio, rather
+                  than leaving an empty heading with nothing under it. */}
               <Text style={styles.aboutTitle}>About</Text>
-              <Text style={styles.aboutText}>{profile.about}</Text>
+              <Text style={styles.aboutText}>
+                {profile.about?.trim()
+                  ? profile.about
+                  : `${profile.name} has not added a description yet.`}
+              </Text>
             </View>
           </TouchableWithoutFeedback>
         </View>

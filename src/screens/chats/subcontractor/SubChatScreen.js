@@ -33,9 +33,12 @@ const SubChatScreen = ({ route }) => {
   const insets = useSafeAreaInsets();
   const { conversation } = route?.params ?? {};
 
-  const chatId   = conversation?._id;
-  const subData  = conversation?.subcontractor ?? {};
-  const chatName = subData.fullName ?? conversation?.name ?? 'Chat';
+  const chatId = conversation?._id;
+  // The other party here is the company — the logged-in user is the
+  // subcontractor. Reading `conversation.subcontractor` showed the user their
+  // own name and profile instead of whoever they were talking to.
+  const companyData = conversation?.company ?? {};
+  const chatName = companyData.companyName ?? conversation?.name ?? 'Chat';
 
   const {
     getMessagesForChat,
@@ -202,11 +205,12 @@ const SubChatScreen = ({ route }) => {
 
   const profile = useMemo(() => ({
     name:      chatName,
-    role:      subData.primaryTrade ?? 'Subcontractor',
-    logoEmoji: '👷',
-    about:     subData.about ?? '',
-    avatarUri: subData.profileImage ?? null,
-  }), [chatName, subData]);
+    role:      companyData.industryType ?? 'Company',
+    // The company's bio is stored as `aboutUs`; `about` was never a field, so
+    // the modal's About section always rendered empty.
+    about:     companyData.aboutUs ?? '',
+    avatarUri: companyData.profileImage ?? null,
+  }), [chatName, companyData]);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>

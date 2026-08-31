@@ -246,8 +246,9 @@ const CompanyChatScreen = ({ route }) => {
   const profile = useMemo(() => ({
     name:      chatName,
     role:      subData.primaryTrade ?? 'Subcontractor',
-    logoEmoji: '👷',
-    about:     subData.about ?? '',
+    // The bio is stored as `professionalBio`; `about` was never a field on a
+    // subcontractor, so the modal's About section always rendered empty.
+    about:     subData.professionalBio ?? '',
     avatarUri: subData.profileImage ?? paramSubAvatar ?? null,
   }), [chatName, subData, paramSubAvatar]);
 
