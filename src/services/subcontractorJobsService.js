@@ -53,6 +53,11 @@ export const applyForJobApi = (formData) =>
     .post('/job-applications', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
     .then((r) => r.data);
 
+// ── Withdraw an application ───────────────────────────────────────────────────
+
+export const withdrawJobApplicationApi = (applicationId) =>
+  axiosInstance.delete(`/job-applications/${applicationId}`).then((r) => r.data);
+
 // ── Offer Actions ─────────────────────────────────────────────────────────────
 
 export const acceptJobOfferApi = (offerId) =>
@@ -64,7 +69,6 @@ export const rejectJobOfferApi = (offerId) =>
 // ── Future endpoints ───────────────────────────────────────────────────────────
 // export const getAppliedJobsApi    = ()       => axiosInstance.get('/subcontractor/applied-jobs').then((r) => r.data);
 // export const getSavedJobsApi      = ()       => axiosInstance.get('/subcontractor/saved-jobs').then((r) => r.data);
-// export const withdrawJobApi       = (id)     => axiosInstance.delete(`/job-applications/${id}`).then((r) => r.data);
 // export const updateApplicationApi = (id, fd) => axiosInstance.put(`/job-applications/${id}`, fd).then((r) => r.data);
 // export const withdrawJobOfferApi  = (id)     => axiosInstance.patch(`/offers/${id}/withdraw`).then((r) => r.data);
 // export const counterOfferApi      = (id, fd) => axiosInstance.patch(`/offers/${id}/counter`, fd).then((r) => r.data);

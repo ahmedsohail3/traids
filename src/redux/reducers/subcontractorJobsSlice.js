@@ -4,6 +4,7 @@ import {
   getAvailableJobsApi,
   getJobDetailsApi,
   applyForJobApi,
+  withdrawJobApplicationApi,
   acceptJobOfferApi,
   rejectJobOfferApi,
 } from '~services/subcontractorJobsService';
@@ -78,6 +79,18 @@ export const applyForJob = createAsyncThunk(
   },
 );
 
+export const withdrawJobApplication = createAsyncThunk(
+  'subcontractorJobs/withdrawJobApplication',
+  async (applicationId, { rejectWithValue }) => {
+    try {
+      const res = await withdrawJobApplicationApi(applicationId);
+      return res?.data ?? res;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  },
+);
+
 // ── State factories ────────────────────────────────────────────────────────────
 
 const listState      = () => ({ data: [], loading: false, error: null });
@@ -113,6 +126,9 @@ const subcontractorJobsSlice = createSlice({
     // Apply for job
     applyingForJob:   false,
     applyForJobError: null,
+    // Withdrawing an application from the Requested tab
+    withdrawingApplication: false,
+    withdrawApplicationError: null,
     // Offer actions (accept / reject / future: withdraw, counter)
     processingOfferAction: false,
     offerActionError:      null,
@@ -127,8 +143,10 @@ const subcontractorJobsSlice = createSlice({
       recommendedJobs:       listState(),
       availableJobs:         pagedListState(),
       jobDetails:            detailState(),
-      applyingForJob:        false,
-      applyForJobError:      null,
+      applyingForJob:           false,
+      applyForJobError:         null,
+      withdrawingApplication:   false,
+      withdrawApplicationError: null,
       processingOfferAction: false,
       offerActionError:      null,
     }),
@@ -197,6 +215,20 @@ const subcontractorJobsSlice = createSlice({
       .addCase(applyForJob.rejected, (state, { payload }) => {
         state.applyingForJob   = false;
         state.applyForJobError = payload ?? 'Failed to submit application.';
+      });
+
+    // Withdraw an application — fulfilled is stateless, the caller refetches
+    builder
+      .addCase(withdrawJobApplication.pending, (state) => {
+        state.withdrawingApplication   = true;
+        state.withdrawApplicationError = null;
+      })
+      .addCase(withdrawJobApplication.fulfilled, (state) => {
+        state.withdrawingApplication = false;
+      })
+      .addCase(withdrawJobApplication.rejected, (state, { payload }) => {
+        state.withdrawingApplication   = false;
+        state.withdrawApplicationError = payload ?? 'Failed to withdraw application.';
       });
   },
 });

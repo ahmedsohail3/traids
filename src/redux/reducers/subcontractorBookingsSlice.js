@@ -27,10 +27,12 @@ export const fetchBookings = makeBookingThunk(
 // export const rejectBooking       = makeBookingThunk('subcontractorBookings/reject',       rejectBookingApi);
 
 // ── State shape ────────────────────────────────────────────────────────────────
-// Mirrors the API response: { offers, pending, inProgress, completed }
+// Mirrors the API response: { offers, requested, pending, inProgress, completed }
+// `requested` holds the subcontractor's own job applications.
 
 const bookingsData = () => ({
   offers:     [],
+  requested:  [],
   pending:    [],
   inProgress: [],
   completed:  [],
@@ -49,6 +51,7 @@ const addBookingCases = (builder, thunk, key) => {
     .addCase(thunk.fulfilled, (state, { payload }) => {
       state[key].loading      = false;
       state[key].data.offers     = payload?.offers     ?? [];
+      state[key].data.requested  = payload?.requested  ?? [];
       state[key].data.pending    = payload?.pending    ?? [];
       state[key].data.inProgress = payload?.inProgress ?? [];
       state[key].data.completed  = payload?.completed  ?? [];

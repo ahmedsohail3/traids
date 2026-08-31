@@ -26,6 +26,7 @@ const useSubcontractorBookings = () => {
   return {
     // Categorized data — mirrors API response shape
     offers:     data.offers,
+    requested:  data.requested,
     pending:    data.pending,
     inProgress: data.inProgress,
     completed:  data.completed,
