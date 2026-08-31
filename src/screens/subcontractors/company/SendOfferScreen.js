@@ -10,7 +10,7 @@
  * Either way, POST /offers is called with the same field set; the values
  * just come from the manual form or from the selected existing job.
  */
-import {useState, useCallback, useEffect, useMemo} from 'react';
+import {useState, useCallback, useEffect, useMemo, useRef} from 'react';
 import {
   View,
   ScrollView,
@@ -31,6 +31,7 @@ import {FontFamily} from '~theme/fonts';
 import {useTheme} from '~context/ThemeContext';
 import useAlert from '~hooks/useAlert';
 import useCompanyJobs from '~hooks/useCompanyJobs';
+import useKeyboardInset from '~hooks/useKeyboardInset';
 
 import {
   FinancialSummary,
@@ -55,6 +56,9 @@ const NAVY = '#10375C';
 const ORANGE = '#F2A154';
 const BORDER = '#E2E8F0';
 const NO_JOB_SELECTED = '';
+
+// Breathing room kept between the focused field and the top of the keyboard.
+const FIELD_GAP = 20;
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -120,6 +124,98 @@ const SendOfferScreen = ({route, navigation}) => {
     setForm(p => ({...p, [key]: val}));
     setErrors(p => ({...p, [key]: ''}));
   }, []);
+
+  // ── Keyboard-aware focus ──────────────────────────────────────────────────
+  // `keyboardInset` is the part of the keyboard the platform did NOT absorb by
+  // resizing the window, so the same maths works whether Android resized or not.
+  const {keyboardInset, keyboardVisible, onLayout} = useKeyboardInset(
+    insets.bottom,
+  );
+
+  const scrollRef = useRef(null);
+  // Root view — shrinks when Android resizes for the keyboard, and its bottom
+  // edge is the ScrollView's bottom edge, so it doubles as the viewport.
+  const viewportRef = useRef(null);
+  const scrollYRef = useRef(0);
+  const focusedRef = useRef(null);
+  const insetRef = useRef(0);
+
+  useEffect(() => {
+    insetRef.current = keyboardInset;
+  }, [keyboardInset]);
+
+  // Field focus order — drives the next-key chain. The description is multiline,
+  // so it takes the return key for newlines and is reached by tapping only.
+  const jobTitleRef = useRef(null);
+  const descriptionRef = useRef(null);
+  const siteAddressRef = useRef(null);
+  const rateRef = useRef(null);
+
+  const handleScroll = useCallback(({nativeEvent}) => {
+    scrollYRef.current = nativeEvent.contentOffset.y;
+  }, []);
+
+  // Offset of the ScrollView inside the root view — i.e. the height of Header.
+  const scrollTopRef = useRef(0);
+  const handleScrollLayout = useCallback(({nativeEvent}) => {
+    scrollTopRef.current = nativeEvent.layout.y;
+  }, []);
+
+  /**
+   * Scrolls just enough to bring `node` fully inside the space left above the
+   * keyboard. Measured in window coordinates rather than computed from layout
+   * offsets, so nesting inside the form card costs nothing.
+   */
+  const revealNode = useCallback(node => {
+    const viewport = viewportRef.current;
+    if (!node?.measureInWindow || !viewport || !scrollRef.current) return;
+
+    viewport.measureInWindow((_vx, viewportY, _vw, viewportH) => {
+      node.measureInWindow((_x, y, _w, h) => {
+        if (h === 0) return; // not laid out yet
+        const visibleBottom = viewportY + viewportH - insetRef.current;
+        const overlap = y + h + FIELD_GAP - visibleBottom;
+
+        if (overlap > 1) {
+          scrollRef.current?.scrollTo({
+            y: scrollYRef.current + overlap,
+            animated: true,
+          });
+          return;
+        }
+        // Field sits above the visible area (e.g. focused via the next key while
+        // scrolled past it) — bring it back down into view.
+        const visibleTop = viewportY + scrollTopRef.current;
+        const above = visibleTop + FIELD_GAP - y;
+        if (above > 1) {
+          scrollRef.current?.scrollTo({
+            y: Math.max(0, scrollYRef.current - above),
+            animated: true,
+          });
+        }
+      });
+    });
+  }, []);
+
+  const handleFocus = useCallback(
+    node => {
+      focusedRef.current = node;
+      revealNode(node);
+    },
+    [revealNode],
+  );
+
+  const handleBlur = useCallback(node => {
+    if (focusedRef.current === node) focusedRef.current = null;
+  }, []);
+
+  // Re-reveal once the keyboard has actually opened, and again whenever its
+  // height changes — switching between the text and number keypads changes it.
+  useEffect(() => {
+    if (!keyboardVisible) return;
+    const frame = requestAnimationFrame(() => revealNode(focusedRef.current));
+    return () => cancelAnimationFrame(frame);
+  }, [keyboardVisible, keyboardInset, revealNode]);
 
   // Values actually sent to the API — from the selected job, or the manual form.
   // Memoised because the selected-job branch builds a fresh object on every
@@ -243,7 +339,10 @@ const SendOfferScreen = ({route, navigation}) => {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <View style={[styles.root, {backgroundColor: colors.background}]}>
+    <View
+      style={[styles.root, {backgroundColor: colors.background}]}
+      ref={viewportRef}
+      onLayout={onLayout}>
       <Header
         title="Find Subcontractors"
         subtitle="Discover and book top rated professionals for your project."
@@ -251,11 +350,18 @@ const SendOfferScreen = ({route, navigation}) => {
       />
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[
           styles.scroll,
-          {paddingBottom: insets.bottom + 40},
+          // The extra inset is only whatever the keyboard covers that a window
+          // resize didn't already account for — enough room to scroll the last
+          // field clear of it.
+          {paddingBottom: insets.bottom + 40 + keyboardInset},
         ]}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        onLayout={handleScrollLayout}
+        scrollEventThrottle={32}
         keyboardShouldPersistTaps="handled">
         {/* ── Subcontractor summary ── */}
         <View style={styles.subCard}>
@@ -336,10 +442,16 @@ const SendOfferScreen = ({route, navigation}) => {
               {/* Job Title */}
               <FormLabel text="Job Title" />
               <RNTextInput
+                ref={jobTitleRef}
                 placeholder="Downtown Office Renovation"
                 placeholderTextColor="#94A3B8"
                 value={form.jobTitle}
                 onChangeText={v => set('jobTitle', v)}
+                onFocus={() => handleFocus(jobTitleRef.current)}
+                onBlur={() => handleBlur(jobTitleRef.current)}
+                returnKeyType="next"
+                submitBehavior="submit"
+                onSubmitEditing={() => descriptionRef.current?.focus()}
                 style={[
                   styles.formInput,
                   {color: colors.textPrimary, backgroundColor: colors.surface},
@@ -359,10 +471,13 @@ const SendOfferScreen = ({route, navigation}) => {
               {/* Description */}
               <FormLabel text="Description" />
               <RNTextInput
+                ref={descriptionRef}
                 placeholder="Add job description..."
                 placeholderTextColor="#94A3B8"
                 value={form.description}
                 onChangeText={v => set('description', v)}
+                onFocus={() => handleFocus(descriptionRef.current)}
+                onBlur={() => handleBlur(descriptionRef.current)}
                 multiline
                 style={[
                   styles.formInput,
@@ -387,10 +502,16 @@ const SendOfferScreen = ({route, navigation}) => {
                   style={styles.inputIconLeft}
                 />
                 <RNTextInput
+                  ref={siteAddressRef}
                   placeholder="Enter full address..."
                   placeholderTextColor="#94A3B8"
                   value={form.siteAddress}
                   onChangeText={v => set('siteAddress', v)}
+                  onFocus={() => handleFocus(siteAddressRef.current)}
+                  onBlur={() => handleBlur(siteAddressRef.current)}
+                  returnKeyType="next"
+                  submitBehavior="submit"
+                  onSubmitEditing={() => rateRef.current?.focus()}
                   style={[styles.inputInner, {color: colors.textPrimary}]}
                 />
               </View>
@@ -420,13 +541,17 @@ const SendOfferScreen = ({route, navigation}) => {
                 ]}>
                 <Text style={styles.poundSymbol}>£</Text>
                 <RNTextInput
+                  ref={rateRef}
                   value={form.hourlyRate}
                   onChangeText={v =>
                     set('hourlyRate', v.replace(/[^0-9.]/g, ''))
                   }
                   placeholder="12"
                   placeholderTextColor="#94A3B8"
+                  onFocus={() => handleFocus(rateRef.current)}
+                  onBlur={() => handleBlur(rateRef.current)}
                   keyboardType="decimal-pad"
+                  returnKeyType="done"
                   style={[styles.inputInner, {color: colors.textPrimary}]}
                 />
               </View>
