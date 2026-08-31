@@ -21,7 +21,12 @@ import {
   XCircle,
   MapPin,
 } from 'lucide-react-native';
-import {Text, Button, AttachmentThumb, AttachmentViewer} from '~components/Common';
+import {
+  Text,
+  Button,
+  AttachmentThumb,
+  AttachmentViewer,
+} from '~components/Common';
 import Header from '~components/Header';
 import {FontFamily} from '~theme/fonts';
 import {useTheme} from '~context/ThemeContext';
@@ -312,7 +317,9 @@ const SubcontractorProfileScreen = ({route, navigation}) => {
         {/* Work Examples */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Work Examples</Text>
-          <Text style={styles.sectionSub}>Photos and documents from previous jobs</Text>
+          <Text style={styles.sectionSub}>
+            Photos and documents from previous jobs
+          </Text>
           {workExamples.length > 0 ? (
             <ScrollView
               horizontal
