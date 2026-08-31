@@ -71,6 +71,9 @@ const DateModal = ({ visible, title, value, onConfirm, onClose }) => {
             display="spinner"
             onChange={(_, date) => { if (date) setTempDate(date); }}
             style={styles.iosDatePicker}
+            // This sheet is always white, so keep the spinner light too —
+            // otherwise iOS restyles its band and dividers for dark mode.
+            themeVariant="light"
             textColor="#10375C"
           />
           <View style={styles.dateModalActions}>
