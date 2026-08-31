@@ -21,6 +21,7 @@ const SubJobCard = ({
   workersRequired,
   trade,
   applicantCount,
+  hasApplied = false,
   onPress,
   onApply,
 }) => {
@@ -55,7 +56,16 @@ const SubJobCard = ({
       </View>
 
       {/* Title + description */}
-      <Text style={[styles.jobTitle, { color: colors.textPrimary }]}>{title}</Text>
+      <View style={styles.titleRow}>
+        <Text style={[styles.jobTitle, { color: colors.textPrimary }]}>{title}</Text>
+        {/* A prior application blocks re-applying whatever its outcome, so the
+            pill saves the user tapping into a job they cannot apply for. */}
+        {hasApplied && (
+          <View style={styles.appliedPill}>
+            <Text style={styles.appliedPillText}>Applied</Text>
+          </View>
+        )}
+      </View>
       <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={3}>
         {description ? stripHtml(description) : ''}
       </Text>
@@ -85,8 +95,13 @@ const SubJobCard = ({
         <Text style={[styles.applicantText, { color: colors.textSecondary }]}>
           {applicantCount} {applicantCount === 1 ? 'Applicant' : 'Applicants'}
         </Text>
-        <TouchableOpacity style={styles.applyBtn} onPress={onApply} activeOpacity={0.85}>
-          <Text style={styles.applyBtnText}>Apply Now</Text>
+        <TouchableOpacity
+          style={[styles.applyBtn, hasApplied && styles.viewApplicationBtn]}
+          onPress={onApply}
+          activeOpacity={0.85}>
+          <Text style={[styles.applyBtnText, hasApplied && styles.viewApplicationBtnText]}>
+            {hasApplied ? 'View Application' : 'Apply Now'}
+          </Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -154,10 +169,27 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.semiBold,
     fontSize: RFValue(9),
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
   jobTitle: {
+    flex: 1,
     fontFamily: FontFamily.bold,
     fontSize: RFValue(13),
     marginBottom: 4,
+  },
+  appliedPill: {
+    backgroundColor: '#EEF2F7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 500,
+  },
+  appliedPillText: {
+    color: '#10375C',
+    fontFamily: FontFamily.semiBold,
+    fontSize: RFValue(8.5),
   },
   description: {
     fontFamily: FontFamily.regular,
@@ -200,6 +232,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
+  },
+  viewApplicationBtn: {
+    backgroundColor: '#EEF2F7',
+  },
+  viewApplicationBtnText: {
+    color: '#10375C',
   },
   applyBtnText: {
     color: '#FFFFFF',

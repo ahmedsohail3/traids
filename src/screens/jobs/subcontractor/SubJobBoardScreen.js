@@ -143,6 +143,9 @@ const mapJob = (raw, index) => {
     trade:             raw.trade          ?? '—',
     applicantCount:    raw?.assignedTo?.length ?? 0,
     typeOfJob:         raw.typeOfJob      ?? '',
+    // Set by /jobs/available and /jobs/search. Always false on recommended
+    // jobs — that query already excludes anything applied to.
+    hasApplied:        raw.hasApplied === true,
     status:            raw.status         ?? 'pending',
     _raw:              raw,
   };
@@ -300,6 +303,13 @@ const SubJobBoardScreen = ({ navigation }) => {
     setCurrentPage(1);
     fetchJobs(1);
   }, [selectedTrades, maxRate, startDate]);
+
+  // Applying happens on the job detail screen, so the badge on this list is
+  // stale by the time the user comes back. Re-fetch the page they were on.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => fetchJobs(currentPage));
+    return unsubscribe;
+  }, [navigation, fetchJobs, currentPage]);
 
   // Location uses a 2-second debounce to avoid hammering the API on each keystroke
   const handleLocationChange = (text) => {
