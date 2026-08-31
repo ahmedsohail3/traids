@@ -161,10 +161,12 @@ const SubJobDetailScreen = ({navigation, route}) => {
     return () => resetJobDetails();
   }, [load]);
 
-  // Open apply modal immediately if navigated with openApply flag
+  // Open apply modal if navigated with the openApply flag — but only once the
+  // job has loaded. `hasApplied` is false until the fetch resolves, so firing
+  // this on mount would open the sheet on a job that is already applied to.
   useEffect(() => {
-    if (openApply) openApplySheet();
-  }, [openApply, openApplySheet]);
+    if (openApply && selectedJob) openApplySheet();
+  }, [openApply, selectedJob, openApplySheet]);
 
   // Show error alert if fetch fails
   useEffect(() => {

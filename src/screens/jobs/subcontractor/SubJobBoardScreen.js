@@ -544,7 +544,13 @@ const SubJobBoardScreen = ({ navigation }) => {
           <SubJobCard
             {...item}
             onPress={() => navigation.navigate('SubJobDetail', { job: item, jobId: item.id })}
-            onApply={() => navigation.navigate('SubJobDetail', { job: item, openApply: true, jobId: item.id })}
+            // Already applied: the footer button reads "View Application", so it
+            // opens the job rather than asking for the apply sheet.
+            onApply={() => navigation.navigate('SubJobDetail', {
+              job:       item,
+              jobId:     item.id,
+              openApply: !item.hasApplied,
+            })}
           />
         )}
         ListEmptyComponent={
