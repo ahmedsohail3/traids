@@ -58,10 +58,7 @@ const SubBookingsScreen = ({ navigation }) => {
     completed:  rawCompleted,
     getBookings,
   } = useSubcontractorBookings();
-  const {
-    acceptJobOffer, rejectJobOffer, processingOfferAction,
-    withdrawApplication, withdrawingApplication,
-  } = useSubcontractorJobs();
+  const { acceptJobOffer, rejectJobOffer, processingOfferAction } = useSubcontractorJobs();
   const { showAlert, showConfirm } = useAlert();
 
   // Drop entries with no job title — deleted/incomplete jobs come back from the
@@ -121,24 +118,6 @@ const SubBookingsScreen = ({ navigation }) => {
     });
   };
 
-  const handleWithdraw = (applicationId) => {
-    showConfirm({
-      title:       'Withdraw Application',
-      message:     'Are you sure you want to withdraw this application? This cannot be undone.',
-      confirmText: 'Withdraw',
-      type:        'error',
-      onConfirm:   async () => {
-        try {
-          await withdrawApplication(applicationId);
-          showAlert({ title: 'Withdrawn', message: 'Application withdrawn.', type: 'success' });
-          getBookings();
-        } catch (err) {
-          showAlert({ title: 'Error', message: err ?? 'Failed to withdraw application.', type: 'error' });
-        }
-      },
-    });
-  };
-
   const filterTabs = useMemo(() => [
     { key: 'Offers',      label: 'Offers',       count: offers.length },
     { key: 'Requested',   label: 'Requested',    count: requested.length },
@@ -176,7 +155,7 @@ const SubBookingsScreen = ({ navigation }) => {
 
   const emptyLabel = {
     'Offers':      'No offers yet',
-    'Requested':   'You have not applied for any jobs yet',
+    'Requested':   "You haven't applied for any jobs yet.",
     'In Progress': 'No jobs in progress',
     'Pending':     'No pending jobs',
     'Completed':   'No completed jobs',
@@ -228,11 +207,10 @@ const SubBookingsScreen = ({ navigation }) => {
           })
         ) : activeTab === 'Requested' ? (
           requested.map((application, idx) => {
-            const job     = application.job     ?? {};
-            const company = application.company ?? {};
-            // The proposed rate is what the subcontractor bid; the job's own
-            // rate is the fallback for an application that carries neither.
-            const bid = application.proposedDailyRate ?? job.hourlyRate;
+            const job = application.job ?? {};
+            // The company is populated inside the job, not on the application.
+            const company = job.company ?? application.company ?? {};
+            const bid = application.proposedDailyRate;
             return (
               <SubRequestedCard
                 key={application._id}
@@ -240,14 +218,12 @@ const SubBookingsScreen = ({ navigation }) => {
                 companyName={company.companyName ?? '—'}
                 companyInitial={(company.companyName ?? '?')[0].toUpperCase()}
                 companyColorIndex={idx % 5}
-                rate={bid != null ? `£${bid}/hr` : '—'}
+                rate={bid != null ? `£${bid}/day` : (job.hourlyRate != null ? `£${job.hourlyRate}/hr` : '—')}
                 message={stripHtml(application.message)}
                 status={application.status}
                 appliedAt={application.createdAt ?? application.appliedAt}
-                loading={withdrawingApplication}
                 onPress={() => navigation.navigate('SubJobDetail', { jobId: job._id })}
                 onViewJob={() => navigation.navigate('SubJobDetail', { jobId: job._id })}
-                onWithdraw={() => handleWithdraw(application._id)}
               />
             );
           })

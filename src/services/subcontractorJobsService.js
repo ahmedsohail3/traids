@@ -53,11 +53,6 @@ export const applyForJobApi = (formData) =>
     .post('/job-applications', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
     .then((r) => r.data);
 
-// ── Withdraw an application ───────────────────────────────────────────────────
-
-export const withdrawJobApplicationApi = (applicationId) =>
-  axiosInstance.delete(`/job-applications/${applicationId}`).then((r) => r.data);
-
 // ── Offer Actions ─────────────────────────────────────────────────────────────
 
 export const acceptJobOfferApi = (offerId) =>
