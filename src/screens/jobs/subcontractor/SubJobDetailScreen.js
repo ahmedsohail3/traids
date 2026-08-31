@@ -101,6 +101,27 @@ const CompanyInfoRow = ({icon: Icon, value}) => {
   );
 };
 
+// A prior application blocks re-applying whatever its outcome — the server's
+// duplicate guard is status-agnostic, so a rejection is permanent for that job.
+// Gate on `hasApplied` alone; excluding rejected here would show an enabled
+// button that then fails with a 409.
+const APPLIED_LABEL = {
+  pending:   'Applied — Awaiting Response',
+  accepted:  'Application Accepted',
+  rejected:  'Application Rejected',
+  withdrawn: 'Application Withdrawn',
+};
+
+const appliedLabelFor = (status) =>
+  APPLIED_LABEL[String(status ?? '').trim().toLowerCase()] ?? 'Already Applied';
+
+const fmtAppliedDate = (iso) => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'});
+};
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 const SubJobDetailScreen = ({navigation, route}) => {
@@ -122,6 +143,19 @@ const SubJobDetailScreen = ({navigation, route}) => {
     if (jobId) getJobDetails(jobId);
   }, [jobId, getJobDetails]);
 
+  // `hasApplied` / `myApplication` are merged into the job for subcontractor
+  // callers on every return path of GET /jobs/:id.
+  const hasApplied    = selectedJob?.hasApplied === true;
+  const appliedStatus = selectedJob?.myApplication?.status;
+  const appliedOn     = fmtAppliedDate(selectedJob?.myApplication?.createdAt);
+
+  // Guarded here as well as on the button, so the sheet cannot be opened by the
+  // `openApply` route param either.
+  const openApplySheet = useCallback(() => {
+    if (hasApplied) return;
+    setApplyVisible(true);
+  }, [hasApplied]);
+
   useEffect(() => {
     load();
     return () => resetJobDetails();
@@ -129,8 +163,8 @@ const SubJobDetailScreen = ({navigation, route}) => {
 
   // Open apply modal immediately if navigated with openApply flag
   useEffect(() => {
-    if (openApply) setApplyVisible(true);
-  }, [openApply]);
+    if (openApply) openApplySheet();
+  }, [openApply, openApplySheet]);
 
   // Show error alert if fetch fails
   useEffect(() => {
@@ -220,11 +254,23 @@ const SubJobDetailScreen = ({navigation, route}) => {
             </View>
 
             <TouchableOpacity
-              style={styles.applyBtn}
-              onPress={() => setApplyVisible(true)}
+              style={[styles.applyBtn, hasApplied && styles.applyBtnDisabled]}
+              onPress={openApplySheet}
+              disabled={hasApplied}
               activeOpacity={0.85}>
-              <Text style={styles.applyBtnText}>Apply Now</Text>
+              <Text
+                style={[
+                  styles.applyBtnText,
+                  hasApplied && styles.applyBtnTextDisabled,
+                ]}>
+                {hasApplied ? appliedLabelFor(appliedStatus) : 'Apply Now'}
+              </Text>
             </TouchableOpacity>
+            {hasApplied && appliedOn && (
+              <Text style={[styles.appliedOnText, {color: colors.textSecondary}]}>
+                Applied {appliedOn}
+              </Text>
+            )}
           </View>
 
           {/* ── Job Description ── */}
@@ -337,6 +383,11 @@ const SubJobDetailScreen = ({navigation, route}) => {
         onClose={() => setApplyVisible(false)}
         jobId={job?._id}
         jobTitle={job?.jobTitle}
+        // Re-read the job either way: on success `hasApplied` flips and the
+        // button has to disable, and a failure usually means this screen's copy
+        // was already stale (a 409 from another device, or a bulk rejection).
+        onApplied={load}
+        onApplyFailed={load}
         onSeeMyJobs={() => {
           setApplyVisible(false);
           navigation.navigate('SubTabs', {screen: 'Bookings'});
@@ -401,6 +452,18 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
+  },
+  applyBtnDisabled: {
+    backgroundColor: '#E2E8F0',
+  },
+  applyBtnTextDisabled: {
+    color: '#64748B',
+  },
+  appliedOnText: {
+    fontFamily: FontFamily.regular,
+    fontSize: RFValue(10),
+    textAlign: 'center',
+    marginTop: 8,
   },
   applyBtnText: {
     color: '#FFFFFF',

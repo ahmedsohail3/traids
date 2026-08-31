@@ -72,7 +72,15 @@ const DocumentChip = ({ doc, onRemove }) => {
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
 
-const ApplyJobModal = ({ visible, onClose, onSeeMyJobs, jobTitle, jobId }) => {
+const ApplyJobModal = ({
+  visible,
+  onClose,
+  onSeeMyJobs,
+  onApplied,
+  onApplyFailed,
+  jobTitle,
+  jobId,
+}) => {
   const { colors }    = useTheme();
   const insets        = useSafeAreaInsets();
   const { applyForJob, applyingForJob } = useSubcontractorJobs();
@@ -169,13 +177,17 @@ const ApplyJobModal = ({ visible, onClose, onSeeMyJobs, jobTitle, jobId }) => {
     try {
       await applyForJob(formData);
       setOfferSent(true);
+      // The job detail, the job board badge and the Requested tab all read
+      // stale until whoever opened this sheet re-fetches.
+      onApplied?.();
     } catch (err) {
+      onApplyFailed?.(err);
       // Shown in the sheet rather than through an alert: the alert host has to
       // clear this modal to be seen, and an inline banner sits right above the
       // button the user just pressed.
       setSubmitError(typeof err === 'string' ? err : 'Something went wrong. Please try again.');
     }
-  }, [form, jobId, applyForJob]);
+  }, [form, jobId, applyForJob, onApplied, onApplyFailed]);
 
   // ─────────────────────────────────────────────────────────────────────────────
 
