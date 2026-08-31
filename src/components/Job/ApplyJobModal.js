@@ -18,7 +18,6 @@ import { useTheme } from '~context/ThemeContext';
 import { Images } from '~assets';
 import useSubcontractorJobs from '~hooks/useSubcontractorJobs';
 import useProfile from '~hooks/useProfile';
-import useAlert from '~hooks/useAlert';
 import useKeyboardInset from '~hooks/useKeyboardInset';
 import { buildJobApplicationFormData } from '~utils/buildFormData';
 import { pickDocument, pickImageFromLibrary } from '~utils/filePicker';
@@ -35,8 +34,10 @@ const INITIAL_FORM = {
 const validateForm = (values) => {
   const errors = {};
 
+  // Read-only, filled from the profile — an empty value means the profile never
+  // loaded, so the message has to point at that rather than at the user.
   if (!values.fullName.trim())
-    errors.fullName = 'Full name is required';
+    errors.fullName = 'Your profile details could not be loaded. Close and reopen this form.';
 
   const rate = Number(values.proposedDailyRate);
   if (!values.proposedDailyRate.trim())
@@ -74,29 +75,36 @@ const DocumentChip = ({ doc, onRemove }) => {
 const ApplyJobModal = ({ visible, onClose, onSeeMyJobs, jobTitle, jobId }) => {
   const { colors }    = useTheme();
   const insets        = useSafeAreaInsets();
-  const { showAlert } = useAlert();
   const { applyForJob, applyingForJob } = useSubcontractorJobs();
-  const { profile } = useProfile();
+  const { profile, getProfile } = useProfile();
 
   // Measured keyboard avoidance instead of KeyboardAvoidingView: inside a Modal
   // the KAV frame goes stale, so the sheet kept the keyboard's space after the
   // keyboard was dismissed. This resolves back to 0 on every layout.
   const { keyboardInset, keyboardVisible, onLayout } = useKeyboardInset(insets.bottom);
 
-  const [form,      setForm]      = useState({ ...INITIAL_FORM });
-  const [errors,    setErrors]    = useState({});
-  const [offerSent, setOfferSent] = useState(false);
+  const [form,        setForm]        = useState({ ...INITIAL_FORM });
+  const [errors,      setErrors]      = useState({});
+  const [submitError, setSubmitError] = useState('');
+  const [offerSent,   setOfferSent]   = useState(false);
+
+  const profileName = profile?.fullName ?? profile?.name ?? '';
 
   useEffect(() => {
-    if (visible) {
-      const name = profile?.fullName ?? profile?.name ?? '';
-      setForm((p) => ({ ...p, fullName: name }));
-    }
-  }, [visible, profile]);
+    if (visible) setForm((p) => ({ ...p, fullName: profileName }));
+  }, [visible, profileName]);
+
+  // The profile is fetched once at cold start and never retried. If that call
+  // failed, the name stays empty for the whole session and the form can never
+  // be submitted, so re-request it when the sheet opens without one.
+  useEffect(() => {
+    if (visible && !profileName) getProfile();
+  }, [visible, profileName, getProfile]);
 
   const set = useCallback((key, val) => {
     setForm((p) => ({ ...p, [key]: val }));
     setErrors((p) => ({ ...p, [key]: '' }));
+    setSubmitError('');
   }, []);
 
   // ── Documents ────────────────────────────────────────────────────────────────
@@ -123,11 +131,11 @@ const ApplyJobModal = ({ visible, onClose, onSeeMyJobs, jobTitle, jobId }) => {
   // ── Reset / close ─────────────────────────────────────────────────────────────
 
   const resetForm = useCallback(() => {
-    const name = profile?.fullName ?? profile?.name ?? '';
-    setForm({ ...INITIAL_FORM, fullName: name });
+    setForm({ ...INITIAL_FORM, fullName: profileName });
     setErrors({});
+    setSubmitError('');
     setOfferSent(false);
-  }, [profile]);
+  }, [profileName]);
 
   const handleClose = useCallback(() => {
     resetForm();
@@ -142,6 +150,8 @@ const ApplyJobModal = ({ visible, onClose, onSeeMyJobs, jobTitle, jobId }) => {
   // ── Submit ───────────────────────────────────────────────────────────────────
 
   const handleSubmit = useCallback(async () => {
+    setSubmitError('');
+
     const validationErrors = validateForm(form);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -160,13 +170,12 @@ const ApplyJobModal = ({ visible, onClose, onSeeMyJobs, jobTitle, jobId }) => {
       await applyForJob(formData);
       setOfferSent(true);
     } catch (err) {
-      showAlert({
-        title:   'Unable to Submit Application',
-        message: typeof err === 'string' ? err : 'Something went wrong. Please try again.',
-        type:    'error',
-      });
+      // Shown in the sheet rather than through an alert: the alert host has to
+      // clear this modal to be seen, and an inline banner sits right above the
+      // button the user just pressed.
+      setSubmitError(typeof err === 'string' ? err : 'Something went wrong. Please try again.');
     }
-  }, [form, jobId, applyForJob, showAlert]);
+  }, [form, jobId, applyForJob]);
 
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -244,7 +253,10 @@ const ApplyJobModal = ({ visible, onClose, onSeeMyJobs, jobTitle, jobId }) => {
                 <View style={[
                   styles.inputWrap,
                   styles.inputDisabled,
-                  { borderColor: colors.border, backgroundColor: colors.surfaceSecondary },
+                  {
+                    borderColor: errors.fullName ? '#EF4444' : colors.border,
+                    backgroundColor: colors.surfaceSecondary,
+                  },
                 ]}>
                   <TextInput
                     style={[styles.input, { color: colors.textPrimary }]}
@@ -253,6 +265,7 @@ const ApplyJobModal = ({ visible, onClose, onSeeMyJobs, jobTitle, jobId }) => {
                     selectTextOnFocus={false}
                   />
                 </View>
+                <FieldError message={errors.fullName} />
 
                 {/* Proposed Hourly Rate */}
                 <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
@@ -326,6 +339,12 @@ const ApplyJobModal = ({ visible, onClose, onSeeMyJobs, jobTitle, jobId }) => {
                     <Text style={[styles.docPickBtnText, { color: colors.textPrimary }]}>Document</Text>
                   </TouchableOpacity>
                 </View>
+
+                {submitError ? (
+                  <View style={styles.submitErrorBanner}>
+                    <Text style={styles.submitErrorText}>{submitError}</Text>
+                  </View>
+                ) : null}
 
                 {/* Submit inside scroll so keyboard never hides it */}
                 <TouchableOpacity
@@ -493,6 +512,21 @@ const styles = StyleSheet.create({
   },
 
   // Submit
+  submitErrorBanner: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+  submitErrorText: {
+    fontFamily: FontFamily.medium,
+    fontSize: RFValue(10),
+    color: '#B91C1C',
+    lineHeight: RFValue(15),
+  },
   sendBtn: {
     backgroundColor: '#10375C',
     borderRadius: 10,
