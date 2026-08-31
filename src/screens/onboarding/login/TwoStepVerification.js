@@ -7,7 +7,7 @@ import {FontFamily} from '~theme/fonts';
 import {useTheme} from '~context/ThemeContext';
 import {useSelector} from 'react-redux';
 import useAuth from '~hooks/useAuth';
-import AuthContainer from './AuthContainer';
+import AuthContainer, {AUTH_DESCRIPTION_FONT_SIZE} from './AuthContainer';
 
 const OtpVerificationScreen = ({navigation}) => {
   const {colors} = useTheme();
@@ -53,16 +53,19 @@ const OtpVerificationScreen = ({navigation}) => {
         style={{color: colors.textPrimary, marginBottom: 6}}>
         Two-Step verification
       </Text>
-      {/* Held to two lines: the copy plus an email address runs to three at the
-          body size, so let it shrink to fit rather than reword it. */}
       <Text
-        style={{color: colors.textSecondary, marginBottom: 24}}
-        numberOfLines={2}
-        adjustsFontSizeToFit
-        minimumFontScale={0.8}>
+        style={{
+          color: colors.textSecondary,
+          fontSize: AUTH_DESCRIPTION_FONT_SIZE,
+          marginBottom: 24,
+        }}>
         Please enter the OTP to verify your account. A code has been sent to{' '}
         <Text
-          style={{color: colors.secondary, fontFamily: FontFamily.semiBold}}>
+          style={{
+            color: colors.secondary,
+            fontFamily: FontFamily.semiBold,
+            fontSize: AUTH_DESCRIPTION_FONT_SIZE,
+          }}>
           {resetFlow.email || 'your email'}
         </Text>
       </Text>

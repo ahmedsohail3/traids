@@ -8,7 +8,7 @@ import useAuth from '~hooks/useAuth';
 import {useSelector} from 'react-redux';
 import {usePreventRemove} from '@react-navigation/native';
 import PasswordSuccessModal from './PasswordSuccessModal';
-import AuthContainer from './AuthContainer';
+import AuthContainer, {AUTH_DESCRIPTION_FONT_SIZE} from './AuthContainer';
 
 const PASSWORD_RULES = [
   {key: 'length', label: 'At least 8 characters', test: p => p.length >= 8},
@@ -84,7 +84,12 @@ const NewPasswordScreen = ({navigation}) => {
           style={{color: colors.textPrimary, marginBottom: 6}}>
           Create A New Password
         </Text>
-        <Text style={{color: colors.textSecondary, marginBottom: 24}}>
+        <Text
+          style={{
+            color: colors.textSecondary,
+            fontSize: AUTH_DESCRIPTION_FONT_SIZE,
+            marginBottom: 24,
+          }}>
           Please choose a password that hasn't been used before. Must be at
           least 8 characters.
         </Text>

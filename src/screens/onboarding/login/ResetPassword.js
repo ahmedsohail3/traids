@@ -6,7 +6,7 @@ import { FontFamily } from '~theme/fonts';
 import { useTheme } from '~context/ThemeContext';
 import { useSelector } from 'react-redux';
 import useAuth from '~hooks/useAuth';
-import AuthContainer from './AuthContainer';
+import AuthContainer, { AUTH_DESCRIPTION_FONT_SIZE } from './AuthContainer';
 
 const ResetPasswordScreen = ({ navigation, route }) => {
   const { colors } = useTheme();
@@ -41,7 +41,12 @@ const ResetPasswordScreen = ({ navigation, route }) => {
   return (
     <AuthContainer showBack onBackPress={() => navigation.goBack()}>
       <Text variant='sectionTitle' style={{ color: colors.textPrimary, marginBottom: 6 }}>Reset Password</Text>
-      <Text style={{ color: colors.textSecondary, marginBottom: 24 }}>
+      <Text
+        style={{
+          color: colors.textSecondary,
+          fontSize: AUTH_DESCRIPTION_FONT_SIZE,
+          marginBottom: 24,
+        }}>
         Enter your email and we'll send you a link to reset your password.
       </Text>
 

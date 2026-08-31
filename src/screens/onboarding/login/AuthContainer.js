@@ -1,9 +1,25 @@
-import { View, StyleSheet, TouchableOpacity, StatusBar, ScrollView } from 'react-native';
-import { RFValue } from 'react-native-responsive-fontsize';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  StatusBar,
+  ScrollView,
+} from 'react-native';
+import {RFValue} from 'react-native-responsive-fontsize';
 import Icon from 'react-native-vector-icons/Feather';
-import { Text } from '~components/Common';
-import { useTheme } from '~context/ThemeContext';
-import { FontFamily } from '~theme/fonts';
+import {Text} from '~components/Common';
+import {useTheme} from '~context/ThemeContext';
+import {FontFamily} from '~theme/fonts';
+
+/**
+ * Size for the description line under each auth screen's heading — a step below
+ * the body default (RFValue(11)), which reads better for copy this long.
+ *
+ * Apply it to any nested <Text> too: those are AppTexts and re-apply the body
+ * size rather than inheriting, so they would otherwise render larger than the
+ * text around them. Text.js rescales lineHeight from the body ratio for you.
+ */
+export const AUTH_DESCRIPTION_FONT_SIZE = RFValue(11);
 
 const AuthContainer = ({
   children,
@@ -12,10 +28,10 @@ const AuthContainer = ({
   backLabel = 'Back to Login',
   reserveBackSpace = false,
 }) => {
-  const { colors, isDark } = useTheme();
+  const {colors, isDark} = useTheme();
 
   return (
-    <View style={[styles.safe, { backgroundColor: colors.background }]}>
+    <View style={[styles.safe, {backgroundColor: colors.background}]}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={colors.background}
@@ -24,14 +40,19 @@ const AuthContainer = ({
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
-
         {showBack && (
           <TouchableOpacity
             style={styles.backRow}
             onPress={onBackPress}
             activeOpacity={0.7}>
-            <Icon name="arrow-left" size={RFValue(14)} color={colors.textSecondary} />
-            <Text style={[styles.backText, { color: colors.textSecondary }]}>{backLabel}</Text>
+            <Icon
+              name="arrow-left"
+              size={RFValue(14)}
+              color={colors.textSecondary}
+            />
+            <Text style={[styles.backText, {color: colors.textSecondary}]}>
+              {backLabel}
+            </Text>
           </TouchableOpacity>
         )}
 
@@ -50,7 +71,7 @@ const AuthContainer = ({
           </View>
         )}
 
-        <View style={[styles.card, { backgroundColor: colors.surface }]}>
+        <View style={[styles.card, {backgroundColor: colors.surface}]}>
           {children}
         </View>
       </ScrollView>
@@ -59,7 +80,7 @@ const AuthContainer = ({
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
+  safe: {flex: 1},
   scroll: {
     flexGrow: 1,
     paddingHorizontal: 22,
@@ -72,7 +93,7 @@ const styles = StyleSheet.create({
     gap: 6,
     marginBottom: 20,
   },
-  backRowSpacer: { opacity: 0 },
+  backRowSpacer: {opacity: 0},
   backText: {
     fontSize: RFValue(13),
     fontFamily: FontFamily.medium,
