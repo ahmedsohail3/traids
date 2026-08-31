@@ -52,18 +52,14 @@ const MenuDrawerOverlay = ({ visible, onClose }) => {
 
   const handleLogout = () => {
     onClose();
-    // Wait for the drawer close animation before asking, so the confirm dialog
-    // isn't competing with the sliding panel.
-    setTimeout(() => {
-      showConfirm({
-        title:       'Log Out',
-        message:     'Are you sure you want to log out of your account?',
-        confirmText: 'Log Out',
-        cancelText:  'Cancel',
-        type:        'warning',
-        onConfirm:   logout,
-      });
-    }, 280);
+    showConfirm({
+      title:       'Log Out',
+      message:     'Are you sure you want to log out of your account?',
+      confirmText: 'Log Out',
+      cancelText:  'Cancel',
+      type:        'warning',
+      onConfirm:   logout,
+    });
   };
 
   // Local state to keep the Modal mounted during exit animations

@@ -6,13 +6,43 @@ import {
   useRef,
   useEffect,
 } from 'react';
-import { Modal } from 'react-native';
+import { Modal, Platform } from 'react-native';
+import { FullWindowOverlay } from 'react-native-screens';
 import CustomAlert from '~components/CustomAlert/CustomAlert';
 import CustomPrompt from '~components/CustomAlert/CustomPrompt';
 
 const AlertContext = createContext(null);
 
 export const useAlertContext = () => useContext(AlertContext);
+
+// iOS presents each RN <Modal> as its own view controller off the one hosting it.
+// Asking the root controller to present a second modal while a first is already
+// up — an alert raised from inside a bottom sheet, which is most of them — is
+// refused by UIKit and fails silently: the alert is enqueued and never seen.
+// FullWindowOverlay attaches its content straight to the key UIWindow, above
+// whatever controller is currently presented, so the alert shows wherever it
+// was raised from. It only takes touches its own subviews cover, so it never
+// blocks the app underneath.
+//
+// Android keeps the Modal: there it is a Dialog, and dialogs stack correctly.
+const AlertHost = ({ children }) => (
+  Platform.OS === 'ios' ? (
+    <FullWindowOverlay unstable_accessibilityContainerViewIsModal>
+      {children}
+    </FullWindowOverlay>
+  ) : (
+    <Modal
+      visible
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={() => {
+        // Android back button — let the dialog component handle it
+      }}>
+      {children}
+    </Modal>
+  )
+);
 
 let _nextId = 0;
 const nextId = () => {
@@ -26,13 +56,14 @@ const nextId = () => {
  * Wraps the application and exposes showAlert / showConfirm / showPrompt / hideAlert.
  * Renders exactly one alert at a time. Any extras are queued and shown in order.
  *
- * The Modal is rendered at native level (OS window), so it safely overlays all
- * existing screens, bottom sheets, dropdowns, and modals inside the app.
+ * The dialog is hosted above every other layer of the app — see AlertHost.
  */
 const AlertProvider = ({ children }) => {
   const [queue, setQueue] = useState([]);
   // Separate visible flag so we can animate out before dequeuing
   const [isVisible, setIsVisible] = useState(false);
+  // Set by hideAlert() — asks the mounted dialog to play its exit animation.
+  const [dismissRequested, setDismissRequested] = useState(false);
   const dismissingRef = useRef(false);
 
   const current = queue[0] ?? null;
@@ -40,6 +71,8 @@ const AlertProvider = ({ children }) => {
   // When a new item enters an empty queue, show it
   useEffect(() => {
     if (queue.length > 0 && !isVisible && !dismissingRef.current) {
+      // Clear any stale request so the incoming dialog never mounts pre-dismissed.
+      setDismissRequested(false);
       setIsVisible(true);
     }
   }, [queue, isVisible]);
@@ -55,6 +88,7 @@ const AlertProvider = ({ children }) => {
    */
   const handleDismissed = useCallback(() => {
     dismissingRef.current = true;
+    setDismissRequested(false);
     setIsVisible(false);
     setQueue((prev) => {
       const next = prev.slice(1);
@@ -112,10 +146,15 @@ const AlertProvider = ({ children }) => {
     [enqueue],
   );
 
+  // Signals the current dialog to play its exit animation; it then calls
+  // handleDismissed, which dequeues it and shows the next one. Hiding without
+  // that round trip would leave the item at the head of the queue and stall
+  // every alert raised afterwards.
+  // No-ops when nothing is on screen: a request left standing would dismiss the
+  // next alert the moment it mounted.
   const hideAlert = useCallback(() => {
-    // Signals the current dialog to play its exit animation then call handleDismissed
-    if (isVisible) setIsVisible(false);
-  }, [isVisible]);
+    if (current && isVisible) setDismissRequested(true);
+  }, [current, isVisible]);
 
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -125,29 +164,24 @@ const AlertProvider = ({ children }) => {
     <AlertContext.Provider value={{ showAlert, showConfirm, showPrompt, hideAlert }}>
       {children}
 
-      {current && (
-        <Modal
-          visible={isVisible}
-          transparent
-          animationType="none"
-          statusBarTranslucent
-          onRequestClose={() => {
-            // Android back button — let the dialog component handle it
-          }}>
+      {current && isVisible && (
+        <AlertHost>
           {isPrompt ? (
             <CustomPrompt
               key={current.id}
               config={current}
+              dismissRequested={dismissRequested}
               onDismiss={handleDismissed}
             />
           ) : (
             <CustomAlert
               key={current.id}
               config={current}
+              dismissRequested={dismissRequested}
               onDismiss={handleDismissed}
             />
           )}
-        </Modal>
+        </AlertHost>
       )}
     </AlertContext.Provider>
   );

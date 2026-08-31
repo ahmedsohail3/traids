@@ -41,7 +41,7 @@ const TYPE_CONFIG = {
   },
 };
 
-const CustomAlert = ({ config, onDismiss }) => {
+const CustomAlert = ({ config, onDismiss, dismissRequested = false }) => {
   const { colors } = useTheme();
   const scaleAnim = useRef(new Animated.Value(0.85)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -74,8 +74,14 @@ const CustomAlert = ({ config, onDismiss }) => {
     ]).start();
   }, []);
 
+  // One dismissal only. Two quick taps — or a tap racing `dismissRequested` —
+  // would otherwise run the exit twice and dequeue two alerts for one dialog.
+  const dismissingRef = useRef(false);
+
   const handleDismiss = useCallback(
     (callback) => {
+      if (dismissingRef.current) return;
+      dismissingRef.current = true;
       Animated.parallel([
         Animated.timing(overlayAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
         Animated.timing(scaleAnim, { toValue: 0.85, duration: 150, useNativeDriver: true }),
@@ -87,6 +93,12 @@ const CustomAlert = ({ config, onDismiss }) => {
     },
     [onDismiss, overlayAnim, scaleAnim, opacityAnim],
   );
+
+  // `hideAlert()` dismisses from outside the dialog — same exit animation, same
+  // `onDismiss`, so the provider dequeues exactly as it does for a button press.
+  useEffect(() => {
+    if (dismissRequested) handleDismiss(onCancel);
+  }, [dismissRequested, handleDismiss, onCancel]);
 
   const handleConfirm = useCallback(() => {
     handleDismiss(onConfirm);
