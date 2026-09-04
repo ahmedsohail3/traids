@@ -35,7 +35,6 @@ import SendOfferScreen from '~screens/subcontractors/company/SendOfferScreen';
 // Full-screen screens (hide tab bar)
 import CompanyChatScreen from '~screens/chats/company/CompanyChatScreen';
 import CompanyJobDetailScreen from '~screens/jobs/company/CompanyJobDetailScreen';
-import NotificationsScreen from '~screens/notifications/NotificationsScreen';
 import { AIAssistantScreen } from '~screens/aiAssistant';
 
 // ─── Stack navigators for each tab ───────────────────────────────────────────
@@ -114,7 +113,6 @@ const CompanyNavigator = () => (
       <RootStack.Screen name="CompanyJobDetail" component={CompanyJobDetailScreen} options={{ animation: 'slide_from_right' }} />
       <RootStack.Screen name="SubcontractorProfile" component={SubcontractorProfileScreen} options={{ animation: 'slide_from_right' }} />
       <RootStack.Screen name="SendOffer" component={SendOfferScreen} options={{ animation: 'slide_from_right' }} />
-      <RootStack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: 'slide_from_right' }} />
       <RootStack.Screen name="AIAssistant" component={AIAssistantScreen} options={{ animation: 'slide_from_right' }} />
     </RootStack.Navigator>
   </View>

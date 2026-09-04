@@ -73,7 +73,6 @@ const NotificationsScreen = ({ navigation }) => {
       <Header
         title="Notifications"
         subtitle="Stay updated with your latest activity."
-        showBackButton
       />
 
       {loadingNotifications && notifications.length === 0 && (

@@ -7,6 +7,7 @@ import { RFValue } from 'react-native-responsive-fontsize';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Text } from '~components/Common';
 import { FontFamily } from '~theme/fonts';
+import { useSelector } from 'react-redux';
 import { useAlertContext } from '~providers/AlertProvider';
 import useNotifications, {
   useNotificationPress,
@@ -18,6 +19,7 @@ const NotificationDropdownModal = ({ visible, onClose, navigation }) => {
   const { notifications, loadingNotifications, getNotifications } = useNotifications();
   const { markAllRead, markingAllRead } = useMarkAllNotificationsRead();
   const { showConfirm }               = useAlertContext();
+  const userType = useSelector((s) => s.auth?.user?.type ?? 'company');
 
   useEffect(() => {
     if (visible) getNotifications();
@@ -42,10 +44,17 @@ const NotificationDropdownModal = ({ visible, onClose, navigation }) => {
     });
   }, [showConfirm, markAllRead]);
 
+  // Notifications lives inside the More tab so the tab bar stays visible, so
+  // the jump has to go through the role's tab root rather than straight to the
+  // screen name.
   const handleShowMore = useCallback(() => {
     onClose();
-    navigation?.navigate?.('Notifications');
-  }, [onClose, navigation]);
+    const tabsRoot = userType === 'subcontractor' ? 'SubTabs' : 'CompanyTabs';
+    navigation?.navigate?.(tabsRoot, {
+      screen: 'More',
+      params: { screen: 'Notifications' },
+    });
+  }, [onClose, navigation, userType]);
 
   return (
     <Modal

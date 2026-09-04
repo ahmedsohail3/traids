@@ -9,6 +9,7 @@ import ComplianceStack from './ComplianceStack';
 import FinancialStack from './FinancialStack';
 import PaymentsScreen from '~screens/menu/payments/PaymentsScreen';
 import WalletScreen from '~screens/menu/wallet/WalletScreen';
+import NotificationsScreen from '~screens/notifications/NotificationsScreen';
 import WithdrawAmountScreen from '~screens/menu/wallet/WithdrawAmountScreen';
 import WithdrawConfirmScreen from '~screens/menu/wallet/WithdrawConfirmScreen';
 import WithdrawSuccessScreen from '~screens/menu/wallet/WithdrawSuccessScreen';
@@ -33,6 +34,9 @@ const MoreStack = ({ route }) => {
       <Stack.Screen name="Financial" component={FinancialStack} />
       <Stack.Screen name="Reports" component={ReportsScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      {/* Reached from the header bell. Registered here — like Wallet — so the
+          tab bar stays visible, which is what the design shows. */}
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
     </Stack.Navigator>
   );
 };
