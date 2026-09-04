@@ -31,6 +31,8 @@ const COMPANY_MENU_ITEMS = [
   { label: 'Settings',   icon: Settings,    route: 'Settings' },
 ];
 
+// Profile and Earnings are built but unreleased, so they are left out of the
+// menu until their routes go back into MoreStack.
 const SUBCONTRACTOR_MENU_ITEMS = [
   { label: 'Timesheets', icon: FileText, route: 'Timesheets' },
   { label: 'Payments', icon: CreditCard, route: 'Payments' },

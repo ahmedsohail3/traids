@@ -279,6 +279,10 @@ const SubcontractorDashboardScreen = ({ navigation }) => {
         )}
 
       </ScrollView>
+
+      {/* AI Help Assistant FAB is off until the assistant endpoint exists.
+          To bring it back: render <AIAssistantFab> (~components/Common) here,
+          positioned above the tab bar, navigating to the 'AIAssistant' route. */}
     </View>
   );
 };

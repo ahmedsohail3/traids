@@ -32,6 +32,7 @@ import SubChatScreen from '~screens/chats/subcontractor/SubChatScreen';
 import SubJobDetailScreen from '~screens/jobs/subcontractor/SubJobDetailScreen';
 import SubBookingDetailScreen from '~screens/bookings/subcontractor/SubBookingDetailScreen';
 import NotificationsScreen from '~screens/notifications/NotificationsScreen';
+import { AIAssistantScreen } from '~screens/aiAssistant';
 
 // ─── Stack navigators for each tab ───────────────────────────────────────────
 
@@ -95,6 +96,7 @@ const SubNavigator = () => (
       <RootStack.Screen name="SubJobDetail" component={SubJobDetailScreen} options={{ animation: 'slide_from_right' }} />
       <RootStack.Screen name="SubBookingDetail" component={SubBookingDetailScreen} options={{ animation: 'slide_from_right' }} />
       <RootStack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: 'slide_from_right' }} />
+      <RootStack.Screen name="AIAssistant" component={AIAssistantScreen} options={{ animation: 'slide_from_right' }} />
     </RootStack.Navigator>
   </View>
 );

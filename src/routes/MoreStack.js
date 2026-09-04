@@ -13,6 +13,10 @@ import WithdrawAmountScreen from '~screens/menu/wallet/WithdrawAmountScreen';
 import WithdrawConfirmScreen from '~screens/menu/wallet/WithdrawConfirmScreen';
 import WithdrawSuccessScreen from '~screens/menu/wallet/WithdrawSuccessScreen';
 
+// Not registered yet: the subcontractor Profile screens (SubProfileScreen,
+// PortfolioDetailScreen, UploadWorkScreen) and EarningsScreen. They are built
+// but unreleased, so — like ChoosePlanScreen — they stay out of the navigator
+// until we're ready to ship them.
 const MoreStack = ({ route }) => {
   const userType = route?.params?.userType ?? 'company';
   return (

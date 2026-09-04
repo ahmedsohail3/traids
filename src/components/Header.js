@@ -75,6 +75,9 @@ const Header = ({
             onPress={goToSettings}>
             <Icon name="settings-outline" size={RFValue(17)} color="#FFFFFF" />
           </TouchableOpacity>
+
+          {/* The subcontractor profile shortcut lived here. It is out until the
+              Profile screen is released and its route is back in MoreStack. */}
         </View>
       </View>
 
