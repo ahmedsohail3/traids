@@ -27,6 +27,7 @@ import companyComplianceReducer from "../reducers/companyComplianceSlice";
 import companyFinancialsReducer from "../reducers/companyFinancialsSlice";
 import chatReducer from "../reducers/chatSlice";
 import subcontractorProfileReducer from "../reducers/subcontractorProfileSlice";
+import subcontractorPortfolioReducer from "../reducers/subcontractorPortfolioSlice";
 import subcontractorSignupReducer from "../reducers/subcontractorSignupSlice";
 import subcontractorDocumentUploadReducer from "../reducers/subcontractorDocumentUploadSlice";
 import subcontractorTimesheetReducer from "../reducers/subcontractorTimesheetSlice";
@@ -56,6 +57,7 @@ const combinedReducer = combineReducers({
   companyFinancials: companyFinancialsReducer,
   chat: chatReducer,
   subcontractorProfile: subcontractorProfileReducer,
+  subcontractorPortfolio: subcontractorPortfolioReducer,
   subcontractorSignup:           subcontractorSignupReducer,
   subcontractorDocumentUpload:   subcontractorDocumentUploadReducer,
   subcontractorTimesheet:        subcontractorTimesheetReducer,

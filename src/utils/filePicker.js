@@ -80,6 +80,10 @@ const normalizeAsset = (asset) => ({
   uri: asset.uri,
   type: asset.type ?? 'image/jpeg',
   name: asset.fileName ?? `photo_${Date.now()}.jpg`,
+  // Bytes, for callers that show a file size or enforce an upload cap. The
+  // library omits it for some sources, so treat null as "unknown" rather than
+  // as zero. buildFormData ignores it.
+  size: asset.fileSize ?? null,
 });
 
 // Capture/pick options for profile photos. Square-ish and modest — the avatar

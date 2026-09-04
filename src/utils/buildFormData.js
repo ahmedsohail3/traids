@@ -595,3 +595,53 @@ export const buildJobApplicationFormData = ({
 
   return fd;
 };
+
+// ─── Subcontractor portfolio ──────────────────────────────────────────────────
+
+/**
+ * buildPortfolioFormData
+ *
+ * Multipart body for POST /subcontractor/portfolio — one showcased project.
+ * Photos ride along with the text fields, the same shape the profile and
+ * document updates already use.
+ *
+ * Empty strings are omitted rather than sent, so a half-filled draft does not
+ * overwrite server-side values with blanks.
+ *
+ * @param {object}  fields
+ * @param {string}  [fields.title]
+ * @param {string}  [fields.specialty]       trade slug, e.g. 'electrician'
+ * @param {string}  [fields.workType]
+ * @param {string}  [fields.overview]        1–2 sentence summary
+ * @param {string}  [fields.description]     long-form description
+ * @param {string}  [fields.clientName]
+ * @param {string}  [fields.location]
+ * @param {string}  [fields.duration]
+ * @param {string}  [fields.costRange]
+ * @param {string}  [fields.completionDate]  YYYY-MM-DD
+ * @param {'submitted'|'draft'} [fields.status]
+ * @param {Array<{uri, type, name}>} [fields.photos]
+ * @returns {FormData}
+ */
+export const buildPortfolioFormData = (fields = {}) => {
+  const { photos = [], ...text } = fields;
+  const fd = new FormData();
+
+  for (const [key, value] of Object.entries(text)) {
+    if (value !== null && value !== undefined && String(value).trim() !== '') {
+      fd.append(key, String(value).trim());
+    }
+  }
+
+  photos.forEach((photo) => {
+    if (photo?.uri) {
+      fd.append('photos', {
+        uri:  photo.uri,
+        type: photo.type ?? 'image/jpeg',
+        name: photo.name ?? `photo_${Date.now()}.jpg`,
+      });
+    }
+  });
+
+  return fd;
+};
